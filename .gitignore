@@ -33,6 +33,11 @@ dist-ssr/
 .turbo/
 coverage/
 
+# VitePress docs site build output and cache. The markdown in docs/ is the
+# source of truth; the rendered site is produced by CI.
+docs/.vitepress/dist/
+docs/.vitepress/cache/
+
 # ─────────────────────────────────────────────────────────────────────────────
 #  Secrets — NEVER commit any of these
 #

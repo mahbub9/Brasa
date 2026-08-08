@@ -28,7 +28,7 @@ Start here. Everything a new developer needs, in the order they need it.
 One page per feature — behaviour, edge cases, offline handling and intent.
 
 - [features/README.md](features/README.md) — index
-- [features/_template.md](features/_template.md) — template for a new page
+- [`_template.md`](https://github.com/mahbub9/Brasa/blob/main/docs/features/_template.md) — template for a new page
 
 ## Architecture
 
@@ -42,6 +42,7 @@ One page per feature — behaviour, edge cases, offline handling and intent.
 ## Decisions (ADRs)
 
 Records of choices that were not obvious, and what would make us revisit them.
+Full index with one-line summaries: [architecture/decisions/](architecture/decisions/README.md).
 
 - [0001](architecture/decisions/0001-modular-monolith.md) — Modular monolith, not microservices
 - [0002](architecture/decisions/0002-own-fiscal-engine.md) — Build our own AT-certified fiscal engine

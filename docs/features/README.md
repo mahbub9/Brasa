@@ -7,7 +7,9 @@ is *for*, what it does when things go wrong, and which rules constrain it.
 Signatures and types are in the source; **behaviour, edge cases and intent live
 here.**
 
-Use [`_template.md`](_template.md) as the starting point.
+Use [`_template.md`](https://github.com/mahbub9/Brasa/blob/main/docs/features/_template.md)
+as the starting point. It is author scaffolding, so it is excluded from the
+published site — copy it from the repository.
 
 ## Index
 

@@ -38,7 +38,7 @@ that go through the type system, while RLS protects all of them.
 
 ## Tenant context
 
-[`ITenantContext`](../../src/backend/Brasa.Shared/Tenancy/ITenantContext.cs)
+[`ITenantContext`](https://github.com/mahbub9/Brasa/blob/main/src/backend/Brasa.Shared/Tenancy/ITenantContext.cs)
 is registered **scoped** and populated once per request by the tenant-resolution
 middleware, from the caller's token.
 

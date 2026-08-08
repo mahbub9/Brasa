@@ -28,7 +28,7 @@ was sold*, not what it costs today. The same applies to VAT rates.
 ### 3. Cross-module communication is integration events
 
 The only sanctioned channel is
-[`IIntegrationEvent`](../../src/backend/Brasa.Shared/Messaging/IntegrationEvent.cs),
+[`IIntegrationEvent`](https://github.com/mahbub9/Brasa/blob/main/src/backend/Brasa.Shared/Messaging/IntegrationEvent.cs),
 written to the outbox in the same transaction as the state change that produced
 it.
 

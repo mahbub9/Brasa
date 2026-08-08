@@ -1,7 +1,7 @@
 # Money
 
-**Type:** [`Brasa.Shared.Primitives.Money`](../../src/backend/Brasa.Shared/Primitives/Money.cs)
-**Tests:** [`MoneyTests`](../../tests/Brasa.Shared.Tests/Primitives/MoneyTests.cs)
+**Type:** [`Brasa.Shared.Primitives.Money`](https://github.com/mahbub9/Brasa/blob/main/src/backend/Brasa.Shared/Primitives/Money.cs)
+**Tests:** [`MoneyTests`](https://github.com/mahbub9/Brasa/blob/main/tests/Brasa.Shared.Tests/Primitives/MoneyTests.cs)
 
 ## The rule
 

@@ -69,7 +69,7 @@
 |---|---|---|
 | Docker | ✅ | 29.6.2, Compose v5.3.1 |
 | PostgreSQL | ✅ | 18.4 container, ICU locale provider, `pt-PT` |
-| Seq (log viewer) | ✅ | http://localhost:5341 |
+| Seq (log viewer) | ✅ | `http://localhost:5341` |
 | CI (GitHub Actions) | ✅ | Build gate, tests, vulnerability scan, docs link check |
 
 ## Blockers

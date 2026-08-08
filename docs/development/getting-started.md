@@ -62,7 +62,7 @@ dotnet run --project src/backend/Brasa.Api
 docker compose -f infra/docker-compose.yml up -d
 ```
 
-Starts PostgreSQL 18 and Seq (structured log viewer, http://localhost:5341).
+Starts PostgreSQL 18 and Seq (structured log viewer, at `http://localhost:5341`).
 Credentials are development-only and committed on purpose; they grant access to
 nothing but a local container.
 

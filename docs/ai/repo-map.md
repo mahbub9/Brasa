@@ -23,13 +23,15 @@
 | `README.md` | Project front door |
 | `CLAUDE.md` | Rules for Claude Code sessions |
 | `CONTRIBUTING.md` | Workflow, commit format, documentation contract |
+| `package.json` | **Docs site only** — VitePress. The .NET build does not use npm |
 
 ## `.github/`
 
 | File | Purpose |
 |---|---|
 | `workflows/ci.yml` | Build (zero-warning gate) + test + transitive vulnerability scan |
-| `workflows/docs.yml` | Relative-link check; warns when source changes without a `status.md` update |
+| `workflows/docs.yml` | Relative-link check across all markdown; warns when source changes without a `status.md` update |
+| `workflows/pages.yml` | Builds the VitePress site from `docs/` and deploys to GitHub Pages |
 | `pull_request_template.md` | Docs checklist, plus fiscal and money sections |
 | `ISSUE_TEMPLATE/bug.md` | Bug report; severity includes a **Fiscal** tier |
 | `ISSUE_TEMPLATE/feature.md` | Feature request; forces an offline-behaviour answer |
@@ -112,8 +114,13 @@ REST + SignalR hub, cloud outbox sync.
 
 ## `docs/`
 
+Published to <https://mahbub9.github.io/Brasa/> by `pages.yml`. Directory index
+pages are `README.md` so GitHub renders them when browsing a folder; VitePress
+rewrites them to site index pages, so one file serves both.
+
 | Path | Purpose |
 |---|---|
+| `.vitepress/config.mts` | Site config: nav, sidebar, search. **Add new pages to the sidebar or they are unreachable** |
 | `README.md` | Documentation index |
 | `ai/README.md` | **AI session brief — the entry point for a new session** |
 | `ai/repo-map.md` | This file |

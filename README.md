@@ -61,9 +61,17 @@ dotnet test  Brasa.slnx
 
 ## Documentation
 
-Start at **[docs/README.md](docs/README.md)**. Documentation is maintained
-alongside the code, not after it — see the contract in
-[docs/development/documentation.md](docs/development/documentation.md).
+📖 **[brasa docs → mahbub9.github.io/Brasa](https://mahbub9.github.io/Brasa/)** —
+the same markdown, published as a searchable site.
+
+Or read it in the repository, starting at **[docs/README.md](docs/README.md)**.
+Documentation is maintained alongside the code, not after it — see the contract
+in [docs/development/documentation.md](docs/development/documentation.md).
+
+```powershell
+npm install
+npm run docs:dev     # local preview at http://localhost:5173
+```
 
 ## Licence
 

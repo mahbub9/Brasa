@@ -1,0 +1,14 @@
+{
+  "name": "brasa-docs",
+  "private": true,
+  "type": "module",
+  "description": "Documentation site for Brasa. The .NET solution is built with `dotnet build Brasa.slnx`; this package only builds docs/.",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}
