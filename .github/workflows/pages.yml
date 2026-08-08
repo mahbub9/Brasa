@@ -47,7 +47,18 @@ jobs:
       # cross-reference that stops resolving blocks publication.
       - run: npm run docs:build
 
+      # enablement:true turns Pages on via the API if it has never been
+      # configured, so the first run does not fail with "Get Pages site failed".
+      # It needs the pages:write permission granted above.
+      #
+      # If this still fails, enable it by hand once:
+      #   Settings -> Pages -> Build and deployment -> Source: GitHub Actions
+      #
+      # Note: Pages on a PRIVATE repository requires a paid plan. On a free
+      # plan the repository must be public for the site to publish at all.
       - uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - uses: actions/upload-pages-artifact@v4
         with:

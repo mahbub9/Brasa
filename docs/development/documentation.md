@@ -18,6 +18,19 @@ places, and both are first-class:
   VitePress and deployed by [`.github/workflows/pages.yml`](https://github.com/mahbub9/Brasa/blob/main/.github/workflows/pages.yml)
   on every push to `main` that touches `docs/`.
 
+### One-time GitHub Pages setup
+
+The workflow passes `enablement: true`, which provisions Pages on first run. If
+that fails with *"Get Pages site failed"*, set it by hand once:
+
+> **Settings → Pages → Build and deployment → Source: _GitHub Actions_**
+
+Do **not** pick "Deploy from a branch" — that runs Jekyll over `docs/`, which
+does not rewrite `.md` links and would break navigation across the whole site.
+
+⚠️ **Pages on a private repository requires a paid GitHub plan.** On a free
+plan the repository must be public for the site to publish.
+
 The site config rewrites `README.md` to the site's index pages, so one file
 serves both audiences. Never duplicate a page to suit one of them.
 
