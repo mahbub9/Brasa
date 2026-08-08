@@ -16,6 +16,7 @@ internal sealed class MenuItemConfiguration : IEntityTypeConfiguration<MenuItem>
         builder.Property(i => i.Name).HasMaxLength(200).IsRequired();
         builder.Property(i => i.IsAlcoholic).IsRequired();
         builder.Property(i => i.IsAvailable).IsRequired();
+        builder.Property(i => i.DeletedAtUtc);
 
         builder.MapMoney(i => i.Price, "price");
 

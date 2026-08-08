@@ -90,9 +90,12 @@ public abstract class TenantAwareDbContext(
                     PreventTenantReassignment(entry);
                     break;
 
+                case EntityState.Deleted:
+                    PreventHardDeleteOfSoftDeletable(entry);
+                    break;
+
                 case EntityState.Detached:
                 case EntityState.Unchanged:
-                case EntityState.Deleted:
                 default:
                     break;
             }
@@ -108,6 +111,24 @@ public abstract class TenantAwareDbContext(
             throw new InvalidOperationException(
                 $"Attempted to move {entry.Entity.GetType().Name}/{entry.Entity.Id} between tenants. " +
                 "Tenant ownership is fixed for the lifetime of a row.");
+        }
+    }
+
+    /// <summary>
+    /// A row implementing <see cref="ISoftDeletable"/> must never actually be
+    /// removed — historical orders and fiscal documents may still reference it,
+    /// and Portuguese law requires those stay readable for ten years. Calling
+    /// <c>DbSet.Remove</c> on one is a bug, not a valid way to delete it; the
+    /// domain method that sets <see cref="ISoftDeletable.DeletedAtUtc"/> and
+    /// saves as an ordinary update is the only sanctioned path.
+    /// </summary>
+    private static void PreventHardDeleteOfSoftDeletable(EntityEntry<Entity> entry)
+    {
+        if (entry.Entity is ISoftDeletable)
+        {
+            throw new InvalidOperationException(
+                $"{entry.Entity.GetType().Name}/{entry.Entity.Id} implements ISoftDeletable and must never be " +
+                "hard-deleted. Call its soft-delete domain method instead, which sets DeletedAtUtc and saves as an update.");
         }
     }
 }

@@ -41,7 +41,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **API** | API platform & mobile readiness | 3 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 9 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
-| **CAT** | Catalog & menu | 3 | 18 | I0 (rest: I1) |
+| **CAT** | Catalog & menu | 4 | 18 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 0 | 7 | I1 |
 | **ORD** | Ordering | 5 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
@@ -55,7 +55,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 3 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **53** | **291** | |
+| | **Total** | **54** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -170,7 +170,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | CAT-15 | Kitchen station routing per item | ⬜ |
 | CAT-16 | Menu versioning with effective dates | ⬜ |
 | CAT-17 | Bulk import (CSV / Excel) | ⬜ |
-| CAT-18 | Soft delete preserving historical order references | ⬜ |
+| CAT-18 | Soft delete preserving historical order references | ✅ `MenuItem` only (what `OrderLine.MenuItemId` can reference) — `DELETE /menu/items/{id}`, no admin UI yet. Verified live: deleted item vanishes from `/menu` and can't be re-ordered, but a past order's line keeps its name/price. See `ISoftDeletable` in `docs/architecture/multi-tenancy.md` |
 
 ## FLR — Floor plan & tables
 

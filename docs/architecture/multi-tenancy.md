@@ -32,6 +32,18 @@ out of every query.
 It is **not** a security boundary. It is bypassed by raw SQL, by Dapper, by
 reporting views, and by a single forgotten `IgnoreQueryFilters()`.
 
+An entity that also implements `ISoftDeletable` (e.g. `MenuItem`, CAT-18) gets
+`AND deleted_at_utc IS NULL` added to the same filter automatically —
+`ModelBuilderExtensions.ApplyTenantQueryFilters` combines both predicates for
+any entity that needs them, so a soft-deleted row disappears from ordinary
+queries the same way a wrong-tenant row does, without every module having to
+remember to add its own `Where(x => x.DeletedAtUtc == null)`. An admin view
+that genuinely needs deleted rows calls `IgnoreQueryFilters()` explicitly, so
+that intent is visible at the call site. `TenantAwareDbContext` separately
+refuses to let a soft-deletable entity reach `EntityState.Deleted` at all —
+calling `DbSet.Remove()` on one throws, forcing the real deletion path through
+the entity's own domain method (e.g. `MenuItem.Delete(now)`).
+
 ### 2. PostgreSQL row-level security — the real defence
 
 An RLS policy on every tenant-owned table, keyed off a session variable set at

@@ -13,7 +13,7 @@ namespace Brasa.Modules.Catalog.Domain;
 /// Changing a price here never rewrites history; it only changes what the
 /// <i>next</i> order charges.
 /// </remarks>
-public sealed class MenuItem : Entity
+public sealed class MenuItem : Entity, ISoftDeletable
 {
     private MenuItem()
     {
@@ -66,11 +66,27 @@ public sealed class MenuItem : Entity
     /// <summary>Whether the item can currently be ordered.</summary>
     public bool IsAvailable { get; private set; } = true;
 
+    /// <inheritdoc/>
+    /// <remarks>
+    /// Distinct from <see cref="IsAvailable"/>: 86'ing is "out of stock today,
+    /// back tomorrow"; this is "removed from the menu for good," and only
+    /// exists at all because <c>OrderLine.MenuItemId</c> (a snapshot reference,
+    /// not a live join) may still point at this row from a past order.
+    /// </remarks>
+    public DateTimeOffset? DeletedAtUtc { get; set; }
+
     /// <summary>Marks the item unavailable ("86'd") without deleting it.</summary>
     public void MarkUnavailable() => IsAvailable = false;
 
     /// <summary>Marks the item available again.</summary>
     public void MarkAvailable() => IsAvailable = true;
+
+    /// <summary>
+    /// Soft-deletes the item — see <see cref="ISoftDeletable"/>. The row stays
+    /// in the database (past order lines still snapshot its name and price
+    /// independently) but disappears from the menu and can no longer be ordered.
+    /// </summary>
+    public void Delete(DateTimeOffset deletedAtUtc) => DeletedAtUtc = deletedAtUtc;
 
     /// <summary>Changes the price for future order lines. Past lines are unaffected.</summary>
     public void Reprice(Money newPrice)

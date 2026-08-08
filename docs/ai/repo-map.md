@@ -52,10 +52,10 @@ Depended on by every module; depends on no module. Deliberately small.
 | `Time/IClock.cs` | ✅ | `IClock`, `SystemClock`. Nothing may call `DateTime.UtcNow` |
 | `Time/PortugueseTimeZone.cs` | ✅ | `PortugueseRegion` (Continental/Madeira/Azores) + business-day calculation |
 | `Persistence/Entity.cs` | ✅ | `IEntity`, `ITenantOwned`, `IAuditable`, `ISoftDeletable`, `Entity` (UUIDv7, `ValueGeneratedNever` — see [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) for why that matters) |
-| `Persistence/TenantAwareDbContext.cs` | ✅ | Base `DbContext` every module extends. Applies query filters, stamps tenant/audit fields on save, guards against tenant reassignment |
+| `Persistence/TenantAwareDbContext.cs` | ✅ | Base `DbContext` every module extends. Applies query filters, stamps tenant/audit fields on save, guards against tenant reassignment and against hard-deleting an `ISoftDeletable` entity |
 | `Persistence/RowLevelSecurity.cs` | ✅ | `EnableFor`/`DisableFor` — emits the real RLS policy **and** grants the runtime role access, in the same migration |
 | `Persistence/TenantSessionInterceptor.cs` | ✅ | Sets the `brasa.tenant_id` Postgres session variable RLS policies read, per connection |
-| `Persistence/ModelBuilderExtensions.cs` | ✅ | `ApplyTenantQueryFilters`, `MapMoney`, `ApplyEntityConventions` (incl. the `ValueGeneratedNever` fix) |
+| `Persistence/ModelBuilderExtensions.cs` | ✅ | `ApplyTenantQueryFilters` (also excludes soft-deleted rows for any `ISoftDeletable` entity), `MapMoney`, `ApplyEntityConventions` (incl. the `ValueGeneratedNever` fix) |
 | `Persistence/PersistenceServiceCollectionExtensions.cs` | ✅ | `AddBrasaTenancy()` — one call wires tenancy + the session interceptor for a host |
 | `Tenancy/TenantContextAccessor.cs` | ✅ | `AsyncLocal`-backed singleton so EF's cached compiled model doesn't permanently capture one request's tenant |
 | `Messaging/IntegrationEvent.cs` | ✅ | Event, handler and dispatcher contracts. **Only sanctioned cross-module channel** |
@@ -82,7 +82,7 @@ Depended on by every module; depends on no module. Deliberately small.
 | Module | State | Roadmap |
 |---|---|---|
 | `Identity` | 📁 empty | I3 |
-| `Catalog` | ✅ `MenuCategory`, `MenuItem`, `VatRate` (I0 placeholder for I1's full `TaxRule`), EF config + migration + design-time factory | — |
+| `Catalog` | ✅ `MenuCategory`, `MenuItem` (soft-deletable, CAT-18), `VatRate` (I0 placeholder for I1's full `TaxRule`), EF config + migrations + design-time factory | — |
 | `Ordering` | ✅ `Order` aggregate, `OrderLine`, `OrderStatus`; EF config + migration + design-time factory | — |
 | `Fiscal` | ✅ `IFiscalProvider`, `FiscalDocument`, `FiscalDocumentLine` (VAT-inclusive derivation), `FiscalDocumentRequest`, `FiscalDocumentType` | — |
 | `Payments` | 📁 empty | I6 |

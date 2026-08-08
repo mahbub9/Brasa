@@ -50,7 +50,29 @@ public static class ModelBuilderExtensions
                 Expression.Constant(accessor),
                 nameof(ITenantContextAccessor.CurrentTenantId));
 
-            var body = Expression.Equal(tenantIdProperty, currentTenant);
+            Expression body = Expression.Equal(tenantIdProperty, currentTenant);
+
+            // Soft-deleted rows stay in the table (see ISoftDeletable — historical
+            // orders and fiscal documents must keep reading them) but disappear
+            // from every ordinary query the same way a tenant mismatch does. A
+            // query that genuinely needs deleted rows (an admin "show deleted"
+            // view) uses IgnoreQueryFilters() explicitly, so that intent is
+            // visible at the call site rather than silently assumed everywhere.
+            if (typeof(ISoftDeletable).IsAssignableFrom(entityType.ClrType))
+            {
+                var deletedAtProperty = Expression.Call(
+                    typeof(EF),
+                    nameof(EF.Property),
+                    [typeof(DateTimeOffset?)],
+                    parameter,
+                    Expression.Constant(nameof(ISoftDeletable.DeletedAtUtc)));
+
+                var notDeleted = Expression.Equal(
+                    deletedAtProperty,
+                    Expression.Constant(null, typeof(DateTimeOffset?)));
+
+                body = Expression.AndAlso(body, notDeleted);
+            }
 
             modelBuilder.Entity(entityType.ClrType)
                 .HasQueryFilter(Expression.Lambda(body, parameter));
