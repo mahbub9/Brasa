@@ -1,4 +1,18 @@
 using System.Globalization;
+using Asp.Versioning;
+using Brasa.Api.Endpoints;
+using Brasa.Api.Idempotency;
+using Brasa.Api.Seed;
+using Brasa.Api.Tenancy;
+using Brasa.Fiscal.Mock;
+using Brasa.Modules.Catalog;
+using Brasa.Modules.Catalog.Persistence;
+using Brasa.Modules.Ordering;
+using Brasa.Modules.Ordering.Persistence;
+using Brasa.Shared.Persistence;
+using Brasa.Shared.Tenancy;
+using Brasa.Shared.Time;
+using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -8,6 +22,10 @@ using Serilog;
 //  submission to AT, and the back-office. It is NOT on the critical path for
 //  taking an order — that runs against the Site Agent over the restaurant LAN so
 //  service survives an internet outage. See docs/architecture/README.md.
+//
+//  I0 status (docs/product/roadmap.md): the walking skeleton. No auth — every
+//  request is attributed to a single hardcoded tenant by DevTenantMiddleware,
+//  guarded so it can never reach Production. See docs/product/status.md.
 // ─────────────────────────────────────────────────────────────────────────────
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,13 +35,53 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .ReadFrom.Services(services)
     .Enrich.FromLogContext());
 
+// Two roles, two connection strings — see infra/initdb/01-app-role.sql.
+// "Postgres" (brasa_app) is unprivileged and is what actually serves requests,
+// so row-level security applies to it. "PostgresMigrations" (brasa) is a
+// superuser and is used only to run migrations, never to answer a request.
+var connectionString = builder.Configuration.GetConnectionString("Postgres")
+    ?? throw new InvalidOperationException("ConnectionStrings:Postgres is not configured.");
+var migrationsConnectionString = builder.Configuration.GetConnectionString("PostgresMigrations")
+    ?? throw new InvalidOperationException("ConnectionStrings:PostgresMigrations is not configured.");
+
+// ── Shared kernel ───────────────────────────────────────────────────────────
+builder.Services.AddSingleton<IClock, SystemClock>();
+builder.Services.AddBrasaTenancy();
+builder.Services.AddMemoryCache();
+
+// ── Modules ──────────────────────────────────────────────────────────────────
+builder.Services.AddCatalogModule(connectionString);
+builder.Services.AddOrderingModule(connectionString);
+
+// Fiscal.Portugal (the real, AT-certifiable engine) is I7 work — see
+// docs/architecture/decisions/0002-own-fiscal-engine.md. Until it exists, there
+// is no code path that can legally issue a real document, so AddMockFiscalProvider's
+// own Production guard is what keeps a Production boot from ever succeeding
+// today. That is correct: it should fail closed, not silently serve mock
+// documents to a real restaurant.
+builder.Services.AddMockFiscalProvider(builder.Environment);
+
+// ── API platform ─────────────────────────────────────────────────────────────
 // RFC 9457 responses for every failure, so clients get one error shape.
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
-
 builder.Services.AddHealthChecks();
 
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+});
+
 var app = builder.Build();
+
+// ── Startup: migrate and seed (never in Production — see the guards above) ──
+if (!app.Environment.IsProduction())
+{
+    await MigrateAsync(migrationsConnectionString, CancellationToken.None).ConfigureAwait(false);
+    await DevCatalogSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
+}
 
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
@@ -38,11 +96,28 @@ else
     app.UseHttpsRedirection();
 }
 
-// Liveness only. A readiness probe that also checks PostgreSQL arrives with the
-// persistence layer.
+app.UseRouting();
+
+// Tenant resolution must run before anything that reads ITenantContext —
+// the idempotency cache key and every module's RLS session variable both
+// depend on it.
+app.UseMiddleware<DevTenantMiddleware>();
+app.UseMiddleware<IdempotencyMiddleware>();
+
+// Liveness only. A readiness probe that also checks PostgreSQL arrives with a
+// dedicated health check package once more than one dependency needs watching.
 app.MapHealthChecks("/health");
 
-app.MapGet("/api/v1/ping", () => Results.Ok(new
+var apiVersionSet = app.NewApiVersionSet()
+    .HasApiVersion(new ApiVersion(1, 0))
+    .ReportApiVersions()
+    .Build();
+
+var v1 = app.MapGroup("/api/v1")
+    .WithApiVersionSet(apiVersionSet)
+    .MapToApiVersion(1, 0);
+
+v1.MapGet("/ping", () => Results.Ok(new
 {
     service = "brasa-api",
     utc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
@@ -50,7 +125,44 @@ app.MapGet("/api/v1/ping", () => Results.Ok(new
 .WithName("Ping")
 .WithSummary("Cheap reachability check used by the POS to decide whether the cloud is available.");
 
+v1.MapCatalogEndpoints();
+v1.MapOrderEndpoints();
+
 await app.RunAsync().ConfigureAwait(false);
+
+/// <summary>
+/// Runs every module's migrations against the elevated migration role.
+/// </summary>
+/// <remarks>
+/// Builds throwaway <see cref="DbContext"/> instances directly rather than
+/// resolving the DI-registered ones, because those are wired to the
+/// unprivileged runtime connection string and cannot run DDL or alter RLS
+/// policies. <see cref="TenantContext"/> and <see cref="TenantContextAccessor"/>
+/// are only ever captured in expression trees during model building here, never
+/// evaluated, so unresolved instances are safe.
+/// </remarks>
+static async Task MigrateAsync(string migrationsConnectionString, CancellationToken cancellationToken)
+{
+    var clock = new SystemClock();
+    var tenantContext = new TenantContext();
+    var tenantContextAccessor = new TenantContextAccessor();
+
+    var catalogOptions = new DbContextOptionsBuilder<CatalogDbContext>()
+        .UseNpgsql(migrationsConnectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "catalog"))
+        .Options;
+    await using (var catalogDb = new CatalogDbContext(catalogOptions, tenantContext, tenantContextAccessor, clock))
+    {
+        await catalogDb.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    var orderingOptions = new DbContextOptionsBuilder<OrderingDbContext>()
+        .UseNpgsql(migrationsConnectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "ordering"))
+        .Options;
+    await using (var orderingDb = new OrderingDbContext(orderingOptions, tenantContext, tenantContextAccessor, clock))
+    {
+        await orderingDb.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+    }
+}
 
 /// <summary>
 /// Exposed so <c>WebApplicationFactory&lt;Program&gt;</c> in the integration test
