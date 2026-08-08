@@ -74,6 +74,23 @@ builder.Services.AddApiVersioning(options =>
     options.ReportApiVersions = true;
 });
 
+// Web clients are separate origins from day one (Vite dev server today, real
+// domains for pos/kds/admin/order later) — see docs/architecture/api-contract.md.
+// Origins come from configuration, not a hardcoded localhost port, because each
+// client app dev-serves on its own port.
+const string WebClientsCorsPolicy = "WebClients";
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? [];
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy(WebClientsCorsPolicy, policy =>
+    {
+        if (allowedOrigins.Length > 0)
+        {
+            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+        }
+    });
+});
+
 var app = builder.Build();
 
 // ── Startup: migrate and seed (never in Production — see the guards above) ──
@@ -97,6 +114,7 @@ else
 }
 
 app.UseRouting();
+app.UseCors(WebClientsCorsPolicy);
 
 // Tenant resolution must run before anything that reads ITenantContext —
 // the idempotency cache key and every module's RLS session variable both

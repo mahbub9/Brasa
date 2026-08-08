@@ -60,6 +60,13 @@ primary credential over the internet**.
 
 See [decisions/0008-token-auth-no-cookies.md](decisions/0008-token-auth-no-cookies.md).
 
+**CORS is a browser-only mechanism** — it exists because `pos`/`kds`/`admin`/`order`
+run on their own origins and browsers enforce it; native apps ignore it
+entirely. `Cors:AllowedOrigins` in configuration is therefore an explicit
+allow-list of *web client* origins, never a substitute for the bearer-token
+check above, and it must never be widened to `AllowAnyOrigin` — that would
+make the token the only thing standing between any website and the API.
+
 ## 3. Client version negotiation
 
 This is the rule that exists *only* because of mobile, and the one most often
