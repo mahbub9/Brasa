@@ -1,0 +1,41 @@
+# Normalise line endings so a Windows dev machine and a Linux CI runner produce
+# identical diffs. Text is stored LF in the repository and checked out per the
+# platform default.
+* text=auto
+
+*.cs        text diff=csharp
+*.csproj    text
+*.props     text
+*.targets   text
+*.slnx      text
+*.json      text
+*.md        text
+*.yml       text
+*.yaml      text
+*.ts        text
+*.tsx       text
+*.js        text
+*.css       text
+*.html      text
+
+# Shell scripts must keep LF or they break inside containers.
+*.sh        text eol=lf
+Dockerfile  text eol=lf
+
+# Windows-only scripts keep CRLF.
+*.ps1       text eol=crlf
+*.cmd       text eol=crlf
+*.bat       text eol=crlf
+
+# Binary — never diff or normalise.
+*.png       binary
+*.jpg       binary
+*.ico       binary
+*.pdf       binary
+*.pfx       binary
+*.p12       binary
+*.woff2     binary
+
+# Fiscal golden-file fixtures: byte-exact by definition. Any normalisation here
+# would silently change expected signature/QR output.
+tests/**/Fixtures/**  -text
