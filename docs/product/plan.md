@@ -69,18 +69,18 @@ One deployable ASP.NET Core app, internally split into modules with enforced bou
 ```
 /src
   /backend
-    RestaurantPos.Api/                 ASP.NET Core 10, Minimal APIs, /api/v1
-    RestaurantPos.Shared/              Money, Result, TenantContext, Outbox, Clock
-    RestaurantPos.Modules.Identity/    Users, roles, staff PINs, terminal pairing
-    RestaurantPos.Modules.Catalog/     Menu, modifiers, price lists, tax rules
-    RestaurantPos.Modules.Ordering/    Orders, tables, courses, splits, transfers
-    RestaurantPos.Modules.Fiscal/      IFiscalProvider, document lifecycle, audit
-    RestaurantPos.Modules.Payments/    Tenders, cash sessions, tips
-    RestaurantPos.Modules.Reporting/   Read models, X/Z reports, VAT summaries
-    RestaurantPos.Fiscal.Portugal/     ATCUD, RSA chain, QR, SAF-T PT, AT webservices
-    RestaurantPos.Fiscal.Mock/         Deterministic fake for dev and tests
+    Brasa.Api/                 ASP.NET Core 10, Minimal APIs, /api/v1
+    Brasa.Shared/              Money, Result, TenantContext, Outbox, Clock
+    Brasa.Modules.Identity/    Users, roles, staff PINs, terminal pairing
+    Brasa.Modules.Catalog/     Menu, modifiers, price lists, tax rules
+    Brasa.Modules.Ordering/    Orders, tables, courses, splits, transfers
+    Brasa.Modules.Fiscal/      IFiscalProvider, document lifecycle, audit
+    Brasa.Modules.Payments/    Tenders, cash sessions, tips
+    Brasa.Modules.Reporting/   Read models, X/Z reports, VAT summaries
+    Brasa.Fiscal.Portugal/     ATCUD, RSA chain, QR, SAF-T PT, AT webservices
+    Brasa.Fiscal.Mock/         Deterministic fake for dev and tests
   /agent
-    RestaurantPos.SiteAgent/           SQLite, ESC/POS, LAN hub, cloud sync
+    Brasa.SiteAgent/           SQLite, ESC/POS, LAN hub, cloud sync
   /web
     pos/    kds/    admin/    order/    ui/    sdk/
 /tests

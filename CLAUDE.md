@@ -46,17 +46,17 @@ from the code alone.
 ## Commands
 
 ```powershell
-dotnet build RestaurantPos.slnx
-dotnet test  RestaurantPos.slnx
-dotnet test  tests/RestaurantPos.Shared.Tests      # fast, no Docker needed
-dotnet run   --project src/backend/RestaurantPos.Api
+dotnet build Brasa.slnx
+dotnet test  Brasa.slnx
+dotnet test  tests/Brasa.Shared.Tests      # fast, no Docker needed
+dotnet run   --project src/backend/Brasa.Api
 ```
 
 ## Environment notes
 
 - Windows 10 Home. Shell is **PowerShell 5.1** — no `&&`, no ternary, no
   null-coalescing. Chain with `;` and `if ($?) { }`.
-- The solution file is **`RestaurantPos.slnx`** (the .NET 10 XML format), not
+- The solution file is **`Brasa.slnx`** (the .NET 10 XML format), not
   `.sln`.
 - **Docker is not installed** and WSL has no distribution. Integration tests
   (Testcontainers) cannot run until that is resolved. Unit tests run fine. See

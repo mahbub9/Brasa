@@ -53,7 +53,7 @@ Records of choices that were not obvious, and what would make us revisit them.
 ## Fiscal domain
 
 The highest-risk area of the system. Read before touching anything under
-`RestaurantPos.Fiscal.*`.
+`Brasa.Fiscal.*`.
 
 - [fiscal/README.md](fiscal/README.md) — Portuguese requirements: ATCUD, QR, signature, SAF-T
 - [fiscal/certification.md](fiscal/certification.md) — the AT certification process and its prerequisites

@@ -1,7 +1,7 @@
 # Money
 
-**Type:** [`RestaurantPos.Shared.Primitives.Money`](../../src/backend/RestaurantPos.Shared/Primitives/Money.cs)
-**Tests:** [`MoneyTests`](../../tests/RestaurantPos.Shared.Tests/Primitives/MoneyTests.cs)
+**Type:** [`Brasa.Shared.Primitives.Money`](../../src/backend/Brasa.Shared/Primitives/Money.cs)
+**Tests:** [`MoneyTests`](../../tests/Brasa.Shared.Tests/Primitives/MoneyTests.cs)
 
 ## The rule
 

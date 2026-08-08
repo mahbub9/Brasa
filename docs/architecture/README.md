@@ -71,7 +71,7 @@ See [module-boundaries.md](module-boundaries.md) and
 
 ## The shared kernel
 
-`RestaurantPos.Shared` is depended on by every module and depends on none. It is
+`Brasa.Shared` is depended on by every module and depends on none. It is
 deliberately small:
 
 | Area | Type | Notes |

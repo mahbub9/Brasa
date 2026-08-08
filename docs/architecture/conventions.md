@@ -27,7 +27,7 @@ Current suppressions, all documented inline in `.editorconfig`:
 
 | Rule | Reason |
 |---|---|
-| `CA1716` | `RestaurantPos.Shared` collides with a VB keyword; we ship no VB-consumable library |
+| `CA1716` | `Brasa.Shared` collides with a VB keyword; we ship no VB-consumable library |
 | `CA1848` | `LoggerMessage` delegates are right for hot paths, too heavy a tax repo-wide. Kept as a suggestion |
 | `CA1062` | Nullable reference types already express this at compile time |
 | `CA1711` | `IIntegrationEventHandler<T>` is an interface, not a delegate |

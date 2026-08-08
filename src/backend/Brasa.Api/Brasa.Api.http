@@ -1,0 +1,6 @@
+@Brasa.Api_HostAddress = http://localhost:5216
+
+GET {{Brasa.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

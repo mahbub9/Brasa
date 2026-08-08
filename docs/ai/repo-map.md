@@ -14,7 +14,7 @@
 
 | File | Purpose |
 |---|---|
-| `RestaurantPos.slnx` | Solution. **.NET 10 XML format — not `.sln`** |
+| `Brasa.slnx` | Solution. **.NET 10 XML format — not `.sln`** |
 | `Directory.Build.props` | Solution-wide MSBuild. Nullable, `TreatWarningsAsErrors`, `InvariantGlobalization=false` (ICU needed for pt-PT and Azores) |
 | `Directory.Packages.props` | Central package management. All versions live here; `.csproj` reference by name only |
 | `.editorconfig` | Style + analyzer policy. Every suppression carries a written reason |
@@ -35,7 +35,7 @@
 | `ISSUE_TEMPLATE/feature.md` | Feature request; forces an offline-behaviour answer |
 | `ISSUE_TEMPLATE/fiscal-change.md` | Fiscal change; requires citing the legal instrument |
 
-## `src/backend/RestaurantPos.Shared` — the shared kernel ✅
+## `src/backend/Brasa.Shared` — the shared kernel ✅
 
 Depended on by every module; depends on no module. Deliberately small.
 
@@ -55,7 +55,7 @@ Depended on by every module; depends on no module. Deliberately small.
 
 ⬜ **Missing:** the dispatcher implementation, EF Core configuration, DI registration.
 
-## `src/backend/RestaurantPos.Api` 🚧
+## `src/backend/Brasa.Api` 🚧
 
 | File | State | Contents |
 |---|---|---|
@@ -63,7 +63,7 @@ Depended on by every module; depends on no module. Deliberately small.
 | `appsettings.json` | ✅ | Serilog console sink, Postgres connection string |
 | `appsettings.Development.json` | ✅ | Debug level, adds Seq sink at `localhost:5341` |
 
-## `src/backend/RestaurantPos.Modules.*` 📁
+## `src/backend/Brasa.Modules.*` 📁
 
 All six are **empty projects** — `.csproj` only, zero source files. They exist so
 the structure is visible and the boundary rule is enforced by project references.
@@ -77,16 +77,16 @@ the structure is visible and the boundary rule is enforced by project references
 | `Payments` | Tenders, cash sessions, tips | Month 4 |
 | `Reporting` | Read models, X/Z, VAT summaries | Month 5 |
 
-Each references **only** `RestaurantPos.Shared`. Never each other.
+Each references **only** `Brasa.Shared`. Never each other.
 
-## `src/backend/RestaurantPos.Fiscal.*` 📁
+## `src/backend/Brasa.Fiscal.*` 📁
 
 | Project | State | Notes |
 |---|---|---|
 | `Fiscal.Portugal` | 📁 | ATCUD, RSA chain, QR, SAF-T, AT webservices. **The certification subject.** Month 4 |
 | `Fiscal.Mock` | 📁 | Deterministic fake so the POS can be built before certification. **Must never run in Production** |
 
-## `src/agent/RestaurantPos.SiteAgent` 🚧
+## `src/agent/Brasa.SiteAgent` 🚧
 
 | File | State | Contents |
 |---|---|---|
@@ -100,9 +100,9 @@ REST + SignalR hub, cloud outbox sync.
 
 | Project | State | Notes |
 |---|---|---|
-| `RestaurantPos.Shared.Tests` | ✅ | `Primitives/MoneyTests.cs` — 17 tests, exhaustive allocation over ~12,000 combinations |
-| `RestaurantPos.Fiscal.Portugal.Tests` | 📁 | Golden-file fixture copying wired in `.csproj`; no tests yet |
-| `RestaurantPos.Api.IntegrationTests` | 📁 | Testcontainers + `Mvc.Testing` referenced; no tests yet |
+| `Brasa.Shared.Tests` | ✅ | `Primitives/MoneyTests.cs` — 17 tests, exhaustive allocation over ~12,000 combinations |
+| `Brasa.Fiscal.Portugal.Tests` | 📁 | Golden-file fixture copying wired in `.csproj`; no tests yet |
+| `Brasa.Api.IntegrationTests` | 📁 | Testcontainers + `Mvc.Testing` referenced; no tests yet |
 
 ## `infra/`
 

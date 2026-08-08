@@ -24,8 +24,8 @@ founder is not selling immediately.
 
 ## Decision
 
-Build our own engine in `RestaurantPos.Fiscal.Portugal`, behind an
-`IFiscalProvider` abstraction, with `RestaurantPos.Fiscal.Mock` used for
+Build our own engine in `Brasa.Fiscal.Portugal`, behind an
+`IFiscalProvider` abstraction, with `Brasa.Fiscal.Mock` used for
 development and tests.
 
 ## Consequences

@@ -25,19 +25,19 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore
-        run: dotnet restore RestaurantPos.slnx
+        run: dotnet restore Brasa.slnx
 
       # TreatWarningsAsErrors is on solution-wide, so this step is also the
       # analyzer gate and the transitive-vulnerability gate.
       - name: Build
-        run: dotnet build RestaurantPos.slnx --no-restore --configuration Release
+        run: dotnet build Brasa.slnx --no-restore --configuration Release
 
       # Docker is present on GitHub runners, so Testcontainers-based integration
       # tests — which exercise PostgreSQL row-level security for real — run here
       # even when a developer machine cannot run them locally.
       - name: Test
         run: >
-          dotnet test RestaurantPos.slnx
+          dotnet test Brasa.slnx
           --no-build
           --configuration Release
           --logger "trx;LogFileName=test-results.trx"
@@ -69,5 +69,5 @@ jobs:
       # unrelated build.
       - name: List vulnerable packages
         run: |
-          dotnet restore RestaurantPos.slnx
-          dotnet list RestaurantPos.slnx package --vulnerable --include-transitive
+          dotnet restore Brasa.slnx
+          dotnet list Brasa.slnx package --vulnerable --include-transitive

@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/agent/">
+    <Project Path="src/agent/Brasa.SiteAgent/Brasa.SiteAgent.csproj" />
+  </Folder>
+  <Folder Name="/src/backend/">
+    <Project Path="src/backend/Brasa.Api/Brasa.Api.csproj" />
+    <Project Path="src/backend/Brasa.Fiscal.Mock/Brasa.Fiscal.Mock.csproj" />
+    <Project Path="src/backend/Brasa.Fiscal.Portugal/Brasa.Fiscal.Portugal.csproj" />
+    <Project Path="src/backend/Brasa.Modules.Catalog/Brasa.Modules.Catalog.csproj" />
+    <Project Path="src/backend/Brasa.Modules.Fiscal/Brasa.Modules.Fiscal.csproj" />
+    <Project Path="src/backend/Brasa.Modules.Identity/Brasa.Modules.Identity.csproj" />
+    <Project Path="src/backend/Brasa.Modules.Ordering/Brasa.Modules.Ordering.csproj" />
+    <Project Path="src/backend/Brasa.Modules.Payments/Brasa.Modules.Payments.csproj" />
+    <Project Path="src/backend/Brasa.Modules.Reporting/Brasa.Modules.Reporting.csproj" />
+    <Project Path="src/backend/Brasa.Shared/Brasa.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Brasa.Api.IntegrationTests/Brasa.Api.IntegrationTests.csproj" />
+    <Project Path="tests/Brasa.Fiscal.Portugal.Tests/Brasa.Fiscal.Portugal.Tests.csproj" />
+    <Project Path="tests/Brasa.Shared.Tests/Brasa.Shared.Tests.csproj" />
+  </Folder>
+</Solution>

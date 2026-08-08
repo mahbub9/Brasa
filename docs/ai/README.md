@@ -11,6 +11,9 @@
 
 ## 1. What this is, in sixty seconds
 
+**Brasa** — Portuguese for the glowing embers of a grill, after *frango na
+brasa*. Every assembly, namespace and container is named `Brasa.*`.
+
 A multi-tenant restaurant management SaaS for **Portugal**, built by a **solo
 developer**, targeting a first live restaurant in **~6 months**.
 
@@ -70,18 +73,18 @@ Detailed file-by-file inventory: [repo-map.md](repo-map.md).
 
 ```
 src/backend/
-  RestaurantPos.Api               Cloud API. Minimal APIs under /api/v1
-  RestaurantPos.Shared            Shared kernel — depends on no module
-  RestaurantPos.Modules.Identity  Users, roles, staff PINs, terminal pairing
-  RestaurantPos.Modules.Catalog   Menu, modifiers, price lists, tax rules
-  RestaurantPos.Modules.Ordering  Orders, tables, courses, splits, transfers
-  RestaurantPos.Modules.Fiscal    IFiscalProvider, document lifecycle, audit
-  RestaurantPos.Modules.Payments  Tenders, cash sessions, tips
-  RestaurantPos.Modules.Reporting Read models, X/Z reports, VAT summaries
-  RestaurantPos.Fiscal.Portugal   ATCUD, RSA chain, QR, SAF-T, AT webservices
-  RestaurantPos.Fiscal.Mock       Deterministic fake for dev and tests
+  Brasa.Api               Cloud API. Minimal APIs under /api/v1
+  Brasa.Shared            Shared kernel — depends on no module
+  Brasa.Modules.Identity  Users, roles, staff PINs, terminal pairing
+  Brasa.Modules.Catalog   Menu, modifiers, price lists, tax rules
+  Brasa.Modules.Ordering  Orders, tables, courses, splits, transfers
+  Brasa.Modules.Fiscal    IFiscalProvider, document lifecycle, audit
+  Brasa.Modules.Payments  Tenders, cash sessions, tips
+  Brasa.Modules.Reporting Read models, X/Z reports, VAT summaries
+  Brasa.Fiscal.Portugal   ATCUD, RSA chain, QR, SAF-T, AT webservices
+  Brasa.Fiscal.Mock       Deterministic fake for dev and tests
 src/agent/
-  RestaurantPos.SiteAgent         In-restaurant worker: signing, printing, LAN hub
+  Brasa.SiteAgent         In-restaurant worker: signing, printing, LAN hub
 tests/                            Unit, fiscal golden-file, integration
 docs/                             This documentation tree
 infra/                            docker-compose (PostgreSQL 18, Seq)
@@ -130,7 +133,7 @@ there is actually met.
   callers to name the culture, and keeps `ToString()` unambiguously invariant.
 - **`Fiscal.Mock` must never run in Production.** It produces structurally valid
   but fiscally meaningless documents.
-- **The solution file is `RestaurantPos.slnx`**, the .NET 10 XML format — not `.sln`.
+- **The solution file is `Brasa.slnx`**, the .NET 10 XML format — not `.sln`.
 - **PostgreSQL 18 mounts `/var/lib/postgresql`**, not `.../data`. Mounting
   `.../data` makes the container refuse to start.
 
@@ -143,10 +146,10 @@ there is actually met.
   focused local commits as you work.**
 
 ```powershell
-dotnet build RestaurantPos.slnx                 # must be zero-warning
-dotnet test  RestaurantPos.slnx
-dotnet test  tests/RestaurantPos.Shared.Tests   # fast path
-dotnet run   --project src/backend/RestaurantPos.Api
+dotnet build Brasa.slnx                 # must be zero-warning
+dotnet test  Brasa.slnx
+dotnet test  tests/Brasa.Shared.Tests   # fast path
+dotnet run   --project src/backend/Brasa.Api
 docker compose -f infra/docker-compose.yml up -d
 ```
 
@@ -156,6 +159,7 @@ docker compose -f infra/docker-compose.yml up -d
 |---|---|---|
 | 1 | **Portuguese legal entity not formed.** Cannot submit Modelo 24 without it. On the critical path to revenue, not to code — must start now | Founder |
 | 2 | **VAT rules unconfirmed by an accountant.** The `TaxRule` model absorbs any answer, but rates must be verified before launch | Founder |
+| 3 | **`Brasa` trademark and domains not cleared.** INPI (PT), EUIPO (classes 9/42), `.pt`/`.com` | Founder |
 
 ## 10. Keeping this file true
 

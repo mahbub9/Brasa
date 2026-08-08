@@ -1,7 +1,7 @@
 # Portuguese fiscalisation
 
-> **Read this before changing anything under `RestaurantPos.Fiscal.*` or
-> `RestaurantPos.Modules.Fiscal`.** This is the highest-risk area of the system.
+> **Read this before changing anything under `Brasa.Fiscal.*` or
+> `Brasa.Modules.Fiscal`.** This is the highest-risk area of the system.
 > Mistakes here are not bugs — they are fines for our customers and a revoked
 > certificate for us.
 

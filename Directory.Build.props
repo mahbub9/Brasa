@@ -24,8 +24,8 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
 
-    <Company>RestaurantPos</Company>
-    <Product>RestaurantPos</Product>
+    <Company>Brasa</Company>
+    <Product>Brasa</Product>
   </PropertyGroup>
 
 </Project>

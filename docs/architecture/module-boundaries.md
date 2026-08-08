@@ -8,9 +8,9 @@ rewrite — and they only hold if they are respected consistently.
 
 ### 1. Modules do not reference each other
 
-`RestaurantPos.Modules.Ordering` must not have a `ProjectReference` to
-`RestaurantPos.Modules.Catalog`. Every module references
-`RestaurantPos.Shared` and nothing else in the solution.
+`Brasa.Modules.Ordering` must not have a `ProjectReference` to
+`Brasa.Modules.Catalog`. Every module references
+`Brasa.Shared` and nothing else in the solution.
 
 This is enforced by the module `.csproj` template — if you find yourself adding a
 module-to-module reference, the design is telling you something.
@@ -28,7 +28,7 @@ was sold*, not what it costs today. The same applies to VAT rates.
 ### 3. Cross-module communication is integration events
 
 The only sanctioned channel is
-[`IIntegrationEvent`](../../src/backend/RestaurantPos.Shared/Messaging/IntegrationEvent.cs),
+[`IIntegrationEvent`](../../src/backend/Brasa.Shared/Messaging/IntegrationEvent.cs),
 written to the outbox in the same transaction as the state change that produced
 it.
 

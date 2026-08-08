@@ -17,15 +17,15 @@ docs/development/documentation.md
 
 ## Checks
 
-- [ ] `dotnet build RestaurantPos.slnx` — clean, zero warnings
-- [ ] `dotnet test RestaurantPos.slnx` — green
+- [ ] `dotnet build Brasa.slnx` — clean, zero warnings
+- [ ] `dotnet test Brasa.slnx` — green
 - [ ] No analyzer rule suppressed without a written reason in `.editorconfig`
 
 ## Fiscal impact
 
 <!--
-Delete this section if the change touches nothing under RestaurantPos.Fiscal.*,
-RestaurantPos.Modules.Fiscal, or the Site Agent's signing path.
+Delete this section if the change touches nothing under Brasa.Fiscal.*,
+Brasa.Modules.Fiscal, or the Site Agent's signing path.
 -->
 
 - [ ] Golden-file tests re-run and reviewed — a diff here is either a bug or a change requiring AT notification

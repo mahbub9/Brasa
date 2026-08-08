@@ -1,7 +1,7 @@
 root = true
 
 # ─────────────────────────────────────────────────────────────────────────────
-#  RestaurantPos — editor and analyzer configuration
+#  Brasa — editor and analyzer configuration
 #  Rationale for every suppression is documented inline. Do not add a
 #  suppression without a reason; see docs/architecture/conventions.md.
 # ─────────────────────────────────────────────────────────────────────────────
@@ -35,7 +35,7 @@ indent_size = 2
 # --- Suppressed with reason -------------------------------------------------
 
 # CA1716: namespace conflicts with a VB.NET reserved keyword ("Shared").
-# We ship no VB-consumable library; RestaurantPos.Shared is the clearest name
+# We ship no VB-consumable library; Brasa.Shared is the clearest name
 # for the shared kernel and renaming it would obscure intent.
 dotnet_diagnostic.CA1716.severity = none
 

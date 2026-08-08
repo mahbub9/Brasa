@@ -6,7 +6,7 @@
 |---|---|---|
 | .NET SDK | **10.0.302** or later | Backend, Site Agent |
 | Node.js | **24.x** (npm 11) | Web clients (`pos`, `kds`, `admin`, `order`) |
-| Docker | any recent | PostgreSQL for local dev, and Testcontainers for integration tests |
+| Docker | **29.x** | PostgreSQL for local dev, and Testcontainers for integration tests |
 | Git | 2.4x | — |
 
 Verify:
@@ -20,8 +20,8 @@ docker --version
 ## Build and test
 
 ```powershell
-dotnet build RestaurantPos.slnx
-dotnet test  RestaurantPos.slnx
+dotnet build Brasa.slnx
+dotnet test  Brasa.slnx
 ```
 
 The build runs with `TreatWarningsAsErrors`. That is deliberate — it is how the
@@ -29,43 +29,26 @@ transitive `SQLitePCLRaw` CVE was caught on day one. If a warning blocks you, fi
 it or suppress it **in `.editorconfig` with a written reason**; do not disable the
 policy.
 
-## ⚠️ Known gap: Docker is not yet installed on the primary dev machine
+## Verified environment
 
-At the time of writing, the development machine (Windows 10 Home 19045) has:
+The primary development machine (Windows 10 Home 19045) currently runs:
 
-- ✅ .NET SDK 10.0.302
-- ✅ Node 24.18.1 / npm 11.16.0
-- ✅ Git 2.54.0
-- ❌ **Docker — not installed**
-- ❌ **WSL — `wsl.exe` present but no distribution installed**
+| Tool | Version |
+|---|---|
+| .NET SDK | 10.0.302 |
+| Node / npm | 24.18.1 / 11.16.0 |
+| Docker | 29.6.2 (Compose v5.3.1) |
+| PostgreSQL | 18.4 in container, ICU `pt-PT` |
+| Git | 2.54.0 |
 
-Consequences until this is resolved:
-
-- `infra/docker-compose.yml` cannot start local PostgreSQL.
-- The **integration test project cannot run** — `Testcontainers.PostgreSql`
-  requires a Docker daemon. Unit tests (`RestaurantPos.Shared.Tests`,
-  `RestaurantPos.Fiscal.Portugal.Tests`) are unaffected and run today.
-
-### Resolving it — pick one
-
-**Option A — Docker Desktop (recommended).** Enables `docker-compose` *and*
-Testcontainers, which the testing strategy depends on. Requires WSL2:
-
-```powershell
-# Elevated PowerShell. Reboots.
-wsl --install
-# then install Docker Desktop and enable the WSL2 backend
-```
-
-**Option B — native PostgreSQL on Windows.** Unblocks local development, but
-**not** the integration tests. Only a stopgap: verifying row-level security
-behaviour is a core part of the testing bar and needs a real, disposable database
-per run. See [testing.md](testing.md).
+Docker is required, not optional: `Testcontainers.PostgreSql` needs a daemon,
+and verifying row-level security behaviour against a real, disposable database
+is a core part of the testing bar. See [testing.md](testing.md).
 
 ## Running the API
 
 ```powershell
-dotnet run --project src/backend/RestaurantPos.Api
+dotnet run --project src/backend/Brasa.Api
 ```
 
 - `GET /health` — liveness

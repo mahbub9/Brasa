@@ -1,6 +1,6 @@
 # Site Agent
 
-> **Status: stub.** `RestaurantPos.SiteAgent` starts and stops cleanly and does
+> **Status: stub.** `Brasa.SiteAgent` starts and stops cleanly and does
 > nothing else. Everything below is the design, scheduled for Month 3.
 > See [../product/status.md](../product/status.md).
 

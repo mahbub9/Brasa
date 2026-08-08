@@ -14,7 +14,7 @@ infrastructure we need perhaps 150 lines of.
 
 ## Decision
 
-Define the contracts ourselves in `RestaurantPos.Shared.Messaging`:
+Define the contracts ourselves in `Brasa.Shared.Messaging`:
 
 - `IIntegrationEvent` / `IntegrationEvent`
 - `IIntegrationEventHandler<TEvent>`

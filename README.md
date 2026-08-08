@@ -1,4 +1,7 @@
-# RestaurantPos
+# Brasa
+
+> *brasa* — the glowing embers of a grill. The heat a Portuguese kitchen is built
+> around, as in *frango na brasa*.
 
 Multi-tenant restaurant management SaaS for the Portuguese market — point of sale,
 kitchen display, kitchen printing, and QR self-ordering, built around an
@@ -32,13 +35,13 @@ restaurant. See [docs/architecture/README.md](docs/architecture/README.md).
 
 ```
 src/backend/
-  RestaurantPos.Api                 ASP.NET Core cloud API (/api/v1)
-  RestaurantPos.Shared              Shared kernel — Money, Result, tenancy, outbox
-  RestaurantPos.Modules.*           Identity, Catalog, Ordering, Fiscal, Payments, Reporting
-  RestaurantPos.Fiscal.Portugal     ATCUD, RSA chain, QR, SAF-T (PT), AT webservices
-  RestaurantPos.Fiscal.Mock         Deterministic fake for development and tests
+  Brasa.Api                 ASP.NET Core cloud API (/api/v1)
+  Brasa.Shared              Shared kernel — Money, Result, tenancy, outbox
+  Brasa.Modules.*           Identity, Catalog, Ordering, Fiscal, Payments, Reporting
+  Brasa.Fiscal.Portugal     ATCUD, RSA chain, QR, SAF-T (PT), AT webservices
+  Brasa.Fiscal.Mock         Deterministic fake for development and tests
 src/agent/
-  RestaurantPos.SiteAgent           In-restaurant worker: signing, printing, LAN hub
+  Brasa.SiteAgent           In-restaurant worker: signing, printing, LAN hub
 tests/                              Unit, fiscal golden-file, and integration tests
 docs/                               Architecture, fiscal domain, decisions, roadmap
 infra/                              Local development infrastructure
@@ -52,8 +55,8 @@ Prerequisites, setup, and the current local-development gaps are in
 The short version:
 
 ```bash
-dotnet build RestaurantPos.slnx
-dotnet test  RestaurantPos.slnx
+dotnet build Brasa.slnx
+dotnet test  Brasa.slnx
 ```
 
 ## Documentation

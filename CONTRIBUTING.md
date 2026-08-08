@@ -9,8 +9,8 @@
 ## The loop
 
 ```powershell
-dotnet build RestaurantPos.slnx      # must be clean — zero warnings
-dotnet test  RestaurantPos.slnx      # must be green
+dotnet build Brasa.slnx      # must be clean — zero warnings
+dotnet test  Brasa.slnx      # must be green
 git commit                            # small, focused, with the why in the body
 ```
 
@@ -71,7 +71,7 @@ Full detail: [docs/architecture/conventions.md](docs/architecture/conventions.md
 ## Fiscal changes
 
 Read [docs/fiscal/README.md](docs/fiscal/README.md) before touching anything
-under `RestaurantPos.Fiscal.*` or `RestaurantPos.Modules.Fiscal`.
+under `Brasa.Fiscal.*` or `Brasa.Modules.Fiscal`.
 
 Fiscal behaviour changes must cite the actual legal instrument — a Portaria,
 Decreto-Lei, Ofício Circulado — not a blog summary. Use the

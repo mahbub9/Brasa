@@ -9,17 +9,17 @@
 # NOTE: Docker is not yet installed on the primary dev machine.
 # See docs/development/getting-started.md.
 
-name: restaurantpos
+name: brasa
 
 services:
   postgres:
     image: postgres:18-alpine
-    container_name: restaurantpos-postgres
+    container_name: brasa-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: restaurantpos
+      POSTGRES_USER: brasa
       POSTGRES_PASSWORD: devonly
-      POSTGRES_DB: restaurantpos
+      POSTGRES_DB: brasa
       # Portuguese collation, so local sorting matches production.
       POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=pt-PT --encoding=UTF8"
     ports:
@@ -32,7 +32,7 @@ services:
       # https://github.com/docker-library/postgres/pull/1259
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U restaurantpos -d restaurantpos"]
+      test: ["CMD-SHELL", "pg_isready -U brasa -d brasa"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -40,7 +40,7 @@ services:
   # Structured log viewer. Serilog writes here in Development.
   seq:
     image: datalust/seq:latest
-    container_name: restaurantpos-seq
+    container_name: brasa-seq
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"

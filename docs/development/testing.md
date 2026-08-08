@@ -16,17 +16,17 @@ in a report layout is an annoyance.
 ## Running
 
 ```powershell
-dotnet test RestaurantPos.slnx                                   # everything
-dotnet test tests/RestaurantPos.Shared.Tests                     # fast, no Docker
+dotnet test Brasa.slnx                                   # everything
+dotnet test tests/Brasa.Shared.Tests                     # fast, no Docker
 ```
 
-> ⚠️ **Integration tests need Docker**, which is not yet installed on the primary
-> dev machine. See [getting-started.md](getting-started.md#-known-gap-docker-is-not-yet-installed-on-the-primary-dev-machine).
+Integration tests need a Docker daemon for Testcontainers. It is available on
+the dev machine and on GitHub runners, so they run in both places.
 
 ## Tier 1 — Fiscal (highest bar)
 
 - **Golden files.** Fixed inputs produce byte-identical signatures, ATCUDs and QR
-  payloads. Fixtures live in `tests/RestaurantPos.Fiscal.Portugal.Tests/Fixtures`
+  payloads. Fixtures live in `tests/Brasa.Fiscal.Portugal.Tests/Fixtures`
   and are copied to output. A diff here is either a bug or a change that requires
   notifying AT — never a casual update.
 - **Chain integrity.** Issue 10,000 documents across interleaved series, then
