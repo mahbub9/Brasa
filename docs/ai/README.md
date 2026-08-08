@@ -67,8 +67,18 @@ Condensed:
 - 🚧 **Stub:** `SiteAgent` starts and stops; nothing else.
 - ⬜ **Not started:** EF Core + RLS, all web clients, everything fiscal.
 
-**Next task:** wire EF Core + PostgreSQL with `tenant_id`, global query filters,
-and the row-level security migration. Then the Identity module.
+**Full task tracker: [../product/backlog.md](../product/backlog.md)** — 278
+tasks across 19 epics, each with a stable ID (`DAT-05`, `FIS-09`). Reference IDs
+in commits: `feat(identity): terminal pairing (IDN-07)`. Update the status in the
+same commit as the work.
+
+**Next session:** end-to-end testing with Playwright — epic **QA**, starting at
+QA-01. Analysis and the recommendation are already written in
+[../development/e2e-testing.md](../development/e2e-testing.md).
+
+**Then:** EF Core + PostgreSQL with `tenant_id`, global query filters and the RLS
+migration (**DAT-01…11**), followed by Identity (**IDN**) and the API platform
+seams (**API**).
 
 ## 4. Repo map
 
@@ -107,6 +117,9 @@ infra/                            docker-compose (PostgreSQL 18, Seq)
 | Code style, analyzer policy | [../architecture/conventions.md](../architecture/conventions.md) |
 | Testing expectations | [../development/testing.md](../development/testing.md) |
 | A Portuguese term you don't know | [../glossary.md](../glossary.md) |
+| What to work on next, or task status | [../product/backlog.md](../product/backlog.md) |
+| Why this product is worth building | [../product/differentiation.md](../product/differentiation.md) |
+| End-to-end testing | [../development/e2e-testing.md](../development/e2e-testing.md) |
 | The overall plan and roadmap | [../product/plan.md](../product/plan.md) |
 
 ## 6. Decisions already made — do not re-litigate

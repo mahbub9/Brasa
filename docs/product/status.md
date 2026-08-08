@@ -1,7 +1,12 @@
 # Build status
 
 > **Purpose:** a project scaffold makes empty things look finished. This page is
-> the honest inventory. Update it in the same commit that changes reality.
+> the honest inventory of **which code exists**. Update it in the same commit
+> that changes reality.
+>
+> For **what to build next and task-level progress**, see
+> [backlog.md](backlog.md) — 278 tasks with stable IDs. This page is
+> component-level; the backlog is task-level.
 
 **Last updated:** 2026-08-08 · **Roadmap phase:** Month 0 — Foundations
 

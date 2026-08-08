@@ -139,10 +139,13 @@ rewrites them to site index pages, so one file serves both.
 | `fiscal/key-management.md` | Signing key custody and open questions |
 | `development/getting-started.md` | Prerequisites, build, run, local infra |
 | `development/testing.md` | The four-tier testing bar |
+| `development/e2e-testing.md` | End-to-end strategy; Playwright recommendation (next session) |
 | `development/documentation.md` | The documentation contract |
 | `features/` | Per-feature documentation, one page each |
-| `product/plan.md` | Approved build plan and 6-month roadmap |
-| `product/status.md` | **Honest inventory of what is built** |
+| `product/backlog.md` | **278 tasks, 19 epics, stable IDs. The plan of record** |
+| `product/differentiation.md` | Competitive positioning; DIF epic rationale |
+| `product/plan.md` | Approved build plan and 6-month roadmap (historical) |
+| `product/status.md` | **Honest inventory of which code exists** |
 
 ## Not yet created
 

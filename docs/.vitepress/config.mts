@@ -46,8 +46,10 @@ export default defineConfig({
       { text: 'Development', link: '/development/getting-started' },
       { text: 'Features', link: '/features/' },
       {
-        text: 'Status',
+        text: 'Product',
         items: [
+          { text: 'Backlog & progress', link: '/product/backlog' },
+          { text: 'Differentiation', link: '/product/differentiation' },
           { text: 'Build status', link: '/product/status' },
           { text: 'Plan & roadmap', link: '/product/plan' },
           { text: 'Glossary', link: '/glossary' },
@@ -115,6 +117,7 @@ export default defineConfig({
         items: [
           { text: 'Getting started', link: '/development/getting-started' },
           { text: 'Testing', link: '/development/testing' },
+          { text: 'End-to-end testing', link: '/development/e2e-testing' },
           { text: 'Documentation contract', link: '/development/documentation' },
         ],
       },
@@ -122,7 +125,9 @@ export default defineConfig({
         text: 'Product',
         collapsed: false,
         items: [
-          { text: 'Features', link: '/features/' },
+          { text: 'Backlog & progress', link: '/product/backlog' },
+          { text: 'Differentiation', link: '/product/differentiation' },
+          { text: 'Feature docs', link: '/features/' },
           { text: 'Build status', link: '/product/status' },
           { text: 'Plan & roadmap', link: '/product/plan' },
         ],

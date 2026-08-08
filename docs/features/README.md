@@ -1,82 +1,32 @@
-# Features
+# Feature documentation
 
-One page per feature, written as the feature is built — not afterwards.
+One page per feature, written **as the feature is built** — not afterwards.
 
-A feature page answers what a reader cannot get from the code: what the feature
-is *for*, what it does when things go wrong, and which rules constrain it.
-Signatures and types are in the source; **behaviour, edge cases and intent live
-here.**
+A feature page answers what the code cannot: what the feature is *for*, what it
+does when things go wrong, and which rules constrain it. Signatures and types
+live in the source; **behaviour, edge cases and intent live here.**
 
-Use [`_template.md`](https://github.com/mahbub9/Brasa/blob/main/docs/features/_template.md)
-as the starting point. It is author scaffolding, so it is excluded from the
-published site — copy it from the repository.
+> **Looking for what to build next, or whether something is done?**
+> That is [../product/backlog.md](../product/backlog.md) — 278 tasks with stable
+> IDs and statuses. This page is only an index of *written documentation*, not a
+> tracker. Keeping them separate stops two lists disagreeing about reality.
+
+## Writing a page
+
+1. Copy [`_template.md`](https://github.com/mahbub9/Brasa/blob/main/docs/features/_template.md).
+2. Save as `docs/features/<kebab-case-name>.md`.
+3. Add it to the index below **and** to the sidebar in
+   [`docs/.vitepress/config.mts`](https://github.com/mahbub9/Brasa/blob/main/docs/.vitepress/config.mts),
+   or it will publish but be unreachable.
+4. Reference the backlog IDs it covers, e.g. *Covers ORD-15, ORD-16, ORD-17.*
+
+The template keeps **Offline behaviour** and **Failure modes** mandatory. Those
+are the sections most often skipped and most often needed later.
 
 ## Index
 
-> Nothing is built yet. Every entry below is planned; each becomes a link when
-> the feature lands. Roadmap detail: [../product/plan.md](../product/plan.md).
-> Current build state: [../product/status.md](../product/status.md).
+*No feature pages yet — no features are built. Pages appear here as epics land.*
 
-### Identity and access — Month 0–1
-
-| Feature | Status |
-|---|---|
-| Tenant and site provisioning | ⬜ |
-| User accounts and roles | ⬜ |
-| Staff PIN sign-in at a terminal | ⬜ |
-| Terminal pairing | ⬜ |
-
-### Catalog — Month 1
-
-| Feature | Status |
-|---|---|
-| Menu categories and items | ⬜ |
-| Modifier groups and modifiers | ⬜ |
-| Price lists per site and channel | ⬜ |
-| VAT rules by item, channel and region | ⬜ |
-| Floor plan: rooms and tables | ⬜ |
-
-### Ordering — Month 2
-
-| Feature | Status |
-|---|---|
-| Open a table and take an order | ⬜ |
-| Courses and course firing | ⬜ |
-| Transfer a table | ⬜ |
-| Split and merge bills | ⬜ |
-| Pre-bill (*documento não fiscal*) | ⬜ |
-| Offline order capture and sync | ⬜ |
-
-### Kitchen — Month 3
-
-| Feature | Status |
-|---|---|
-| ESC/POS ticket printing with station routing | ⬜ |
-| Kitchen display, bump and prep timers | ⬜ |
-
-### Fiscal — Month 4
-
-| Feature | Status |
-|---|---|
-| Series registration with AT | ⬜ |
-| Document issuance: signature chain, ATCUD, QR | ⬜ |
-| Credit notes | ⬜ |
-| SAF-T (PT) export and monthly submission | ⬜ |
-| Chain verification job | ⬜ |
-
-### Payments — Month 4
-
-| Feature | Status |
-|---|---|
-| Cash, card and split tenders | ⬜ |
-| Tips | ⬜ |
-| Cash session: abertura and fecho de caixa | ⬜ |
-
-### Reporting and self-ordering — Month 5
-
-| Feature | Status |
-|---|---|
-| X and Z reports | ⬜ |
-| Sales by item, category, hour, staff | ⬜ |
-| VAT summary | ⬜ |
-| QR self-ordering | ⬜ |
+| Page | Covers | Module |
+|---|---|---|
+| — | — | — |

@@ -67,9 +67,12 @@ The highest-risk area of the system. Read before touching anything under
 
 - [development/getting-started.md](development/getting-started.md)
 - [development/testing.md](development/testing.md) — the testing bar, which is not uniform
+- [development/e2e-testing.md](development/e2e-testing.md) — end-to-end strategy (next up)
 - [development/documentation.md](development/documentation.md) — how docs are kept current
 
 ## Product
 
+- [product/backlog.md](product/backlog.md) — **every feature and task, with status. The plan of record**
+- [product/differentiation.md](product/differentiation.md) — competitive positioning and what makes this worth starting
+- [product/status.md](product/status.md) — which code actually exists today
 - [product/plan.md](product/plan.md) — the approved build plan and 6-month roadmap
-- [product/status.md](product/status.md) — living record of what is built

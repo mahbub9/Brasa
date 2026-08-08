@@ -32,6 +32,10 @@ Prefixes: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`.
 Scopes: `shared`, `api`, `agent`, `fiscal`, `identity`, `catalog`, `ordering`,
 `payments`, `reporting`, `pos`, `kds`, `admin`, `infra`.
 
+Reference the [backlog](docs/product/backlog.md) ID in the subject where one
+applies — `feat(identity): terminal pairing (IDN-07)` — and update that task's
+status in the same commit.
+
 The subject line says what. **The body says why** — that is the part that is
 still useful in a year.
 
