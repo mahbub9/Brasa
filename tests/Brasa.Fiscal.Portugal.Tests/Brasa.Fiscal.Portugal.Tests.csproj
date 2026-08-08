@@ -16,6 +16,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\backend\Brasa.Fiscal.Portugal\Brasa.Fiscal.Portugal.csproj" />
     <ProjectReference Include="..\..\src\backend\Brasa.Modules.Fiscal\Brasa.Modules.Fiscal.csproj" />
+    <ProjectReference Include="..\..\src\backend\Brasa.Fiscal.Mock\Brasa.Fiscal.Mock.csproj" />
   </ItemGroup>
 
   <!-- Golden-file fixtures for signature / ATCUD / QR / SAF-T regression tests. -->

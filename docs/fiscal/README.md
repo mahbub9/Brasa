@@ -133,6 +133,21 @@ As of 2026 the headline restaurant rates on the mainland are:
 Madeira and the Azores use different rate bands. Invoices must **separate
 alcoholic drinks from food**, since they attract different rates.
 
+### Menu prices are VAT-inclusive
+
+**A menu price is the gross, final amount the guest pays — not a net price with
+VAT added at checkout.** This is Portuguese/EU consumer pricing law, not a
+convention we chose. `MenuItem.Price` and `OrderLine.UnitPrice` are both
+VAT-inclusive throughout the codebase.
+
+A fiscal document therefore **derives** net and VAT *from* the gross price
+(`net = gross / (1 + rate)`, rounded to the cent), never the other way round.
+Getting this backwards makes the running total shown to the waiter during
+service disagree with what the fiscal document says the guest owes — caught
+the hard way during I0's first live test, where `order.total` and
+`document.grossTotal` came out different for the same order. See
+`FiscalDocumentLine` in `Brasa.Modules.Fiscal`.
+
 > ⚠️ **These rates are a starting point, not a source of truth.** Rates change,
 > takeaway treatment has shifted historically, and there is active political
 > debate about the 13% band. **Have a Portuguese accountant confirm current rules

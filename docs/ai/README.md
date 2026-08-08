@@ -158,6 +158,11 @@ there is actually met.
   invoice would fiscalise every table that merely asks to see the bill.
 - **VAT rates are data with effective dates, not constants.** They are unconfirmed
   by an accountant and politically contested. Never hardcode them.
+- **Menu prices are VAT-inclusive (gross), not net.** `MenuItem.Price` and
+  `OrderLine.UnitPrice` are the final amount the guest pays. A fiscal document
+  *derives* net and VAT from the gross price — computing it the other way
+  round makes the running order total disagree with what the fiscal document
+  charges. See `docs/fiscal/README.md`.
 - **The Azores are an hour behind the mainland.** This moves the daily close and
   SAF-T period boundaries. `PortugueseRegion` exists for this.
 - **`Money.Format(culture)` is not called `ToString`.** Deliberate — it forces
