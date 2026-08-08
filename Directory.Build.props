@@ -1,0 +1,31 @@
+<Project>
+
+  <!--
+    Solution-wide MSBuild settings. Applies to every project under the repo root.
+    See docs/architecture/conventions.md for the reasoning behind these choices.
+  -->
+
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- Fiscal code must be auditable; we do not ship with warnings outstanding. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+
+    <!--
+      MUST stay false. Portuguese formatting (pt-PT), Europe/Lisbon and
+      Atlantic/Azores timezones all require full ICU data.
+    -->
+    <InvariantGlobalization>false</InvariantGlobalization>
+
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+
+    <Company>RestaurantPos</Company>
+    <Product>RestaurantPos</Product>
+  </PropertyGroup>
+
+</Project>

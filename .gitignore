@@ -1,0 +1,75 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  Build output
+# ─────────────────────────────────────────────────────────────────────────────
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+artifacts/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  IDE
+# ─────────────────────────────────────────────────────────────────────────────
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+.idea/
+*.swp
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Node / web clients
+# ─────────────────────────────────────────────────────────────────────────────
+node_modules/
+dist/
+dist-ssr/
+.vite/
+*.local
+.turbo/
+coverage/
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Secrets — NEVER commit any of these
+#
+#  The fiscal RSA private key is the single most sensitive artefact in this
+#  repository's blast radius. It is registered with AT and signs legally binding
+#  documents. It belongs in a secret store, never in git, never in an image.
+#  See docs/fiscal/key-management.md
+# ─────────────────────────────────────────────────────────────────────────────
+*.pfx
+*.p12
+*.pem
+*.key
+!**/testdata/**/*.pem
+!**/Fixtures/**/*.pem
+appsettings.Local.json
+appsettings.*.Local.json
+.env
+.env.*
+!.env.example
+secrets.json
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Local data / runtime
+# ─────────────────────────────────────────────────────────────────────────────
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+siteagent-data/
+pgdata/
+logs/
+*.log
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  OS
+# ─────────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini

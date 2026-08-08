@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/agent/">
+    <Project Path="src/agent/RestaurantPos.SiteAgent/RestaurantPos.SiteAgent.csproj" />
+  </Folder>
+  <Folder Name="/src/backend/">
+    <Project Path="src/backend/RestaurantPos.Api/RestaurantPos.Api.csproj" />
+    <Project Path="src/backend/RestaurantPos.Fiscal.Mock/RestaurantPos.Fiscal.Mock.csproj" />
+    <Project Path="src/backend/RestaurantPos.Fiscal.Portugal/RestaurantPos.Fiscal.Portugal.csproj" />
+    <Project Path="src/backend/RestaurantPos.Modules.Catalog/RestaurantPos.Modules.Catalog.csproj" />
+    <Project Path="src/backend/RestaurantPos.Modules.Fiscal/RestaurantPos.Modules.Fiscal.csproj" />
+    <Project Path="src/backend/RestaurantPos.Modules.Identity/RestaurantPos.Modules.Identity.csproj" />
+    <Project Path="src/backend/RestaurantPos.Modules.Ordering/RestaurantPos.Modules.Ordering.csproj" />
+    <Project Path="src/backend/RestaurantPos.Modules.Payments/RestaurantPos.Modules.Payments.csproj" />
+    <Project Path="src/backend/RestaurantPos.Modules.Reporting/RestaurantPos.Modules.Reporting.csproj" />
+    <Project Path="src/backend/RestaurantPos.Shared/RestaurantPos.Shared.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/RestaurantPos.Api.IntegrationTests/RestaurantPos.Api.IntegrationTests.csproj" />
+    <Project Path="tests/RestaurantPos.Fiscal.Portugal.Tests/RestaurantPos.Fiscal.Portugal.Tests.csproj" />
+    <Project Path="tests/RestaurantPos.Shared.Tests/RestaurantPos.Shared.Tests.csproj" />
+  </Folder>
+</Solution>

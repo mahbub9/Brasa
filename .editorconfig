@@ -1,0 +1,100 @@
+root = true
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  RestaurantPos — editor and analyzer configuration
+#  Rationale for every suppression is documented inline. Do not add a
+#  suppression without a reason; see docs/architecture/conventions.md.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[*]
+charset = utf-8
+end_of_line = crlf
+insert_final_newline = true
+indent_style = space
+indent_size = 2
+trim_trailing_whitespace = true
+
+[*.{cs,csx}]
+indent_size = 4
+
+[*.{json,yml,yaml,js,jsx,ts,tsx,css,html,md}]
+indent_size = 2
+
+[*.md]
+trim_trailing_whitespace = false
+
+[*.{csproj,props,targets,slnx,xml}]
+indent_size = 2
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  C# analyzers
+# ─────────────────────────────────────────────────────────────────────────────
+
+[*.cs]
+
+# --- Suppressed with reason -------------------------------------------------
+
+# CA1716: namespace conflicts with a VB.NET reserved keyword ("Shared").
+# We ship no VB-consumable library; RestaurantPos.Shared is the clearest name
+# for the shared kernel and renaming it would obscure intent.
+dotnet_diagnostic.CA1716.severity = none
+
+# CA1848: prefer LoggerMessage source-generated delegates.
+# Correct for hot paths, but enforcing it repo-wide as an error is a heavy tax
+# on ordinary code. Kept visible as a suggestion; applied deliberately in the
+# order and fiscal hot paths.
+dotnet_diagnostic.CA1848.severity = suggestion
+
+# CA1062: null-check public arguments. Nullable reference types are enabled
+# solution-wide and already express this at compile time.
+dotnet_diagnostic.CA1062.severity = none
+
+# CA1711: reserves the "EventHandler" suffix for delegates.
+# IIntegrationEventHandler<T> is an interface, not a delegate, and the suffix is
+# the conventional name for this pattern across the .NET ecosystem.
+dotnet_diagnostic.CA1711.severity = none
+
+# CA1000: no static members on generic types.
+# Result<T>.Success(value) / Result<T>.Failure(error) are the standard factory
+# shape for the result pattern; the alternative reads far worse at every call site.
+dotnet_diagnostic.CA1000.severity = none
+
+# --- Raised above default ---------------------------------------------------
+
+# CA2007 is about ConfigureAwait; irrelevant for ASP.NET Core (no sync context)
+# but relevant inside the Site Agent, which is a plain worker host.
+dotnet_diagnostic.CA2007.severity = none
+
+# Money must never be computed in floating point. See docs/architecture/money.md.
+dotnet_diagnostic.CA1305.severity = error   # specify IFormatProvider
+dotnet_diagnostic.CA1307.severity = error   # specify StringComparison
+
+# Disposal correctness matters for DbContext and printer sockets.
+dotnet_diagnostic.CA2000.severity = warning
+dotnet_diagnostic.CA1063.severity = warning
+
+# --- Style ------------------------------------------------------------------
+
+csharp_style_namespace_declarations = file_scoped:warning
+csharp_style_var_for_built_in_types = false:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_prefer_braces = true:warning
+dotnet_sort_system_directives_first = true
+csharp_using_directive_placement = outside_namespace:warning
+
+dotnet_naming_rule.private_fields_underscore.severity = warning
+dotnet_naming_rule.private_fields_underscore.symbols = private_fields
+dotnet_naming_rule.private_fields_underscore.style = underscore_prefix
+dotnet_naming_symbols.private_fields.applicable_kinds = field
+dotnet_naming_symbols.private_fields.applicable_accessibilities = private
+dotnet_naming_style.underscore_prefix.required_prefix = _
+dotnet_naming_style.underscore_prefix.capitalization = camel_case
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Tests: relax rules that only make sense for shipped library code.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[tests/**/*.cs]
+dotnet_diagnostic.CA1707.severity = none    # underscores in test method names
+dotnet_diagnostic.CA2007.severity = none
+dotnet_diagnostic.CA1861.severity = none    # constant arrays as test data
