@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+
+jobs:
+  build-and-test:
+    name: Build and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Restore
+        run: dotnet restore RestaurantPos.slnx
+
+      # TreatWarningsAsErrors is on solution-wide, so this step is also the
+      # analyzer gate and the transitive-vulnerability gate.
+      - name: Build
+        run: dotnet build RestaurantPos.slnx --no-restore --configuration Release
+
+      # Docker is present on GitHub runners, so Testcontainers-based integration
+      # tests — which exercise PostgreSQL row-level security for real — run here
+      # even when a developer machine cannot run them locally.
+      - name: Test
+        run: >
+          dotnet test RestaurantPos.slnx
+          --no-build
+          --configuration Release
+          --logger "trx;LogFileName=test-results.trx"
+          --collect:"XPlat Code Coverage"
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: '**/TestResults/**'
+          retention-days: 14
+
+  vulnerable-packages:
+    name: Vulnerable package scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      # The build already fails on NU1901-1904 via TreatWarningsAsErrors. This
+      # job reports transitive advisories explicitly so a new CVE against an
+      # unchanged dependency is visible rather than only surfacing on the next
+      # unrelated build.
+      - name: List vulnerable packages
+        run: |
+          dotnet restore RestaurantPos.slnx
+          dotnet list RestaurantPos.slnx package --vulnerable --include-transitive

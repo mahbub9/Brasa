@@ -1,0 +1,84 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Documentation is code here: it is versioned with the source, reviewed in the
+# same pull request, and checked by CI. A broken cross-reference fails the build
+# the same way a broken using-directive would.
+jobs:
+  link-check:
+    name: Relative link check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      # Self-contained rather than a third-party action: this only needs to
+      # resolve relative links, and owning the check keeps CI reproducible.
+      - name: Verify every relative markdown link resolves
+        shell: bash
+        run: |
+          set -uo pipefail
+          broken=0
+
+          while IFS= read -r -d '' file; do
+            dir=$(dirname "$file")
+
+            # Extract [text](target), dropping external URLs, bare anchors,
+            # mailto: and data: URIs.
+            targets=$(grep -oE '\]\([^)]+\)' "$file" \
+              | sed -E 's/^\]\(//; s/\)$//' \
+              | grep -vE '^(https?:|mailto:|data:|#)' || true)
+
+            # A here-string keeps this loop in the current shell, so the counter
+            # survives. Piping into the loop would run it in a subshell and the
+            # count would always come back zero.
+            while IFS= read -r target; do
+              [ -z "$target" ] && continue
+              clean="${target%%#*}"     # drop any trailing anchor
+              [ -z "$clean" ] && continue
+
+              if [ ! -e "$dir/$clean" ]; then
+                echo "::error file=$file::broken relative link -> $target"
+                broken=$((broken + 1))
+              fi
+            done <<< "$targets"
+          done < <(find . -name '*.md' -not -path './node_modules/*' -not -path './.git/*' -print0)
+
+          if [ "$broken" -gt 0 ]; then
+            echo "$broken broken relative link(s) found."
+            exit 1
+          fi
+          echo "All relative markdown links resolve."
+
+  status-freshness:
+    name: Status doc freshness
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      # docs/product/status.md is the honest inventory of what is built. A pull
+      # request that changes source without touching it is usually a pull
+      # request that left the inventory stale. This warns; it does not block,
+      # because plenty of legitimate changes (a refactor, a bug fix) do not move
+      # the inventory.
+      - name: Warn when source changed but status.md did not
+        shell: bash
+        run: |
+          set -uo pipefail
+          base="origin/${{ github.base_ref }}"
+          changed=$(git diff --name-only "$base"...HEAD)
+
+          if echo "$changed" | grep -qE '^src/' && ! echo "$changed" | grep -q 'docs/product/status.md'; then
+            echo "::warning::Source changed but docs/product/status.md was not updated. If this PR starts or finishes a component, update the inventory. See docs/development/documentation.md"
+          else
+            echo "Status doc check passed."
+          fi
