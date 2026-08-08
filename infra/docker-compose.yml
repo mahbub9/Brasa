@@ -1,0 +1,54 @@
+# Local development infrastructure.
+#
+# Credentials here are development-only and committed on purpose: they grant
+# access to nothing but a container on your own machine. Production secrets never
+# live in this repository — see docs/fiscal/key-management.md.
+#
+#   docker compose -f infra/docker-compose.yml up -d
+#
+# NOTE: Docker is not yet installed on the primary dev machine.
+# See docs/development/getting-started.md.
+
+name: restaurantpos
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: restaurantpos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: restaurantpos
+      POSTGRES_PASSWORD: devonly
+      POSTGRES_DB: restaurantpos
+      # Portuguese collation, so local sorting matches production.
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=pt-PT --encoding=UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      # PostgreSQL 18+ images store data in a major-version subdirectory
+      # (/var/lib/postgresql/18/docker) so that `pg_upgrade --link` works without
+      # crossing a mount boundary. Mount the PARENT, not .../data — mounting
+      # .../data makes the container refuse to start.
+      # https://github.com/docker-library/postgres/pull/1259
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U restaurantpos -d restaurantpos"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Structured log viewer. Serilog writes here in Development.
+  seq:
+    image: datalust/seq:latest
+    container_name: restaurantpos-seq
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+    ports:
+      - "5341:80"
+    volumes:
+      - seqdata:/data
+
+volumes:
+  pgdata:
+  seqdata:
