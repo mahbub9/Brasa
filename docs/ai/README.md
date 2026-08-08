@@ -46,6 +46,9 @@ understand only one thing, understand that.
 | 6 | Expected failures return `Result`, not exceptions | Exceptions are for genuine faults only |
 | 7 | Never weaken `TreatWarningsAsErrors` | Suppress in `.editorconfig` **with a written reason**, or fix it |
 | 8 | Signature chaining is **per-series**, never global | Two series advance independently |
+| 9 | **No cookie auth. No web-only assumptions in the API** | Android and iOS ship soon after web and must need *zero* backend change |
+| 10 | Every realtime message must have a **REST equivalent** | A platform with no usable SignalR client must still work, degraded but correct |
+| 11 | Error codes are a **public contract** — once released, the meaning never changes | Mobile clients branch on them and cannot be patched quickly |
 
 ## 3. Where things stand
 
@@ -96,6 +99,7 @@ infra/                            docker-compose (PostgreSQL 18, Seq)
 |---|---|
 | Anything fiscal | [../fiscal/README.md](../fiscal/README.md) — legal constraints, not preferences |
 | Money, totals, VAT, splitting | [../architecture/money.md](../architecture/money.md) |
+| Adding or changing **any endpoint** | [../architecture/api-contract.md](../architecture/api-contract.md) — the mobile-readiness rules |
 | Adding a module, or a cross-module call | [../architecture/module-boundaries.md](../architecture/module-boundaries.md) |
 | Tenant-scoped data, RLS | [../architecture/multi-tenancy.md](../architecture/multi-tenancy.md) |
 | Offline, printing, the agent | [../architecture/site-agent.md](../architecture/site-agent.md) |
@@ -118,6 +122,8 @@ there is actually met.
 | [0004](../architecture/decisions/0004-react-pwa-not-blazor.md) | React PWA clients, **not Blazor** (despite a C# backend) |
 | [0005](../architecture/decisions/0005-plain-guid-ids.md) | Plain `Guid` ids; isolation enforced by RLS |
 | [0006](../architecture/decisions/0006-no-mediatr.md) | Hand-rolled dispatcher; MediatR is now commercially licensed |
+| [0007](../architecture/decisions/0007-client-agnostic-api.md) | One client-agnostic API for every platform — **no BFF** |
+| [0008](../architecture/decisions/0008-token-auth-no-cookies.md) | Token auth with PKCE, device-bound refresh, **no cookies** |
 
 ## 7. Traps — things that look wrong but are intentional
 
@@ -133,6 +139,13 @@ there is actually met.
   callers to name the culture, and keeps `ToString()` unambiguously invariant.
 - **`Fiscal.Mock` must never run in Production.** It produces structurally valid
   but fiscally meaningless documents.
+- **The web client gets a refresh-token cookie, but the API is not
+  cookie-authenticated.** That cookie is scoped to the token endpoint only; every
+  API call carries a bearer token, which is what keeps native clients working
+  against an identical API.
+- **A staff PIN is not a password.** It is a fast identity switch on hardware
+  that was already authenticated by terminal pairing. It must never be accepted
+  as a primary credential over the internet.
 - **The solution file is `Brasa.slnx`**, the .NET 10 XML format — not `.sln`.
 - **PostgreSQL 18 mounts `/var/lib/postgresql`**, not `.../data`. Mounting
   `.../data` makes the container refuse to start.

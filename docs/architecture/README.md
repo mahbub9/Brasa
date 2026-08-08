@@ -57,6 +57,27 @@ re-signs. This gives exactly one signing authority per series and removes an
 entire class of reconciliation bugs. See
 [decisions/0003-site-agent.md](decisions/0003-site-agent.md).
 
+## Clients, and the API that serves them
+
+Android and iOS apps follow shortly after the web launch — staff handheld
+ordering, an owner dashboard, a customer app, and a native kitchen display —
+on an as-yet-undecided stack.
+
+**One versioned REST API serves all of them.** There is no
+backend-for-frontend, no cookie authentication, and no web-only assumption
+anywhere in the contract, so shipping those apps requires no backend change.
+Two surfaces, never one:
+
+| Surface | Serves | Auth |
+|---|---|---|
+| `/api/v1` | Staff, managers, terminals | Terminal pairing + staff PIN, or user account |
+| `/api/public/v1` | Customers | Separate consumer identity realm |
+
+The rules are in **[api-contract.md](api-contract.md)**; read it before adding
+any endpoint. The reasoning is in
+[ADR 0007](decisions/0007-client-agnostic-api.md) and
+[ADR 0008](decisions/0008-token-auth-no-cookies.md).
+
 ## Modular monolith
 
 One deployable API, internally split into modules with enforced boundaries.

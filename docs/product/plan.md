@@ -1,5 +1,22 @@
 # Restaurant Management SaaS for Portugal — Build Plan
 
+> **This is the plan as approved on 2026-08-08.** It is kept as a record; where
+> reality has moved on, the living documents win. Current build state:
+> [status.md](status.md).
+>
+> **Amendment, 2026-08-08 — multi-platform clients.** Android and iOS apps are
+> now planned shortly after the web launch (staff handheld, owner dashboard,
+> customer app, native KDS), and must ship with **no backend change**. This adds
+> mobile-readiness seams to the Month 0–1 foundation work — token auth with
+> PKCE, a device registry, cursor-based sync, client version negotiation, and
+> OpenAPI breaking-change detection in CI. See
+> [../architecture/api-contract.md](../architecture/api-contract.md),
+> [ADR 0007](../architecture/decisions/0007-client-agnostic-api.md) and
+> [ADR 0008](../architecture/decisions/0008-token-auth-no-cookies.md).
+>
+> The project was also renamed **Brasa**; paths below that read `RestaurantPos`
+> are historical.
+
 ## Context
 
 You are building a multi-tenant restaurant management SaaS targeting Portuguese restaurants — small first, medium and large later. The working directory is empty; this is greenfield.

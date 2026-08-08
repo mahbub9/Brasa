@@ -33,6 +33,7 @@ One page per feature — behaviour, edge cases, offline handling and intent.
 ## Architecture
 
 - [architecture/README.md](architecture/README.md) — system overview
+- [architecture/api-contract.md](architecture/api-contract.md) — the rules that let mobile apps ship without backend change
 - [architecture/site-agent.md](architecture/site-agent.md) — the in-restaurant process
 - [architecture/multi-tenancy.md](architecture/multi-tenancy.md) — tenant isolation and RLS
 - [architecture/module-boundaries.md](architecture/module-boundaries.md) — the rules modules obey
@@ -50,6 +51,8 @@ Full index with one-line summaries: [architecture/decisions/](architecture/decis
 - [0004](architecture/decisions/0004-react-pwa-not-blazor.md) — React PWA for clients, not Blazor
 - [0005](architecture/decisions/0005-plain-guid-ids.md) — Plain `Guid` ids, isolation enforced by RLS
 - [0006](architecture/decisions/0006-no-mediatr.md) — Hand-rolled dispatcher instead of MediatR
+- [0007](architecture/decisions/0007-client-agnostic-api.md) — One client-agnostic API for every platform
+- [0008](architecture/decisions/0008-token-auth-no-cookies.md) — Token auth, device-bound refresh, no cookies
 
 ## Fiscal domain
 

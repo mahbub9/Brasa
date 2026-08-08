@@ -126,12 +126,14 @@ rewrites them to site index pages, so one file serves both.
 | `ai/repo-map.md` | This file |
 | `glossary.md` | Portuguese fiscal and restaurant terminology |
 | `architecture/README.md` | System overview: three tiers, ownership, shared kernel |
+| `architecture/api-contract.md` | **Rules every endpoint obeys** so Android/iOS ship with no backend change |
 | `architecture/money.md` | Why integer cents; allocation, rounding, formatting |
 | `architecture/multi-tenancy.md` | Query filters + RLS; the system context |
 | `architecture/module-boundaries.md` | The five rules modules obey |
 | `architecture/site-agent.md` | In-restaurant process design (stub status) |
 | `architecture/conventions.md` | Code conventions, build policy, suppression register |
-| `architecture/decisions/0001..0006` | ADRs — each with a "Revisit when" trigger |
+| `architecture/decisions/README.md` | ADR index with one-line summaries |
+| `architecture/decisions/0001..0008` | ADRs — each with a "Revisit when" trigger |
 | `fiscal/README.md` | ATCUD, signature chain, QR, SAF-T, document types, VAT |
 | `fiscal/certification.md` | AT process, prerequisites, what AT verifies |
 | `fiscal/key-management.md` | Signing key custody and open questions |

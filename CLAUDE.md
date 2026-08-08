@@ -24,6 +24,7 @@ from the code alone.
 |---|---|
 | Anything fiscal | [docs/fiscal/README.md](docs/fiscal/README.md) — legal constraints, not preferences |
 | Money, totals, splitting | [docs/architecture/money.md](docs/architecture/money.md) |
+| Adding or changing **any endpoint** | [docs/architecture/api-contract.md](docs/architecture/api-contract.md) — mobile-readiness rules |
 | A new module or cross-module call | [docs/architecture/module-boundaries.md](docs/architecture/module-boundaries.md) |
 | Tenant-scoped data | [docs/architecture/multi-tenancy.md](docs/architecture/multi-tenancy.md) |
 | Wondering "why is it like this?" | [docs/architecture/decisions/](docs/architecture/decisions/) |
@@ -42,6 +43,10 @@ from the code alone.
 6. **Do not weaken the build policy.** `TreatWarningsAsErrors` is on
    deliberately — it caught a transitive CVE on day one. Suppress in
    `.editorconfig` with a written reason, or fix the warning.
+7. **No cookie auth, no web-only assumptions in the API.** Android and iOS ship
+   soon after web and must need zero backend change. Every realtime message also
+   has a REST equivalent; every mutation takes an idempotency key; error codes
+   are a public contract whose meaning never changes once released.
 
 ## Commands
 

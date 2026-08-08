@@ -19,6 +19,8 @@ it feels wrong.
 | [0004](0004-react-pwa-not-blazor.md) | React PWA for clients, not Blazor | Accepted | A POS must cold-boot in ~2s on a cheap tablet and run offline, despite the C# backend |
 | [0005](0005-plain-guid-ids.md) | Plain `Guid` ids; isolation enforced by RLS | Accepted | The database refusing to return rows beats compile-time typing that raw SQL bypasses |
 | [0006](0006-no-mediatr.md) | Hand-rolled dispatcher instead of MediatR | Accepted | MediatR is now commercially licensed; we need ~150 lines of it |
+| [0007](0007-client-agnostic-api.md) | One client-agnostic API for every platform | Accepted | Android and iOS must ship without backend change; a BFF per platform is the opposite of that |
+| [0008](0008-token-auth-no-cookies.md) | Token auth, device-bound refresh, no cookies | Accepted | Cookie auth cannot serve native apps, and a POS terminal is trusted hardware, not a user |
 
 ## Writing a new one
 

@@ -77,6 +77,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'Overview', link: '/architecture/' },
+          { text: 'API contract', link: '/architecture/api-contract' },
           { text: 'Money', link: '/architecture/money' },
           { text: 'Multi-tenancy', link: '/architecture/multi-tenancy' },
           { text: 'Module boundaries', link: '/architecture/module-boundaries' },
@@ -95,6 +96,8 @@ export default defineConfig({
           { text: '0004 — React PWA, not Blazor', link: '/architecture/decisions/0004-react-pwa-not-blazor' },
           { text: '0005 — Plain Guid ids', link: '/architecture/decisions/0005-plain-guid-ids' },
           { text: '0006 — No MediatR', link: '/architecture/decisions/0006-no-mediatr' },
+          { text: '0007 — Client-agnostic API', link: '/architecture/decisions/0007-client-agnostic-api' },
+          { text: '0008 — Token auth, no cookies', link: '/architecture/decisions/0008-token-auth-no-cookies' },
         ],
       },
       {

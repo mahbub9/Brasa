@@ -63,6 +63,27 @@
 | `Brasa.Fiscal.Portugal.Tests` | 📁 | Golden-file fixtures wired in csproj; no tests yet |
 | `Brasa.Api.IntegrationTests` | 📁 | Testcontainers referenced and Docker available; no tests written yet |
 
+## Mobile readiness
+
+Android and iOS apps follow shortly after the web launch and must need **no
+backend change**. These are the seams that make that true — all design-only so
+far. Rules: [../architecture/api-contract.md](../architecture/api-contract.md).
+
+| # | Seam | State | Retrofit cost if skipped |
+|---|---|---|---|
+| 1 | Token auth (OAuth 2.1 + PKCE), device-bound rotating refresh | ⬜ | **Highest** — tearing out cookie auth, re-authenticating every client |
+| 2 | Device registry + terminal pairing | ⬜ | High — push tokens, revocation and terminal identity all hang off it |
+| 3 | Cursor-based sync endpoints | ⬜ | High — changing the protocol breaks every offline client at once |
+| 4 | Idempotency keys on all mutations | ⬜ | High — auditing every mutation for double-effect |
+| 5 | `X-Brasa-Client` header + `client-requirements` endpoint | ⬜ | Medium — without it the first mobile release can never be safely deprecated |
+| 6 | Stable error-code contract | 🚧 | Medium — `Error.Code` exists; the stability guarantee is not yet enforced |
+| 7 | Push token registration + `IPushChannel` | ⬜ | Low — a migration and an endpoint |
+| 8 | OpenAPI generation + breaking-change CI | ⬜ | Low now, but it is what keeps 1–7 honest |
+
+Planned clients: staff handheld, owner dashboard, customer app, native KDS.
+Stack undecided — the API stays client-agnostic so any of React Native, Flutter
+or native Kotlin/Swift remains open.
+
 ## Infrastructure
 
 | Component | State | Notes |
