@@ -8,7 +8,7 @@
 > [backlog.md](backlog.md) — 278 tasks with stable IDs. This page is
 > component-level; the backlog is task-level.
 
-**Last updated:** 2026-08-09 · **Roadmap phase:** I0 — walking skeleton, backend and POS web shell proven end-to-end
+**Last updated:** 2026-08-09 · **Roadmap phase:** I0 — walking skeleton, backend, POS web shell and a first E2E harness proven end-to-end; only deployment (OPS-11) remains
 
 ## Legend
 
@@ -67,7 +67,7 @@
 | `Brasa.Shared.Tests` | ✅ | 17 passing, incl. exhaustive allocation check |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | 📁 | Testcontainers referenced and Docker available; no tests written yet |
-| E2E (Playwright) | ⬜ | Next session — see [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 6 tests, all green (verified warm and from a cold start): full UI walking-skeleton (QA-05) + API-level split-math sweep (QA-03). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -85,13 +85,16 @@ shell uses — CORS preflight, `Origin: http://localhost:5173`, and the
 shapes match the shell's TypeScript types field-for-field and that a missing
 `Idempotency-Key` returns the `ProblemDetails.code` shape the client parses.
 
-> **Caveat:** this was exercised with `curl` reproducing exactly what the
-> browser sends (including the preflight), not by driving the rendered page in
-> an actual browser — no browser-automation tool was available in this
-> session. The React code paths (state transitions, rendering) are therefore
-> unverified beyond `tsc` and a production `vite build` succeeding. Treat the
-> UI as reviewed, not proven, until someone opens `localhost:5173` by hand or
-> the Playwright harness (below) covers it.
+> **Update:** the browser gap noted above has since been closed. A Playwright
+> harness (`src/web/e2e`) now drives the actual rendered `pos` UI in a real
+> Chromium instance — click the table-open form, click real menu buttons,
+> read the rendered total and split amounts, close, read the rendered
+> receipt — and passes, verified twice: once against already-running dev
+> servers, once from a hard cold start (both processes killed, Playwright's
+> `webServer` config launching `dotnet run` and `npm run dev` itself). See
+> [../development/e2e-testing.md](../development/e2e-testing.md). The one
+> piece still unverified is the CI job itself — written, not yet exercised by
+> an actual GitHub Actions run.
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
@@ -138,7 +141,7 @@ or native Kotlin/Swift remains open.
 | Docker | ✅ | 29.6.2, Compose v5.3.1 |
 | PostgreSQL | ✅ | 18.4 container, ICU locale provider, `pt-PT` |
 | Seq (log viewer) | ✅ | `http://localhost:5341` |
-| CI (GitHub Actions) | ✅ | Build gate, tests, vulnerability scan, docs link check |
+| CI (GitHub Actions) | ✅ | Build gate, tests, vulnerability scan, docs link check. `e2e` job added this session — written and locally-equivalent to what passed on this machine, but not yet exercised by an actual CI run |
 
 ## Blockers
 

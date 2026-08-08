@@ -16,15 +16,17 @@ export function Receipt({ result, onNewTable }: ReceiptProps) {
 
       <dl className="receipt-fields">
         <dt>Document</dt>
-        <dd>{document.documentNumber}</dd>
+        <dd data-testid="receipt-document-number">{document.documentNumber}</dd>
         <dt>ATCUD</dt>
-        <dd>{document.atcud}</dd>
+        <dd data-testid="receipt-atcud">{document.atcud}</dd>
         <dt>Net</dt>
-        <dd>{formatMoney(document.netTotal)}</dd>
+        <dd data-testid="receipt-net">{formatMoney(document.netTotal)}</dd>
         <dt>VAT</dt>
-        <dd>{formatMoney(document.vatTotal)}</dd>
+        <dd data-testid="receipt-vat">{formatMoney(document.vatTotal)}</dd>
         <dt>Gross</dt>
-        <dd className="receipt-gross">{formatMoney(document.grossTotal)}</dd>
+        <dd className="receipt-gross" data-testid="receipt-gross">
+          {formatMoney(document.grossTotal)}
+        </dd>
         <dt>Issued</dt>
         <dd>{new Date(document.issuedAtUtc).toLocaleString('pt-PT')}</dd>
       </dl>

@@ -76,6 +76,28 @@ tenant by `DevTenantMiddleware`. It exists to prove the API end-to-end in a
 browser, not as the real POS UX — see
 [docs/product/status.md](../product/status.md).
 
+## Running the E2E suite
+
+```powershell
+cd src/web/e2e
+npm install
+npx playwright install --with-deps chromium   # first time only
+npx playwright test
+```
+
+Starts the API (`dotnet run --no-build`) and the `pos` dev server itself —
+see `playwright.config.ts`'s `webServer`. **Docker (PostgreSQL) must already
+be running** (`docker compose -f infra/docker-compose.yml up -d`); it is the
+one thing the harness does not start for you, matching `dotnet run`. If a
+build is stale, run `dotnet build Brasa.slnx` first — `--no-build` uses
+whatever was last built (Debug by default, which is what a plain
+`dotnet build` produces).
+
+`npx playwright test --ui` opens the interactive UI mode; `--headed` runs
+with a visible browser window. See
+[../development/e2e-testing.md](../development/e2e-testing.md) for what's
+covered and what's deliberately not yet.
+
 ## Local infrastructure
 
 ```powershell

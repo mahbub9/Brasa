@@ -41,7 +41,7 @@ export function OrderSummary({
 
       <div className="order-total">
         <span>Total</span>
-        <strong>{formatMoney(order.total)}</strong>
+        <strong data-testid="order-total">{formatMoney(order.total)}</strong>
       </div>
 
       <div className="split-preview">
@@ -50,16 +50,22 @@ export function OrderSummary({
           <input
             type="number"
             min={1}
+            data-testid="split-parts-input"
             value={splitParts}
             onChange={(e) => onSplitPartsChange(Math.max(1, Number(e.target.value)))}
           />
           ways
         </label>
-        <button type="button" onClick={onPreviewSplit} disabled={busy || order.lines.length === 0}>
+        <button
+          type="button"
+          data-testid="preview-split-button"
+          onClick={onPreviewSplit}
+          disabled={busy || order.lines.length === 0}
+        >
           Preview split
         </button>
         {splitAmounts && (
-          <ul className="split-amounts">
+          <ul className="split-amounts" data-testid="split-amounts">
             {splitAmounts.map((amount, index) => (
               <li key={index}>{formatMoney(amount)}</li>
             ))}
@@ -70,6 +76,7 @@ export function OrderSummary({
       <button
         type="button"
         className="close-order"
+        data-testid="close-order-button"
         onClick={onClose}
         disabled={busy || order.lines.length === 0}
       >

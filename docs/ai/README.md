@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 backend and POS web shell proven live end-to-end; deployment and E2E harness remain
+**Last verified:** 2026-08-09 · **Phase:** I0 backend, POS web shell and a first Playwright E2E harness proven live end-to-end; only deployment (OPS-11) remains
 
 ---
 
@@ -63,12 +63,13 @@ Condensed:
   `Catalog` (categories/items, seeded), `Ordering` (open/add-line/split/close),
   `Fiscal` contract + `Fiscal.Mock`, API layer (versioning, ProblemDetails,
   idempotency, CORS, the full order flow), the `pos` web shell (React 19 +
-  Vite + TS, one screen, WEB-01), Docker Compose (PostgreSQL 18 + Seq), full
-  docs tree, CI.
+  Vite + TS, one screen, WEB-01), a Playwright E2E harness driving the real
+  UI (`src/web/e2e`, QA-01/03/05), Docker Compose (PostgreSQL 18 + Seq), full
+  docs tree, CI (including an `e2e` job — written, not yet run in CI).
 - 📁 **Empty projects (structure only, zero logic):** `Modules.Identity`,
   `Modules.Payments`, `Modules.Reporting`, `Fiscal.Portugal`.
 - 🚧 **Stub:** `SiteAgent` starts and stops; nothing else.
-- ⬜ **Not started:** `kds`/`admin`/`order` web clients, the E2E harness, deployment.
+- ⬜ **Not started:** `kds`/`admin`/`order` web clients, deployment.
 
 **Delivery is incremental** — vertical slices, each ending in a runnable demo.
 **[../product/roadmap.md](../product/roadmap.md) says what to build next**;
@@ -76,13 +77,12 @@ Condensed:
 status. Reference IDs in commits: `feat(identity): terminal pairing (IDN-07)`,
 and update the status in the same commit.
 
-**Current increment: I0 — walking skeleton, week 1.** Backend and the `pos`
-web shell are done and proven; remaining: deployment (OPS-11) and the
-Playwright E2E harness (QA-01…06 — see
-[../development/e2e-testing.md](../development/e2e-testing.md)).
+**Current increment: I0 — walking skeleton, week 1.** Backend, the `pos` web
+shell, and a first E2E harness are done and proven; **only deployment
+(OPS-11) remains** to close out I0.
 
 Backend I0 tasks — **done**: DAT-01/03/04/**05**/06/10 · API-01/03/05 ·
-CAT-01/02/07 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01.
+CAT-01/02/07 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01 · QA-01/03/05.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 
@@ -117,13 +117,17 @@ nothing about whether tenant isolation actually worked. If you build something
 that depends on database-level behaviour (RLS, triggers, constraints), run it
 against the real database and try to break it before calling it done.
 
-The `pos` web shell was then verified the same way — `curl` reproducing the
-exact browser request sequence (CORS preflight, `Origin` header,
-`Idempotency-Key`) against the running API, confirming every DTO shape matches
-the shell's TypeScript types field-for-field. It was **not** driven inside an
-actual rendered browser — no browser-automation tool was available in that
-session. If you have one, open `localhost:5173` and actually click through it
-before trusting the UI beyond "it builds and the wire contract matches."
+The `pos` web shell was first verified only at the wire level — `curl`
+reproducing the exact browser request sequence (CORS preflight, `Origin`
+header, `Idempotency-Key`) against the running API — because no
+browser-automation tool was available in that session. That gap is now
+closed: a Playwright harness (`src/web/e2e`, QA-01/03/05) drives the actual
+rendered UI in a real Chromium instance and passes, verified both against
+already-running dev servers and from a hard cold start (both processes
+killed, Playwright's own `webServer` config launching them from nothing). See
+[../development/e2e-testing.md](../development/e2e-testing.md). What's
+**still** unverified: the new `e2e` CI job itself — written, mirrors what
+passed locally, but no push has exercised it in actual GitHub Actions yet.
 
 ## 4. Repo map
 
@@ -145,6 +149,7 @@ src/agent/
   Brasa.SiteAgent         In-restaurant worker: signing, printing, LAN hub
 src/web/
   pos                     POS PWA (React + TS + Vite) — I0 shell, WEB-01
+  e2e                     Playwright E2E harness — QA-01/03/05
 tests/                            Unit, fiscal golden-file, integration
 docs/                             This documentation tree
 infra/                            docker-compose (PostgreSQL 18, Seq)
@@ -233,6 +238,7 @@ dotnet test  tests/Brasa.Shared.Tests   # fast path
 dotnet run   --project src/backend/Brasa.Api
 docker compose -f infra/docker-compose.yml up -d
 cd src/web/pos ; npm install ; npm run dev   # http://localhost:5173
+cd src/web/e2e ; npm install ; npx playwright test   # starts API + pos itself
 ```
 
 ## 9. Open blockers

@@ -52,17 +52,17 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
-| **QA** | Automated testing | 0 | 14 | I0–I1 → ongoing |
+| **QA** | Automated testing | 3 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **49** | **290** | |
+| | **Total** | **52** | **290** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 49 of 290 — I0's backend and the `pos` web shell are both done and proven
-> against a live API (details:
+> 52 of 290 — I0's backend, the `pos` web shell, and a first Playwright E2E
+> harness are done and proven against a live API (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -374,19 +374,20 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 ## QA — Automated testing
 
-> **Next session's focus.** Framework decision pending: see
-> [../development/e2e-testing.md](../development/e2e-testing.md).
+> See [../development/e2e-testing.md](../development/e2e-testing.md) for the
+> harness itself and an honest account of what QA-04/06/07/08 are still
+> blocked on.
 
 | ID | Task | Status |
 |---|---|---|
-| QA-01 | Choose an E2E framework (Playwright vs alternatives) | ⬜ |
-| QA-02 | E2E harness — app + Postgres + seeded tenant | ⬜ |
-| QA-03 | Deterministic test data builders | ⬜ |
-| QA-04 | Fixed-clock control for time-dependent tests | ⬜ |
-| QA-05 | E2E: full service loop, seat → order → fire → pay → close | ⬜ |
-| QA-06 | E2E: offline mode — network killed mid-service | ⬜ |
-| QA-07 | E2E: split-bill flows | ⬜ |
-| QA-08 | E2E: multi-terminal concurrency | ⬜ |
+| QA-01 | Choose an E2E framework (Playwright vs alternatives) | ✅ Playwright + TypeScript, `src/web/e2e` |
+| QA-02 | E2E harness — app + Postgres + seeded tenant | 🚧 `webServer` starts API + `pos` fresh each run; database is the persistent dev instance, not disposable per run |
+| QA-03 | Deterministic test data builders | ✅ `tests/support/api.ts` — looks menu items up by name, never by id |
+| QA-04 | Fixed-clock control for time-dependent tests | ⬜ nothing built yet needs it — see e2e-testing.md |
+| QA-05 | E2E: full service loop, seat → order → fire → pay → close | ✅ `walking-skeleton.spec.ts` — open → order → split → close → receipt, driving the real UI. "Fire" and "pay" aren't built yet (KIT/PAY), so the loop ends at close |
+| QA-06 | E2E: offline mode — network killed mid-service | ⬜ blocked on WEB-04/SYN — no offline capability exists to test |
+| QA-07 | E2E: split-bill flows | 🚧 even split covered (`split-preview.spec.ts`, API-level, sweeps 1/2/3/5/7 ways); by-item/by-cover blocked on ORD-16/17 |
+| QA-08 | E2E: multi-terminal concurrency | ⬜ blocked on ORD-21 |
 | QA-09 | Testcontainers integration-test base fixture | ⬜ |
 | QA-10 | Tenant isolation test suite (RLS) | ⬜ |
 | QA-11 | Idempotency replay test harness | ⬜ |

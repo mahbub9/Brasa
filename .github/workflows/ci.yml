@@ -51,6 +51,60 @@ jobs:
           path: '**/TestResults/**'
           retention-days: 14
 
+  e2e:
+    name: End-to-end (Playwright)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Set up Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24.x'
+
+      # postgres has a healthcheck (pg_isready); --wait blocks until it passes.
+      # seq has none, so --wait only waits for it to reach "running".
+      - name: Start local infrastructure
+        run: docker compose -f infra/docker-compose.yml up -d --wait
+
+      # Debug, not Release: this is what `dotnet run --no-build` in
+      # playwright.config.ts's webServer picks up, matching what a developer
+      # runs locally per docs/development/getting-started.md.
+      - name: Build API
+        run: dotnet build Brasa.slnx --configuration Debug
+
+      - name: Install pos dependencies
+        run: npm install
+        working-directory: src/web/pos
+
+      - name: Install e2e dependencies
+        run: npm install
+        working-directory: src/web/e2e
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+        working-directory: src/web/e2e
+
+      # Starts the API and the pos dev server itself (playwright.config.ts
+      # webServer) — Docker is the only external dependency.
+      - name: Run E2E suite
+        run: npx playwright test
+        working-directory: src/web/e2e
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: src/web/e2e/playwright-report/
+          retention-days: 14
+
   vulnerable-packages:
     name: Vulnerable package scan
     runs-on: ubuntu-latest

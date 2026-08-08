@@ -29,7 +29,7 @@
 
 | File | Purpose |
 |---|---|
-| `workflows/ci.yml` | Build (zero-warning gate) + test + transitive vulnerability scan |
+| `workflows/ci.yml` | Build (zero-warning gate) + test + transitive vulnerability scan + `e2e` job (Playwright, `src/web/e2e` — written, **not yet exercised by an actual CI run**) |
 | `workflows/docs.yml` | Relative-link check across all markdown; warns when source changes without a `status.md` update |
 | `workflows/pages.yml` | Builds the VitePress site from `docs/` and deploys to GitHub Pages |
 | `pull_request_template.md` | Docs checklist, plus fiscal and money sections |
@@ -127,6 +127,21 @@ API in a browser. Hand-written API layer (`src/api/`) is a placeholder for
 ⬜ **Missing:** auth, offline (Dexie), floor plan, everything past I0 — see the
 `WEB` epic in [backlog.md](../product/backlog.md).
 
+## `src/web/e2e` ✅ I0 harness
+
+Playwright + TypeScript, chromium only. `playwright.config.ts`'s `webServer`
+starts both the API (`dotnet run --no-build`) and the `pos` dev server
+itself — Docker (PostgreSQL) is the only thing it doesn't start. Verified
+locally from both a warm state and a hard cold start; 6/6 passing either way.
+See [../development/e2e-testing.md](../development/e2e-testing.md) for the
+QA-01 decision record and what QA-04/06/07/08 are still blocked on.
+
+| File | State | Contents |
+|---|---|---|
+| `tests/walking-skeleton.spec.ts` | ✅ | QA-05 — drives the real `pos` UI: open table → ring up → split preview → close → receipt |
+| `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |
+| `tests/support/api.ts` | ✅ | QA-03 test-data builders. Looks menu items up **by name**, never by id (ids are UUIDv7, not stable across a fresh database) |
+
 ## `tests/`
 
 | Project | State | Notes |
@@ -188,5 +203,5 @@ rewrites them to site index pages, so one file serves both.
 | `web/kds` | Kitchen display | I4 |
 | `web/order` | QR self-ordering | I8+ |
 
-Also not yet created: the deployment target for OPS-11 (I0), and the E2E test
-project for QA-01…06 (I0/I1).
+Also not yet created: the deployment target for OPS-11 (I0) — the one
+remaining piece of I0.
