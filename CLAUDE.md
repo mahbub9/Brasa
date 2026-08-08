@@ -2,13 +2,21 @@
 
 Guidance for Claude Code when working in this repository.
 
+## Start here
+
+**Read [docs/ai/README.md](docs/ai/README.md) before anything else.** It is a
+single dense brief — invariants, current state, next task, repo map, and the
+traps that look like bugs but are not — written so you can begin work without
+scanning the repository. [docs/ai/repo-map.md](docs/ai/repo-map.md) has the
+file-by-file inventory.
+
 ## What this is
 
 Multi-tenant restaurant management SaaS for **Portugal**. Solo developer, .NET 10
 backend, React PWA clients, targeting a first live restaurant in ~6 months.
 
-**Read [docs/README.md](docs/README.md) first.** The architecture is unusual and
-the reasons are documented; do not infer intent from the code alone.
+The architecture is unusual and the reasons are documented; do not infer intent
+from the code alone.
 
 ## Before you change anything
 

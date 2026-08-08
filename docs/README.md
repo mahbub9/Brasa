@@ -2,6 +2,10 @@
 
 Start here. Everything a new developer needs, in the order they need it.
 
+> **Picking this up as an AI session?** Read
+> **[ai/README.md](ai/README.md)** instead — it is a single dense brief written
+> so you can be productive without scanning the repository.
+
 ## First hour
 
 | Read | Why |
@@ -10,6 +14,21 @@ Start here. Everything a new developer needs, in the order they need it.
 | [architecture/README.md](architecture/README.md) | The three-tier shape and *why* it is that shape |
 | [fiscal/README.md](fiscal/README.md) | The legal constraint that drives every other decision |
 | [product/status.md](product/status.md) | What actually exists today versus what is only scaffolded |
+| [glossary.md](glossary.md) | Portuguese fiscal and restaurant terms used everywhere |
+
+## Session pickup
+
+| Doc | Purpose |
+|---|---|
+| [ai/README.md](ai/README.md) | The brief: invariants, current state, next task, traps |
+| [ai/repo-map.md](ai/repo-map.md) | Every tracked file, its purpose and its state |
+
+## Features
+
+One page per feature — behaviour, edge cases, offline handling and intent.
+
+- [features/README.md](features/README.md) — index
+- [features/_template.md](features/_template.md) — template for a new page
 
 ## Architecture
 
