@@ -63,9 +63,11 @@ Condensed:
   `Catalog` (categories/items, seeded), `Ordering` (open/add-line/split/close),
   `Fiscal` contract + `Fiscal.Mock`, API layer (versioning, ProblemDetails,
   idempotency, CORS, the full order flow), the `pos` web shell (React 19 +
-  Vite + TS, one screen, WEB-01), a Playwright E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05), Docker Compose (PostgreSQL 18 + Seq), full
-  docs tree, CI (including an `e2e` job — written, not yet run in CI).
+  Vite + TS, one screen, WEB-01, pt-PT default / en toggle behind a
+  mobile-portable cookie seam — WEB-13, ADR 0011), a Playwright E2E harness
+  driving the real UI (`src/web/e2e`, QA-01/03/05), Docker Compose
+  (PostgreSQL 18 + Seq), full docs tree, CI (including an `e2e` job —
+  written, not yet run in CI).
 - 📁 **Empty projects (structure only, zero logic):** `Modules.Identity`,
   `Modules.Payments`, `Modules.Reporting`, `Fiscal.Portugal`.
 - 🚧 **Stub:** `SiteAgent` starts and stops; nothing else.
@@ -82,7 +84,7 @@ shell, and a first E2E harness are done and proven; **only deployment
 (OPS-11) remains** to close out I0.
 
 Backend I0 tasks — **done**: DAT-01/03/04/**05**/06/10 · API-01/03/05 ·
-CAT-01/02/07 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01 · QA-01/03/05.
+CAT-01/02/07 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01/13 · QA-01/03/05.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 
@@ -192,6 +194,7 @@ there is actually met.
 | [0008](../architecture/decisions/0008-token-auth-no-cookies.md) | Token auth with PKCE, device-bound refresh, **no cookies** |
 | [0009](../architecture/decisions/0009-incremental-delivery.md) | Incremental delivery; walking skeleton first, demo script is done |
 | [0010](../architecture/decisions/0010-rls-runtime-role-split.md) | Split the DB role: unprivileged at runtime, superuser only for migrations |
+| [0011](../architecture/decisions/0011-i18n.md) | i18next, pt default, cookie preference behind a storage seam swappable for mobile |
 
 ## 7. Traps — things that look wrong but are intentional
 
@@ -208,6 +211,15 @@ there is actually met.
   charges. See `docs/fiscal/README.md`.
 - **The Azores are an hour behind the mainland.** This moves the daily close and
   SAF-T period boundaries. `PortugueseRegion` exists for this.
+- **`pos`'s `brasa.lang` cookie is not the ADR 0008 cookie.** ADR 0008 bans
+  *authentication* cookies. `brasa.lang` is a client-only UI preference the
+  API never sends or reads — setting it does not weaken that rule. Don't
+  "fix" it into `localStorage` on sight; the user explicitly asked for a
+  cookie. See [ADR 0011](../architecture/decisions/0011-i18n.md).
+- **`formatMoney` and the receipt's issued date are hardcoded `'pt-PT'`,
+  even in English mode.** Not a missed i18n string — a total or a fiscal
+  timestamp must not change format because staff switched their own
+  interface language. See ADR 0011.
 - **`Money.Format(culture)` is not called `ToString`.** Deliberate — it forces
   callers to name the culture, and keeps `ToString()` unambiguously invariant.
 - **`Fiscal.Mock` must never run in Production.** It produces structurally valid

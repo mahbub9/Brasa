@@ -120,8 +120,11 @@ API in a browser. Hand-written API layer (`src/api/`) is a placeholder for
 | `src/App.tsx` | ✅ | Orchestrates the three phases: open table → order (menu + summary) → receipt |
 | `src/api/client.ts` | ✅ | `fetch` wrapper; `ApiError` carries the `ProblemDetails.code`; every mutation gets its own `Idempotency-Key` via `crypto.randomUUID()` |
 | `src/api/types.ts` | ✅ | Hand-written mirror of `Brasa.Api/Contracts/*.cs` — kept in sync manually until WEB-03 |
-| `src/components/*.tsx` | ✅ | `OpenTableForm`, `MenuGrid`, `OrderSummary`, `Receipt`, `ErrorBanner` |
-| `src/lib/money.ts` | ✅ | `Intl.NumberFormat('pt-PT', …)` — never formats `Money` by hand |
+| `src/components/*.tsx` | ✅ | `OpenTableForm`, `MenuGrid`, `OrderSummary`, `Receipt`, `ErrorBanner`, `LanguageToggle` |
+| `src/lib/money.ts` | ✅ | `Intl.NumberFormat('pt-PT', …)` — never formats `Money` by hand, and deliberately never follows the language toggle (see [ADR 0011](../architecture/decisions/0011-i18n.md)) |
+| `src/i18n/i18n.ts` | ✅ | i18next config — pt default, en toggle (WEB-13) |
+| `src/i18n/languageStorage.ts` | ✅ | `LanguageStore` interface + `cookieLanguageStore`; the seam a mobile client swaps for `AsyncStorage` |
+| `src/i18n/resources/{pt,en}.ts` | ✅ | UI copy. Menu item names and money are **not** here — see the ADR |
 | `.env.example` | ✅ | Documents `VITE_API_BASE_URL`; defaults to the API's `http` launch profile |
 
 ⬜ **Missing:** auth, offline (Dexie), floor plan, everything past I0 — see the
@@ -138,8 +141,9 @@ QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 
 | File | State | Contents |
 |---|---|---|
-| `tests/walking-skeleton.spec.ts` | ✅ | QA-05 — drives the real `pos` UI: open table → ring up → split preview → close → receipt |
+| `tests/walking-skeleton.spec.ts` | ✅ | QA-05 — drives the real `pos` UI: open table → ring up → split preview → close → receipt. Runs in Portuguese, the app's default |
 | `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |
+| `tests/language-toggle.spec.ts` | ✅ | WEB-13 — default language, the pt→en toggle, cookie attributes (`Path`, `SameSite`, not `httpOnly`) surviving a reload, and money staying `pt-PT` in English mode |
 | `tests/support/api.ts` | ✅ | QA-03 test-data builders. Looks menu items up **by name**, never by id (ids are UUIDv7, not stable across a fresh database) |
 
 ## `tests/`

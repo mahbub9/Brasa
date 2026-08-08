@@ -23,6 +23,7 @@ it feels wrong.
 | [0008](0008-token-auth-no-cookies.md) | Token auth, device-bound refresh, no cookies | Accepted | Cookie auth cannot serve native apps, and a POS terminal is trusted hardware, not a user |
 | [0009](0009-incremental-delivery.md) | Incremental delivery, walking skeleton first | Accepted | Vertical slices with a demo script as the definition of done; certification stays binary regardless |
 | [0010](0010-rls-runtime-role-split.md) | Split the DB role: unprivileged at runtime, superuser only for migrations | Accepted | The bootstrap Postgres role is a superuser, and superusers bypass RLS unconditionally — found via I0's first live test |
+| [0011](0011-i18n.md) | i18next, pt default, cookie preference behind a storage seam | Accepted | Retrofitting i18n later costs weeks; the storage interface is what keeps mobile a swap, not a rewrite |
 
 ## Writing a new one
 

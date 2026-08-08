@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { MenuCategoryDto } from '../api/types';
 import { formatMoney } from '../lib/money';
 
@@ -8,8 +9,10 @@ interface MenuGridProps {
 }
 
 export function MenuGrid({ categories, onAddItem, disabled }: MenuGridProps) {
+  const { t } = useTranslation();
+
   if (categories.length === 0) {
-    return <p className="empty-state">No menu items available.</p>;
+    return <p className="empty-state">{t('menu.empty')}</p>;
   }
 
   return (

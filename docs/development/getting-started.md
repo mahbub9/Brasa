@@ -71,6 +71,10 @@ your API runs elsewhere. The API's `Cors:AllowedOrigins` config
 (`appsettings.Development.json`) must include the dev server's origin or the
 browser will block every request; `http://localhost:5173` is already there.
 
+Defaults to Portuguese; the PT/EN toggle in the header switches instantly and
+remembers the choice in a cookie (`brasa.lang`) — see
+[ADR 0011](../architecture/decisions/0011-i18n.md).
+
 **I0 scope:** one screen, no auth, every request attributed to the fixed dev
 tenant by `DevTenantMiddleware`. It exists to prove the API end-to-end in a
 browser, not as the real POS UX — see

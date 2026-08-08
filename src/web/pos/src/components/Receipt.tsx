@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { CloseOrderResponse } from '../api/types';
 import { formatMoney } from '../lib/money';
 
@@ -7,27 +8,31 @@ interface ReceiptProps {
 }
 
 export function Receipt({ result, onNewTable }: ReceiptProps) {
+  const { t } = useTranslation();
   const { order, document } = result;
 
   return (
     <div className="receipt">
-      <h1>Receipt issued</h1>
+      <h1>{t('receipt.title')}</h1>
       <p className="receipt-table">{order.tableLabel}</p>
 
       <dl className="receipt-fields">
-        <dt>Document</dt>
+        <dt>{t('receipt.document')}</dt>
         <dd data-testid="receipt-document-number">{document.documentNumber}</dd>
-        <dt>ATCUD</dt>
+        <dt>{t('receipt.atcud')}</dt>
         <dd data-testid="receipt-atcud">{document.atcud}</dd>
-        <dt>Net</dt>
+        <dt>{t('receipt.net')}</dt>
         <dd data-testid="receipt-net">{formatMoney(document.netTotal)}</dd>
-        <dt>VAT</dt>
+        <dt>{t('receipt.vat')}</dt>
         <dd data-testid="receipt-vat">{formatMoney(document.vatTotal)}</dd>
-        <dt>Gross</dt>
+        <dt>{t('receipt.gross')}</dt>
         <dd className="receipt-gross" data-testid="receipt-gross">
           {formatMoney(document.grossTotal)}
         </dd>
-        <dt>Issued</dt>
+        <dt>{t('receipt.issued')}</dt>
+        {/* Always pt-PT, deliberately not tied to the UI language toggle —
+            this is a fiscal document date, not UI chrome. Same reasoning as
+            formatMoney in lib/money.ts. */}
         <dd>{new Date(document.issuedAtUtc).toLocaleString('pt-PT')}</dd>
       </dl>
 
@@ -35,12 +40,12 @@ export function Receipt({ result, onNewTable }: ReceiptProps) {
         {document.qrPayload}
       </p>
       <p className="receipt-note">
-        Mock fiscal provider — this document has no legal value. See{' '}
+        {t('receipt.mockNotice')}{' '}
         <code>docs/architecture/decisions/0002-own-fiscal-engine.md</code>.
       </p>
 
       <button type="button" onClick={onNewTable}>
-        Open another table
+        {t('receipt.newTable')}
       </button>
     </div>
   );

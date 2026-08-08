@@ -103,6 +103,7 @@ export default defineConfig({
           { text: '0008 — Token auth, no cookies', link: '/architecture/decisions/0008-token-auth-no-cookies' },
           { text: '0009 — Incremental delivery', link: '/architecture/decisions/0009-incremental-delivery' },
           { text: '0010 — RLS runtime role split', link: '/architecture/decisions/0010-rls-runtime-role-split' },
+          { text: '0011 — i18n: cookie + mobile seam', link: '/architecture/decisions/0011-i18n' },
         ],
       },
       {

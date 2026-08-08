@@ -7,6 +7,11 @@ import { expect, test } from '@playwright/test';
 // that does NOT use the API builders in support/api.ts — it exists to prove
 // the UI itself works, not just the API behind it.
 //
+// Runs in the app's default language (Portuguese, docs/architecture/
+// decisions/0011-i18n.md) deliberately — that is what a real restaurant
+// sees, and language-toggle.spec.ts covers the English path plus the
+// toggle itself.
+//
 // Mirrors the numbers from the backend's own live verification
 // (docs/product/status.md#i0-demo) so a regression here is directly
 // comparable to that record: 2x Frango na Brasa (13% VAT) + 2x Imperial
@@ -17,9 +22,9 @@ test('open a table, ring up a mixed order, split it, close it, get a receipt', a
 
   await page.goto('/');
 
-  await page.getByLabel('Table').fill(tableLabel);
-  await page.getByLabel('Covers').fill('3');
-  await page.getByRole('button', { name: 'Open table' }).click();
+  await page.getByLabel('Mesa').fill(tableLabel);
+  await page.getByLabel('Pessoas').fill('3');
+  await page.getByRole('button', { name: 'Abrir mesa' }).click();
 
   await expect(page.getByRole('heading', { name: tableLabel })).toBeVisible();
 
@@ -52,7 +57,7 @@ test('open a table, ring up a mixed order, split it, close it, get a receipt', a
 
   await page.getByTestId('close-order-button').click();
 
-  await expect(page.getByRole('heading', { name: 'Receipt issued' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Recibo emitido' })).toBeVisible();
   await expect(page.getByTestId('receipt-document-number')).toHaveText(/^FS /);
   await expect(page.getByTestId('receipt-atcud')).toHaveText(/\S/);
   await expect(page.getByTestId('receipt-net')).toHaveText(/19,74/);
@@ -60,6 +65,6 @@ test('open a table, ring up a mixed order, split it, close it, get a receipt', a
   await expect(page.getByTestId('receipt-gross')).toHaveText(/22,60/);
   expect(await page.getByTestId('receipt-gross').textContent()).toBe(orderTotalDuringService);
 
-  await page.getByRole('button', { name: 'Open another table' }).click();
+  await page.getByRole('button', { name: 'Abrir outra mesa' }).click();
   await expect(page.getByRole('heading', { name: 'Abrir mesa' })).toBeVisible();
 });

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import type { MoneyDto, OrderDto } from '../api/types';
 import { formatMoney } from '../lib/money';
 
@@ -20,13 +21,15 @@ export function OrderSummary({
   onClose,
   busy,
 }: OrderSummaryProps) {
+  const { t } = useTranslation();
+
   return (
     <aside className="order-summary">
       <h2>{order.tableLabel}</h2>
-      <p className="covers">{order.coverCount} covers</p>
+      <p className="covers">{t('order.covers', { count: order.coverCount })}</p>
 
       {order.lines.length === 0 ? (
-        <p className="empty-state">No items yet — tap the menu to add some.</p>
+        <p className="empty-state">{t('order.empty')}</p>
       ) : (
         <ul className="order-lines">
           {order.lines.map((line) => (
@@ -40,13 +43,13 @@ export function OrderSummary({
       )}
 
       <div className="order-total">
-        <span>Total</span>
+        <span>{t('order.total')}</span>
         <strong data-testid="order-total">{formatMoney(order.total)}</strong>
       </div>
 
       <div className="split-preview">
         <label>
-          Split
+          {t('order.split')}
           <input
             type="number"
             min={1}
@@ -54,7 +57,7 @@ export function OrderSummary({
             value={splitParts}
             onChange={(e) => onSplitPartsChange(Math.max(1, Number(e.target.value)))}
           />
-          ways
+          {t('order.splitWays')}
         </label>
         <button
           type="button"
@@ -62,7 +65,7 @@ export function OrderSummary({
           onClick={onPreviewSplit}
           disabled={busy || order.lines.length === 0}
         >
-          Preview split
+          {t('order.previewSplit')}
         </button>
         {splitAmounts && (
           <ul className="split-amounts" data-testid="split-amounts">
@@ -80,7 +83,7 @@ export function OrderSummary({
         onClick={onClose}
         disabled={busy || order.lines.length === 0}
       >
-        {busy ? 'Closing…' : 'Close & issue receipt'}
+        {busy ? t('order.closing') : t('order.close')}
       </button>
     </aside>
   );

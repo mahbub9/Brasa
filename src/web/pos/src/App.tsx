@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, ApiError } from './api/client';
 import type { CloseOrderResponse, MenuCategoryDto, MoneyDto, OrderDto } from './api/types';
 import { ErrorBanner } from './components/ErrorBanner';
+import i18n from './i18n/i18n';
+import { LanguageToggle } from './components/LanguageToggle';
 import { MenuGrid } from './components/MenuGrid';
 import { OpenTableForm } from './components/OpenTableForm';
 import { OrderSummary } from './components/OrderSummary';
@@ -14,6 +17,7 @@ import './App.css';
  * tenant (DevTenantMiddleware), no auth — see docs/product/status.md.
  */
 export default function App() {
+  const { t } = useTranslation();
   const [menu, setMenu] = useState<MenuCategoryDto[] | null>(null);
   const [order, setOrder] = useState<OrderDto | null>(null);
   const [closeResult, setCloseResult] = useState<CloseOrderResponse | null>(null);
@@ -89,7 +93,8 @@ export default function App() {
     <div className="app">
       <header className="app-header">
         <span className="app-brand">Brasa</span>
-        <span className="app-tagline">POS — I0 walking skeleton</span>
+        <span className="app-tagline">{t('app.tagline')}</span>
+        <LanguageToggle />
       </header>
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
@@ -122,5 +127,5 @@ function describeError(err: unknown): string {
   if (err instanceof ApiError) {
     return err.code ? `${err.message} (${err.code})` : err.message;
   }
-  return err instanceof Error ? err.message : 'Something went wrong.';
+  return err instanceof Error ? err.message : i18n.t('error.generic');
 }

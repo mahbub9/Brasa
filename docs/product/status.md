@@ -8,7 +8,7 @@
 > [backlog.md](backlog.md) — 278 tasks with stable IDs. This page is
 > component-level; the backlog is task-level.
 
-**Last updated:** 2026-08-09 · **Roadmap phase:** I0 — walking skeleton, backend, POS web shell and a first E2E harness proven end-to-end; only deployment (OPS-11) remains
+**Last updated:** 2026-08-09 · **Roadmap phase:** I0 — walking skeleton, backend, POS web shell (with pt/en i18n) and a first E2E harness proven end-to-end; only deployment (OPS-11) remains
 
 ## Legend
 
@@ -55,7 +55,7 @@
 
 | Client | State | Notes |
 |---|---|---|
-| `pos` | ✅ I0 shell | React 19 + Vite 8 + TS, one screen: open table → menu → lines → split preview → close → receipt. No auth, no offline, no Dexie yet — those are I2 (see [roadmap.md](roadmap.md)) |
+| `pos` | ✅ I0 shell | React 19 + Vite 8 + TS, one screen: open table → menu → lines → split preview → close → receipt. pt-PT default / en toggle, cookie-persisted (ADR 0011). No auth, no offline, no Dexie yet — those are I2 (see [roadmap.md](roadmap.md)) |
 | `kds` | ⬜ | |
 | `admin` | ⬜ | |
 | `order` (QR self-ordering) | ⬜ | |
@@ -67,7 +67,7 @@
 | `Brasa.Shared.Tests` | ✅ | 17 passing, incl. exhaustive allocation check |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | 📁 | Testcontainers referenced and Docker available; no tests written yet |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 6 tests, all green (verified warm and from a cold start): full UI walking-skeleton (QA-05) + API-level split-math sweep (QA-03). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 9 tests, all green (verified warm and from a cold start): full UI walking-skeleton (QA-05), API-level split-math sweep (QA-03), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -84,6 +84,14 @@ shell uses — CORS preflight, `Origin: http://localhost:5173`, and the
 `Idempotency-Key` header on every mutating call — confirming the API's JSON
 shapes match the shell's TypeScript types field-for-field and that a missing
 `Idempotency-Key` returns the `ProblemDetails.code` shape the client parses.
+
+> **Update (i18n):** `pos` now defaults to Portuguese with an English toggle,
+> preference persisted in a cookie (never sent to the API) behind a storage
+> interface written so a future mobile client swaps in `AsyncStorage` instead
+> — see [ADR 0011](../architecture/decisions/0011-i18n.md). Money and the
+> receipt's issued date deliberately stay `pt-PT` regardless of the toggle —
+> fiscal formatting is not UI chrome. Server-sent error text is **not** yet
+> localized (known gap, documented in the ADR, not hidden).
 
 > **Update:** the browser gap noted above has since been closed. A Playwright
 > harness (`src/web/e2e`) now drives the actual rendered `pos` UI in a real

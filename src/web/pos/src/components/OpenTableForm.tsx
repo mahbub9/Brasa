@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 
 interface OpenTableFormProps {
   onOpen: (tableLabel: string, coverCount: number) => void;
@@ -6,6 +7,7 @@ interface OpenTableFormProps {
 }
 
 export function OpenTableForm({ onOpen, busy }: OpenTableFormProps) {
+  const { t } = useTranslation();
   const [tableLabel, setTableLabel] = useState('');
   const [coverCount, setCoverCount] = useState(2);
 
@@ -20,19 +22,19 @@ export function OpenTableForm({ onOpen, busy }: OpenTableFormProps) {
         onOpen(tableLabel.trim(), coverCount);
       }}
     >
-      <h1>Abrir mesa</h1>
+      <h1>{t('openTable.title')}</h1>
       <label>
-        Table
+        {t('openTable.tableLabel')}
         <input
           type="text"
-          placeholder="e.g. Mesa 12"
+          placeholder={t('openTable.tablePlaceholder')}
           value={tableLabel}
           onChange={(e) => setTableLabel(e.target.value)}
           autoFocus
         />
       </label>
       <label>
-        Covers
+        {t('openTable.covers')}
         <input
           type="number"
           min={1}
@@ -41,7 +43,7 @@ export function OpenTableForm({ onOpen, busy }: OpenTableFormProps) {
         />
       </label>
       <button type="submit" disabled={busy || tableLabel.trim().length === 0}>
-        {busy ? 'Opening…' : 'Open table'}
+        {busy ? t('openTable.submitBusy') : t('openTable.submit')}
       </button>
     </form>
   );

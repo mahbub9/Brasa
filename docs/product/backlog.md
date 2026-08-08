@@ -48,21 +48,21 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
 | **FIS** | Fiscal engine | 3 | 24 | I0 (rest: I7) |
-| **WEB** | Web clients | 1 | 12 | I0 (rest: I1–I8) |
+| **WEB** | Web clients | 2 | 13 | I0 (rest: I1–I8) |
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
 | **QA** | Automated testing | 3 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **52** | **290** | |
+| | **Total** | **53** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 52 of 290 — I0's backend, the `pos` web shell, and a first Playwright E2E
-> harness are done and proven against a live API (details:
+> 53 of 291 — I0's backend, the `pos` web shell (now with pt/en i18n), and a
+> first Playwright E2E harness are done and proven against a live API (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -321,6 +321,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | WEB-10 | `admin` — menu and floor-plan editors | ⬜ |
 | WEB-11 | `admin` — staff, roles and reporting screens | ⬜ |
 | WEB-12 | `order` shell — QR self-ordering PWA | ⬜ Post-I8 |
+| WEB-13 | i18n — pt default / en toggle, cookie-persisted, mobile storage seam | ✅ i18next, `src/i18n/`. See [ADR 0011](../architecture/decisions/0011-i18n.md) |
 
 ## PAY — Payments & cash sessions
 
