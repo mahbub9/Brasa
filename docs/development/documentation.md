@@ -1,0 +1,67 @@
+# Documentation contract
+
+Documentation is maintained **alongside** the code, in the same commit — not
+afterwards, and not in a separate pass. The test is simple:
+
+> Could a developer who has never seen this repository pick up the work, make a
+> fix, and understand why the code is shaped the way it is?
+
+## What to update, and when
+
+| When you… | Also update |
+|---|---|
+| Finish or start a component | [../product/status.md](../product/status.md) — it is the honest inventory |
+| Make a non-obvious technical choice | A new ADR in [../architecture/decisions/](../architecture/decisions/) |
+| Change a shared-kernel type | Its doc page, e.g. [../architecture/money.md](../architecture/money.md) |
+| Change anything fiscal | [../fiscal/README.md](../fiscal/README.md) **and** the golden files |
+| Add a dependency or dev prerequisite | [getting-started.md](getting-started.md) |
+| Suppress an analyzer rule | `.editorconfig` inline reason **and** [../architecture/conventions.md](../architecture/conventions.md) |
+| Hit a blocker you cannot resolve now | The blockers table in [../product/status.md](../product/status.md) |
+
+## Status markers
+
+A scaffold makes empty things look finished. Any doc describing something not yet
+built must say so at the top:
+
+```markdown
+> **Status: stub.** ... Everything below is the design, scheduled for Month 3.
+```
+
+Never describe planned behaviour in the present tense. A new developer reading
+"the Site Agent signs documents offline" will reasonably assume it does.
+
+## ADRs
+
+Write one when a choice was **genuinely contested** — where a competent developer
+would plausibly have chosen otherwise, and would waste time re-litigating it
+later.
+
+Format: Context → Decision → Consequences (good *and* bad) → **Revisit when**.
+
+That last section is what makes an ADR useful a year later. A decision without
+stated trigger conditions becomes dogma.
+
+Do not write an ADR for the obvious. Six exist today; that is roughly the right
+density for a foundation.
+
+## Code comments
+
+Comment the **why**. The code says what.
+
+```csharp
+// Bad:  increment the counter
+// Good: chaining is per-series, never global — two series advance independently
+```
+
+Load-bearing constraints — legal, fiscal, offline-safety — get a comment **and** a
+link to the relevant doc. Someone will eventually be tempted to "simplify" the
+signature chain, and the comment is what stops them.
+
+## Doc style
+
+- Lead with why, then what.
+- Link generously between docs and to source files.
+- Prefer a short table to a long paragraph.
+- Include real code and real values, not placeholders.
+- State uncertainty as uncertainty. `docs/fiscal/README.md` flags VAT rates as
+  needing accountant confirmation rather than presenting them as settled.

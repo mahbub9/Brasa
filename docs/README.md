@@ -1,0 +1,52 @@
+# Documentation
+
+Start here. Everything a new developer needs, in the order they need it.
+
+## First hour
+
+| Read | Why |
+|---|---|
+| [development/getting-started.md](development/getting-started.md) | Get it building and running locally |
+| [architecture/README.md](architecture/README.md) | The three-tier shape and *why* it is that shape |
+| [fiscal/README.md](fiscal/README.md) | The legal constraint that drives every other decision |
+| [product/status.md](product/status.md) | What actually exists today versus what is only scaffolded |
+
+## Architecture
+
+- [architecture/README.md](architecture/README.md) — system overview
+- [architecture/site-agent.md](architecture/site-agent.md) — the in-restaurant process
+- [architecture/multi-tenancy.md](architecture/multi-tenancy.md) — tenant isolation and RLS
+- [architecture/module-boundaries.md](architecture/module-boundaries.md) — the rules modules obey
+- [architecture/money.md](architecture/money.md) — why money is integer cents, and bill splitting
+- [architecture/conventions.md](architecture/conventions.md) — code conventions and analyzer policy
+
+## Decisions (ADRs)
+
+Records of choices that were not obvious, and what would make us revisit them.
+
+- [0001](architecture/decisions/0001-modular-monolith.md) — Modular monolith, not microservices
+- [0002](architecture/decisions/0002-own-fiscal-engine.md) — Build our own AT-certified fiscal engine
+- [0003](architecture/decisions/0003-site-agent.md) — Introduce an in-restaurant Site Agent
+- [0004](architecture/decisions/0004-react-pwa-not-blazor.md) — React PWA for clients, not Blazor
+- [0005](architecture/decisions/0005-plain-guid-ids.md) — Plain `Guid` ids, isolation enforced by RLS
+- [0006](architecture/decisions/0006-no-mediatr.md) — Hand-rolled dispatcher instead of MediatR
+
+## Fiscal domain
+
+The highest-risk area of the system. Read before touching anything under
+`RestaurantPos.Fiscal.*`.
+
+- [fiscal/README.md](fiscal/README.md) — Portuguese requirements: ATCUD, QR, signature, SAF-T
+- [fiscal/certification.md](fiscal/certification.md) — the AT certification process and its prerequisites
+- [fiscal/key-management.md](fiscal/key-management.md) — custody of the signing key
+
+## Development
+
+- [development/getting-started.md](development/getting-started.md)
+- [development/testing.md](development/testing.md) — the testing bar, which is not uniform
+- [development/documentation.md](development/documentation.md) — how docs are kept current
+
+## Product
+
+- [product/plan.md](product/plan.md) — the approved build plan and 6-month roadmap
+- [product/status.md](product/status.md) — living record of what is built

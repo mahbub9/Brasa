@@ -1,0 +1,82 @@
+# CLAUDE.md
+
+Guidance for Claude Code when working in this repository.
+
+## What this is
+
+Multi-tenant restaurant management SaaS for **Portugal**. Solo developer, .NET 10
+backend, React PWA clients, targeting a first live restaurant in ~6 months.
+
+**Read [docs/README.md](docs/README.md) first.** The architecture is unusual and
+the reasons are documented; do not infer intent from the code alone.
+
+## Before you change anything
+
+| Situation | Read first |
+|---|---|
+| Anything fiscal | [docs/fiscal/README.md](docs/fiscal/README.md) — legal constraints, not preferences |
+| Money, totals, splitting | [docs/architecture/money.md](docs/architecture/money.md) |
+| A new module or cross-module call | [docs/architecture/module-boundaries.md](docs/architecture/module-boundaries.md) |
+| Tenant-scoped data | [docs/architecture/multi-tenancy.md](docs/architecture/multi-tenancy.md) |
+| Wondering "why is it like this?" | [docs/architecture/decisions/](docs/architecture/decisions/) |
+| Wondering "does this actually work yet?" | [docs/product/status.md](docs/product/status.md) |
+
+## Hard rules
+
+1. **Money is `Money`.** Never `double`, `float`, or bare `decimal`. Split bills
+   with `Allocate`, never division.
+2. **Never call `DateTime.UtcNow`.** Inject `IClock`.
+3. **Never mutate an issued fiscal document.** Corrections are credit notes. A
+   code path that can invisibly alter fiscal data is a *certification failure*,
+   not a code smell.
+4. **Modules never reference or query each other.** Use integration events.
+5. **Expected failures return `Result`**, not exceptions.
+6. **Do not weaken the build policy.** `TreatWarningsAsErrors` is on
+   deliberately — it caught a transitive CVE on day one. Suppress in
+   `.editorconfig` with a written reason, or fix the warning.
+
+## Commands
+
+```powershell
+dotnet build RestaurantPos.slnx
+dotnet test  RestaurantPos.slnx
+dotnet test  tests/RestaurantPos.Shared.Tests      # fast, no Docker needed
+dotnet run   --project src/backend/RestaurantPos.Api
+```
+
+## Environment notes
+
+- Windows 10 Home. Shell is **PowerShell 5.1** — no `&&`, no ternary, no
+  null-coalescing. Chain with `;` and `if ($?) { }`.
+- The solution file is **`RestaurantPos.slnx`** (the .NET 10 XML format), not
+  `.sln`.
+- **Docker is not installed** and WSL has no distribution. Integration tests
+  (Testcontainers) cannot run until that is resolved. Unit tests run fine. See
+  [docs/development/getting-started.md](docs/development/getting-started.md).
+
+## Documentation is part of the work
+
+Update docs in the **same commit** as the code. Specifically:
+
+- Finishing or starting a component → update
+  [docs/product/status.md](docs/product/status.md).
+- A non-obvious technical choice → add an ADR.
+- Describing something not yet built → mark it `> **Status: stub.**` and use
+  future tense.
+
+The full contract is in
+[docs/development/documentation.md](docs/development/documentation.md).
+
+## Things that are easy to get wrong here
+
+- **Series chaining is per-series, never global.** Two series advance
+  independently.
+- **The pre-bill given to a table is a *documento não fiscal***, not an invoice.
+  Issuing it as an invoice would fiscalise every table that asks to see the bill.
+- **VAT rates are not settled.** They are modelled as data with effective dates
+  and need accountant confirmation. Do not hardcode them.
+- **The Azores are an hour behind the mainland**, which affects daily close and
+  SAF-T period boundaries.
+- **Order lines copy the item name, price and VAT rate at the time of sale.** That
+  is correctness, not denormalisation — a receipt must show what the item cost
+  when it was sold.
