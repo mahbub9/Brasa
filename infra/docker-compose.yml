@@ -6,8 +6,14 @@
 #
 #   docker compose -f infra/docker-compose.yml up -d
 #
-# NOTE: Docker is not yet installed on the primary dev machine.
-# See docs/development/getting-started.md.
+# Two Postgres roles exist, and the split matters:
+#   brasa      the POSTGRES_USER bootstrap role. It is a SUPERUSER, and
+#              superusers bypass row-level security unconditionally. Used only
+#              for running migrations (DDL, RLS policy creation).
+#   brasa_app  an ordinary role created by infra/initdb/01-app-role.sql, with no
+#              superuser or BYPASSRLS attribute. The application connects as
+#              this role at runtime, so RLS actually applies.
+# See docs/architecture/multi-tenancy.md.
 
 name: brasa
 
@@ -31,6 +37,7 @@ services:
       # .../data makes the container refuse to start.
       # https://github.com/docker-library/postgres/pull/1259
       - pgdata:/var/lib/postgresql
+      - ./initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U brasa -d brasa"]
       interval: 5s

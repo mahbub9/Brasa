@@ -91,6 +91,18 @@ dotnet_naming_style.underscore_prefix.required_prefix = _
 dotnet_naming_style.underscore_prefix.capitalization = camel_case
 
 # ─────────────────────────────────────────────────────────────────────────────
+#  EF Core migrations: generated code, never hand-edited. The scaffolding
+#  template emits block-scoped namespaces and cannot be told to match our style,
+#  so style rules are relaxed here rather than fighting `dotnet ef migrations add`
+#  on every single run.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[**/Migrations/*.cs]
+generated_code = true
+csharp_style_namespace_declarations = block_scoped:silent
+dotnet_diagnostic.IDE0161.severity = none
+
+# ─────────────────────────────────────────────────────────────────────────────
 #  Tests: relax rules that only make sense for shipped library code.
 # ─────────────────────────────────────────────────────────────────────────────
 

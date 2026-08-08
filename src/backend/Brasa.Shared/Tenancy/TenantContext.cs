@@ -46,6 +46,10 @@ public sealed class TenantContext : ITenantContext
         TerminalId = terminalId;
         UserId = userId;
         _resolved = true;
+
+        // Flows the tenant to EF Core's query filters for the rest of this async
+        // call chain. See TenantContextAccessor for why this indirection exists.
+        TenantContextAccessor.SetCurrentTenant(tenantId);
     }
 
     /// <summary>
@@ -59,6 +63,11 @@ public sealed class TenantContext : ITenantContext
 
         IsSystemContext = true;
         _resolved = true;
+
+        // The system context bypasses RLS via a privileged database role (see
+        // RowLevelSecurity), so no tenant is set for the query filter either —
+        // system code is expected to query across tenants explicitly, not rely
+        // on an implicit single-tenant filter.
     }
 
     private void EnsureUnresolved()
