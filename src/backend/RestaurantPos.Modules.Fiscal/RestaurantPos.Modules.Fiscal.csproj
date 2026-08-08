@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>RestaurantPos.Modules.Fiscal</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <!--
+    Module boundary rule: modules MUST NOT reference each other.
+    Cross-module communication goes through integration events in Shared.
+    See docs/architecture/module-boundaries.md
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\RestaurantPos.Shared\RestaurantPos.Shared.csproj" />
+  </ItemGroup>
+
+</Project>

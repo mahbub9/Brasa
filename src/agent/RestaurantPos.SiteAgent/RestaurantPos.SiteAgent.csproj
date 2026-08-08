@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>RestaurantPos.SiteAgent</RootNamespace>
+    <UserSecretsId>restaurantpos-siteagent</UserSecretsId>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+
+  <!--
+    Runs inside the restaurant, on a mini-PC or the main POS terminal.
+    Responsibilities (see docs/architecture/site-agent.md):
+      1. Custody of the fiscal RSA private key + offline document signing
+      2. ESC/POS printing to kitchen and bar stations
+      3. LAN REST + SignalR hub so terminals keep working without internet
+      4. Outbox sync to the cloud
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.Http.Resilience" />
+    <PackageReference Include="Serilog.AspNetCore" />
+    <PackageReference Include="Serilog.Sinks.Console" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\backend\RestaurantPos.Shared\RestaurantPos.Shared.csproj" />
+    <ProjectReference Include="..\..\backend\RestaurantPos.Modules.Fiscal\RestaurantPos.Modules.Fiscal.csproj" />
+    <ProjectReference Include="..\..\backend\RestaurantPos.Fiscal.Portugal\RestaurantPos.Fiscal.Portugal.csproj" />
+  </ItemGroup>
+
+</Project>

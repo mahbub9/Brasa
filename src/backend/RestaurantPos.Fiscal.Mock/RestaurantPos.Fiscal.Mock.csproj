@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>RestaurantPos.Fiscal.Mock</RootNamespace>
+  </PropertyGroup>
+
+  <!--
+    Deterministic IFiscalProvider used for development and tests.
+    Produces structurally valid but fiscally meaningless documents so the POS
+    can be built end-to-end before the Portuguese engine and AT certification land.
+    MUST NOT be registered in Production - see FiscalProviderRegistration guard.
+  -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\RestaurantPos.Modules.Fiscal\RestaurantPos.Modules.Fiscal.csproj" />
+    <ProjectReference Include="..\RestaurantPos.Shared\RestaurantPos.Shared.csproj" />
+  </ItemGroup>
+
+</Project>
