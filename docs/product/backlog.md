@@ -6,10 +6,16 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | Doc | Answers |
 |---|---|
-| **This page** | What are we building, in what order, and how far along is it? |
+| **This page** | What are we building, and how far along is each task? |
+| [roadmap.md](roadmap.md) | **When** — which increment each task belongs to, and its demo |
 | [status.md](status.md) | Which code actually exists and works today? |
 | [../features/](../features/) | How does a built feature behave — offline, on failure? |
 | [plan.md](plan.md) | Why is the roadmap shaped this way? (historical record) |
+
+> **Delivery is incremental** — vertical slices, each ending in a runnable demo,
+> not layer-by-layer. The epic tables below are grouped by area for reference;
+> **[roadmap.md](roadmap.md) is what says what to build next.** Tasks from many
+> epics land in the same week.
 
 **Rules**
 

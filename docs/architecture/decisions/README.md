@@ -21,6 +21,7 @@ it feels wrong.
 | [0006](0006-no-mediatr.md) | Hand-rolled dispatcher instead of MediatR | Accepted | MediatR is now commercially licensed; we need ~150 lines of it |
 | [0007](0007-client-agnostic-api.md) | One client-agnostic API for every platform | Accepted | Android and iOS must ship without backend change; a BFF per platform is the opposite of that |
 | [0008](0008-token-auth-no-cookies.md) | Token auth, device-bound refresh, no cookies | Accepted | Cookie auth cannot serve native apps, and a POS terminal is trusted hardware, not a user |
+| [0009](0009-incremental-delivery.md) | Incremental delivery, walking skeleton first | Accepted | Vertical slices with a demo script as the definition of done; certification stays binary regardless |
 
 ## Writing a new one
 

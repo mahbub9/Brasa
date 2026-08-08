@@ -28,6 +28,7 @@ from the code alone.
 | A new module or cross-module call | [docs/architecture/module-boundaries.md](docs/architecture/module-boundaries.md) |
 | Tenant-scoped data | [docs/architecture/multi-tenancy.md](docs/architecture/multi-tenancy.md) |
 | Wondering "why is it like this?" | [docs/architecture/decisions/](docs/architecture/decisions/) |
+| Wondering "what do I build next?" | [docs/product/roadmap.md](docs/product/roadmap.md) — increments with demo scripts |
 | Wondering "does this actually work yet?" | [docs/product/status.md](docs/product/status.md) |
 
 ## Hard rules

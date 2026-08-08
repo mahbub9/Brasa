@@ -67,18 +67,28 @@ Condensed:
 - 🚧 **Stub:** `SiteAgent` starts and stops; nothing else.
 - ⬜ **Not started:** EF Core + RLS, all web clients, everything fiscal.
 
-**Full task tracker: [../product/backlog.md](../product/backlog.md)** — 278
-tasks across 19 epics, each with a stable ID (`DAT-05`, `FIS-09`). Reference IDs
-in commits: `feat(identity): terminal pairing (IDN-07)`. Update the status in the
-same commit as the work.
+**Delivery is incremental** — vertical slices, each ending in a runnable demo.
+**[../product/roadmap.md](../product/roadmap.md) says what to build next**;
+[../product/backlog.md](../product/backlog.md) holds the 278 tasks and their
+status. Reference IDs in commits: `feat(identity): terminal pairing (IDN-07)`,
+and update the status in the same commit.
 
-**Next session:** end-to-end testing with Playwright — epic **QA**, starting at
-QA-01. Analysis and the recommendation are already written in
-[../development/e2e-testing.md](../development/e2e-testing.md).
+**Current increment: I0 — walking skeleton, week 1.** The thinnest slice through
+every layer, deployed. Demo: open a table, add three items, split the bill three
+ways, produce a receipt, in a browser on a real URL.
 
-**Then:** EF Core + PostgreSQL with `tenant_id`, global query filters and the RLS
-migration (**DAT-01…11**), followed by Identity (**IDN**) and the API platform
-seams (**API**).
+I0 tasks: DAT-01/03/04/**05**/06/10 · API-01/03/05 · CAT-01/02/07 ·
+ORD-01/02/03/04/15 · FIS-01/02/03 · OPS-11 · minimal POS shell.
+
+**Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
+
+> RLS (DAT-05), idempotency (API-05) and `/api/v1` (API-01) are in I0 **on
+> purpose**. They are conventions, not features, and conventions are only free
+> if they start at line one. Do not defer them to "when it matters".
+
+The E2E harness (QA-01…06, Playwright — see
+[../development/e2e-testing.md](../development/e2e-testing.md)) lands alongside
+I0–I1, not after.
 
 ## 4. Repo map
 
@@ -117,7 +127,8 @@ infra/                            docker-compose (PostgreSQL 18, Seq)
 | Code style, analyzer policy | [../architecture/conventions.md](../architecture/conventions.md) |
 | Testing expectations | [../development/testing.md](../development/testing.md) |
 | A Portuguese term you don't know | [../glossary.md](../glossary.md) |
-| What to work on next, or task status | [../product/backlog.md](../product/backlog.md) |
+| **What to build next** | [../product/roadmap.md](../product/roadmap.md) — increments and demo scripts |
+| Task status, or a task's ID | [../product/backlog.md](../product/backlog.md) |
 | Why this product is worth building | [../product/differentiation.md](../product/differentiation.md) |
 | End-to-end testing | [../development/e2e-testing.md](../development/e2e-testing.md) |
 | The overall plan and roadmap | [../product/plan.md](../product/plan.md) |
@@ -137,6 +148,7 @@ there is actually met.
 | [0006](../architecture/decisions/0006-no-mediatr.md) | Hand-rolled dispatcher; MediatR is now commercially licensed |
 | [0007](../architecture/decisions/0007-client-agnostic-api.md) | One client-agnostic API for every platform — **no BFF** |
 | [0008](../architecture/decisions/0008-token-auth-no-cookies.md) | Token auth with PKCE, device-bound refresh, **no cookies** |
+| [0009](../architecture/decisions/0009-incremental-delivery.md) | Incremental delivery; walking skeleton first, demo script is done |
 
 ## 7. Traps — things that look wrong but are intentional
 

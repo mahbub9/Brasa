@@ -72,7 +72,8 @@ The highest-risk area of the system. Read before touching anything under
 
 ## Product
 
-- [product/backlog.md](product/backlog.md) — **every feature and task, with status. The plan of record**
+- [product/roadmap.md](product/roadmap.md) — **increments and demo scripts. What to build next**
+- [product/backlog.md](product/backlog.md) — every feature and task, with status
 - [product/differentiation.md](product/differentiation.md) — competitive positioning and what makes this worth starting
 - [product/status.md](product/status.md) — which code actually exists today
 - [product/plan.md](product/plan.md) — the approved build plan and 6-month roadmap

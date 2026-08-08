@@ -48,6 +48,7 @@ export default defineConfig({
       {
         text: 'Product',
         items: [
+          { text: 'Roadmap', link: '/product/roadmap' },
           { text: 'Backlog & progress', link: '/product/backlog' },
           { text: 'Differentiation', link: '/product/differentiation' },
           { text: 'Build status', link: '/product/status' },
@@ -100,6 +101,7 @@ export default defineConfig({
           { text: '0006 — No MediatR', link: '/architecture/decisions/0006-no-mediatr' },
           { text: '0007 — Client-agnostic API', link: '/architecture/decisions/0007-client-agnostic-api' },
           { text: '0008 — Token auth, no cookies', link: '/architecture/decisions/0008-token-auth-no-cookies' },
+          { text: '0009 — Incremental delivery', link: '/architecture/decisions/0009-incremental-delivery' },
         ],
       },
       {
@@ -125,6 +127,7 @@ export default defineConfig({
         text: 'Product',
         collapsed: false,
         items: [
+          { text: 'Roadmap', link: '/product/roadmap' },
           { text: 'Backlog & progress', link: '/product/backlog' },
           { text: 'Differentiation', link: '/product/differentiation' },
           { text: 'Feature docs', link: '/features/' },

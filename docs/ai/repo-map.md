@@ -133,7 +133,7 @@ rewrites them to site index pages, so one file serves both.
 | `architecture/site-agent.md` | In-restaurant process design (stub status) |
 | `architecture/conventions.md` | Code conventions, build policy, suppression register |
 | `architecture/decisions/README.md` | ADR index with one-line summaries |
-| `architecture/decisions/0001..0008` | ADRs — each with a "Revisit when" trigger |
+| `architecture/decisions/0001..0009` | ADRs — each with a "Revisit when" trigger |
 | `fiscal/README.md` | ATCUD, signature chain, QR, SAF-T, document types, VAT |
 | `fiscal/certification.md` | AT process, prerequisites, what AT verifies |
 | `fiscal/key-management.md` | Signing key custody and open questions |
@@ -142,7 +142,8 @@ rewrites them to site index pages, so one file serves both.
 | `development/e2e-testing.md` | End-to-end strategy; Playwright recommendation (next session) |
 | `development/documentation.md` | The documentation contract |
 | `features/` | Per-feature documentation, one page each |
-| `product/backlog.md` | **278 tasks, 19 epics, stable IDs. The plan of record** |
+| `product/roadmap.md` | **Increments I0–I8 with demo scripts. What to build next** |
+| `product/backlog.md` | 278 tasks, 19 epics, stable IDs. Task status |
 | `product/differentiation.md` | Competitive positioning; DIF epic rationale |
 | `product/plan.md` | Approved build plan and 6-month roadmap (historical) |
 | `product/status.md` | **Honest inventory of which code exists** |
