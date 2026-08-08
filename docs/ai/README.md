@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 backend proven live end-to-end; web POS shell, deployment and E2E harness remain
+**Last verified:** 2026-08-09 · **Phase:** I0 backend and POS web shell proven live end-to-end; deployment and E2E harness remain
 
 ---
 
@@ -62,25 +62,27 @@ Condensed:
   `Money` (17 tests), `Result`/`Error`, tenancy + **real RLS** (DAT-01…06),
   `Catalog` (categories/items, seeded), `Ordering` (open/add-line/split/close),
   `Fiscal` contract + `Fiscal.Mock`, API layer (versioning, ProblemDetails,
-  idempotency, the full order flow), Docker Compose (PostgreSQL 18 + Seq), full
+  idempotency, CORS, the full order flow), the `pos` web shell (React 19 +
+  Vite + TS, one screen, WEB-01), Docker Compose (PostgreSQL 18 + Seq), full
   docs tree, CI.
 - 📁 **Empty projects (structure only, zero logic):** `Modules.Identity`,
   `Modules.Payments`, `Modules.Reporting`, `Fiscal.Portugal`.
 - 🚧 **Stub:** `SiteAgent` starts and stops; nothing else.
-- ⬜ **Not started:** every web client, the E2E harness, deployment.
+- ⬜ **Not started:** `kds`/`admin`/`order` web clients, the E2E harness, deployment.
 
 **Delivery is incremental** — vertical slices, each ending in a runnable demo.
 **[../product/roadmap.md](../product/roadmap.md) says what to build next**;
-[../product/backlog.md](../product/backlog.md) holds the 278 tasks and their
+[../product/backlog.md](../product/backlog.md) holds the 290 tasks and their
 status. Reference IDs in commits: `feat(identity): terminal pairing (IDN-07)`,
 and update the status in the same commit.
 
-**Current increment: I0 — walking skeleton, week 1.** Backend done and proven;
-remaining: the POS web shell, deployment (OPS-11), and the Playwright E2E
-harness (QA-01…06 — see [../development/e2e-testing.md](../development/e2e-testing.md)).
+**Current increment: I0 — walking skeleton, week 1.** Backend and the `pos`
+web shell are done and proven; remaining: deployment (OPS-11) and the
+Playwright E2E harness (QA-01…06 — see
+[../development/e2e-testing.md](../development/e2e-testing.md)).
 
 Backend I0 tasks — **done**: DAT-01/03/04/**05**/06/10 · API-01/03/05 ·
-CAT-01/02/07 · ORD-01/02/03/04/15 · FIS-01/02/03.
+CAT-01/02/07 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 
@@ -115,6 +117,14 @@ nothing about whether tenant isolation actually worked. If you build something
 that depends on database-level behaviour (RLS, triggers, constraints), run it
 against the real database and try to break it before calling it done.
 
+The `pos` web shell was then verified the same way — `curl` reproducing the
+exact browser request sequence (CORS preflight, `Origin` header,
+`Idempotency-Key`) against the running API, confirming every DTO shape matches
+the shell's TypeScript types field-for-field. It was **not** driven inside an
+actual rendered browser — no browser-automation tool was available in that
+session. If you have one, open `localhost:5173` and actually click through it
+before trusting the UI beyond "it builds and the wire contract matches."
+
 ## 4. Repo map
 
 Detailed file-by-file inventory: [repo-map.md](repo-map.md).
@@ -133,6 +143,8 @@ src/backend/
   Brasa.Fiscal.Mock       Deterministic fake for dev and tests
 src/agent/
   Brasa.SiteAgent         In-restaurant worker: signing, printing, LAN hub
+src/web/
+  pos                     POS PWA (React + TS + Vite) — I0 shell, WEB-01
 tests/                            Unit, fiscal golden-file, integration
 docs/                             This documentation tree
 infra/                            docker-compose (PostgreSQL 18, Seq)
@@ -220,6 +232,7 @@ dotnet test  Brasa.slnx
 dotnet test  tests/Brasa.Shared.Tests   # fast path
 dotnet run   --project src/backend/Brasa.Api
 docker compose -f infra/docker-compose.yml up -d
+cd src/web/pos ; npm install ; npm run dev   # http://localhost:5173
 ```
 
 ## 9. Open blockers

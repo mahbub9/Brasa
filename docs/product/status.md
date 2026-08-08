@@ -8,7 +8,7 @@
 > [backlog.md](backlog.md) — 278 tasks with stable IDs. This page is
 > component-level; the backlog is task-level.
 
-**Last updated:** 2026-08-09 · **Roadmap phase:** I0 — walking skeleton, backend proven end-to-end
+**Last updated:** 2026-08-09 · **Roadmap phase:** I0 — walking skeleton, backend and POS web shell proven end-to-end
 
 ## Legend
 
@@ -30,7 +30,7 @@
 | `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
 | `Brasa.Shared` — outbox contracts | ✅ | Types defined; **no dispatcher implementation yet** |
-| `Brasa.Api` | ✅ | I0 walking skeleton: `/api/v1/ping`, `/menu`, `/orders` (+`/lines`, `/split`, `/close`), `/health`. Serilog, ProblemDetails, API versioning, idempotency |
+| `Brasa.Api` | ✅ | I0 walking skeleton: `/api/v1/ping`, `/menu`, `/orders` (+`/lines`, `/split`, `/close`), `/health`. Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
 | EF Core + PostgreSQL + RLS | ✅ | **Verified live**, not just asserted: `brasa_app` (unprivileged runtime role) sees zero rows with no tenant set or the wrong tenant set, and cannot run DDL. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | `Modules.Identity` | 📁 | I3 (auth) |
 | `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem`, seeded demo menu spanning both VAT bands |
@@ -53,12 +53,12 @@
 
 ## Web clients
 
-| Client | State |
-|---|---|
-| `pos` | ⬜ Next |
-| `kds` | ⬜ |
-| `admin` | ⬜ |
-| `order` (QR self-ordering) | ⬜ |
+| Client | State | Notes |
+|---|---|---|
+| `pos` | ✅ I0 shell | React 19 + Vite 8 + TS, one screen: open table → menu → lines → split preview → close → receipt. No auth, no offline, no Dexie yet — those are I2 (see [roadmap.md](roadmap.md)) |
+| `kds` | ⬜ | |
+| `admin` | ⬜ | |
+| `order` (QR self-ordering) | ⬜ | |
 
 ## Tests
 
@@ -78,6 +78,20 @@ receive a fiscal document whose gross total matches the order total shown
 throughout service, with net + VAT reconciling to the cent. Idempotency
 verified by replaying an identical `POST /orders` and confirming, via direct
 SQL, that only one row was created.
+
+The same flow was then re-verified through the actual HTTP path the `pos` web
+shell uses — CORS preflight, `Origin: http://localhost:5173`, and the
+`Idempotency-Key` header on every mutating call — confirming the API's JSON
+shapes match the shell's TypeScript types field-for-field and that a missing
+`Idempotency-Key` returns the `ProblemDetails.code` shape the client parses.
+
+> **Caveat:** this was exercised with `curl` reproducing exactly what the
+> browser sends (including the preflight), not by driving the rendered page in
+> an actual browser — no browser-automation tool was available in this
+> session. The React code paths (state transitions, rendering) are therefore
+> unverified beyond `tsc` and a production `vite build` succeeding. Treat the
+> UI as reviewed, not proven, until someone opens `localhost:5173` by hand or
+> the Playwright harness (below) covers it.
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:

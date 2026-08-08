@@ -48,19 +48,21 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
 | **FIS** | Fiscal engine | 3 | 24 | I0 (rest: I7) |
+| **WEB** | Web clients | 1 | 12 | I0 (rest: I1–I8) |
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
 | **QA** | Automated testing | 0 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **48** | **278** | |
+| | **Total** | **49** | **290** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 48 of 278 — I0's backend half is done and proven live (details:
+> 49 of 290 — I0's backend and the `pos` web shell are both done and proven
+> against a live API (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -297,6 +299,28 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | FIS-22 | SAF-T XSD validation in CI | ⬜ |
 | FIS-23 | Monthly SAF-T submission job (by the 5th) with retry and paging | ⬜ |
 | FIS-24 | Golden-file test suite | ⬜ |
+
+## WEB — Web clients
+
+> React + TypeScript, PWA. `pos`, `kds`, `admin`, `order` each get their own
+> app; `web/ui` and `web/sdk` are shared across all four. This epic covers the
+> client shells themselves — the domain work they call into (menu, orders,
+> floor plan) is tracked in its own epic (CAT, ORD, FLR, ...).
+
+| ID | Task | Status |
+|---|---|---|
+| WEB-01 | `pos` minimal shell — open table, ring up, split preview, close | ✅ I0: one screen, no auth, no offline. See [status.md](status.md#web-clients) |
+| WEB-02 | Shared `web/ui` component library | ⬜ |
+| WEB-03 | Shared `web/sdk` — OpenAPI-generated typed client | ⬜ replaces `pos`'s hand-written `src/api/` (I0 placeholder) |
+| WEB-04 | `pos` — Dexie local store and offline-first data layer | ⬜ I2, depends on SYN |
+| WEB-05 | `pos` — floor plan / table selection screen | ⬜ depends on FLR |
+| WEB-06 | `pos` — menu browsing with modifiers and courses | ⬜ |
+| WEB-07 | `pos` — staff PIN login screen | ⬜ depends on IDN |
+| WEB-08 | `kds` shell — station view, bump, prep timers | ⬜ I4 |
+| WEB-09 | `admin` shell — back-office SPA scaffold | ⬜ I1 |
+| WEB-10 | `admin` — menu and floor-plan editors | ⬜ |
+| WEB-11 | `admin` — staff, roles and reporting screens | ⬜ |
+| WEB-12 | `order` shell — QR self-ordering PWA | ⬜ Post-I8 |
 
 ## PAY — Payments & cash sessions
 

@@ -67,7 +67,7 @@ Depended on by every module; depends on no module. Deliberately small.
 
 | File | State | Contents |
 |---|---|---|
-| `Program.cs` | ✅ | Two-role DI wiring (runtime vs. migration connection — [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)), API versioning, migration runner, dev seeding, full middleware pipeline |
+| `Program.cs` | ✅ | Two-role DI wiring (runtime vs. migration connection — [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)), API versioning, CORS (`Cors:AllowedOrigins`, for web clients), migration runner, dev seeding, full middleware pipeline |
 | `Tenancy/DevTenantMiddleware.cs` | ✅ | Attributes every request to one hardcoded tenant. **The entire auth story until IDN-03…08 (I3).** Throws if `IsProduction()` |
 | `Idempotency/IdempotencyMiddleware.cs` | ✅ | Requires `Idempotency-Key` on mutating `/api` requests; replays the cached response on repeat. In-memory, per-instance — durable store needed before scaling out |
 | `ErrorMapping.cs` | ✅ | The only place `ErrorType` → HTTP status is decided |
@@ -108,6 +108,24 @@ composition is the API layer's job, not something the modules do to each other.
 
 ⬜ **Missing (Month 3):** SQLite store, fiscal signing, ESC/POS printing, LAN
 REST + SignalR hub, cloud outbox sync.
+
+## `src/web/pos` ✅ I0 shell
+
+React 19 + Vite 8 + TypeScript. One screen, no auth, no offline — proves the
+API in a browser. Hand-written API layer (`src/api/`) is a placeholder for
+`web/sdk` (WEB-03, generated from OpenAPI) once a second client app needs it.
+
+| File | State | Contents |
+|---|---|---|
+| `src/App.tsx` | ✅ | Orchestrates the three phases: open table → order (menu + summary) → receipt |
+| `src/api/client.ts` | ✅ | `fetch` wrapper; `ApiError` carries the `ProblemDetails.code`; every mutation gets its own `Idempotency-Key` via `crypto.randomUUID()` |
+| `src/api/types.ts` | ✅ | Hand-written mirror of `Brasa.Api/Contracts/*.cs` — kept in sync manually until WEB-03 |
+| `src/components/*.tsx` | ✅ | `OpenTableForm`, `MenuGrid`, `OrderSummary`, `Receipt`, `ErrorBanner` |
+| `src/lib/money.ts` | ✅ | `Intl.NumberFormat('pt-PT', …)` — never formats `Money` by hand |
+| `.env.example` | ✅ | Documents `VITE_API_BASE_URL`; defaults to the API's `http` launch profile |
+
+⬜ **Missing:** auth, offline (Dexie), floor plan, everything past I0 — see the
+`WEB` epic in [backlog.md](../product/backlog.md).
 
 ## `tests/`
 
@@ -155,7 +173,7 @@ rewrites them to site index pages, so one file serves both.
 | `development/documentation.md` | The documentation contract |
 | `features/` | Per-feature documentation, one page each |
 | `product/roadmap.md` | **Increments I0–I8 with demo scripts. What to build next** |
-| `product/backlog.md` | 278 tasks, 19 epics, stable IDs. Task status |
+| `product/backlog.md` | 290 tasks, 20 epics, stable IDs. Task status |
 | `product/differentiation.md` | Competitive positioning; DIF epic rationale |
 | `product/plan.md` | Approved build plan and 6-month roadmap (historical) |
 | `product/status.md` | **Honest inventory of which code exists** |
@@ -164,7 +182,6 @@ rewrites them to site index pages, so one file serves both.
 
 | Path | Purpose | Increment |
 |---|---|---|
-| `web/pos` | POS PWA (React + TS + Vite). I0's remaining piece — no offline yet, that's I5 | **I0, next** |
 | `web/ui` | Shared component library | I0/I1 |
 | `web/sdk` | TypeScript client generated from OpenAPI | I0/I1 |
 | `web/admin` | Back-office SPA | I1 |

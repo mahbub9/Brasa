@@ -56,6 +56,26 @@ dotnet run --project src/backend/Brasa.Api
   the cloud is available
 - `GET /openapi/v1.json` — OpenAPI document (Development only)
 
+## Running the POS web shell
+
+```powershell
+cd src/web/pos
+npm install
+npm run dev
+```
+
+Opens on `http://localhost:5173`. It talks to the API at
+`http://localhost:5216/api/v1` by default (the `http` launch profile) — override
+with `VITE_API_BASE_URL` in a `.env.development.local` (see `.env.example`) if
+your API runs elsewhere. The API's `Cors:AllowedOrigins` config
+(`appsettings.Development.json`) must include the dev server's origin or the
+browser will block every request; `http://localhost:5173` is already there.
+
+**I0 scope:** one screen, no auth, every request attributed to the fixed dev
+tenant by `DevTenantMiddleware`. It exists to prove the API end-to-end in a
+browser, not as the real POS UX — see
+[docs/product/status.md](../product/status.md).
+
 ## Local infrastructure
 
 ```powershell
