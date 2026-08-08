@@ -4,7 +4,7 @@
 > can locate work without reading the tree. **Update this in the same commit as
 > any file added, moved, or deleted.**
 
-**Last verified:** 2026-08-08 · Companion to [README.md](README.md)
+**Last verified:** 2026-08-09 · Companion to [README.md](README.md)
 
 **Legend:** ✅ implemented · 🚧 partial · 📁 empty project, structure only · ⬜ planned
 
@@ -51,42 +51,53 @@ Depended on by every module; depends on no module. Deliberately small.
 | `Tenancy/TenantContext.cs` | ✅ | Resolve-once-per-scope; throws on reassignment |
 | `Time/IClock.cs` | ✅ | `IClock`, `SystemClock`. Nothing may call `DateTime.UtcNow` |
 | `Time/PortugueseTimeZone.cs` | ✅ | `PortugueseRegion` (Continental/Madeira/Azores) + business-day calculation |
-| `Persistence/Entity.cs` | ✅ | `IEntity`, `ITenantOwned`, `IAuditable`, `ISoftDeletable`, `Entity` (UUIDv7) |
+| `Persistence/Entity.cs` | ✅ | `IEntity`, `ITenantOwned`, `IAuditable`, `ISoftDeletable`, `Entity` (UUIDv7, `ValueGeneratedNever` — see [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) for why that matters) |
+| `Persistence/TenantAwareDbContext.cs` | ✅ | Base `DbContext` every module extends. Applies query filters, stamps tenant/audit fields on save, guards against tenant reassignment |
+| `Persistence/RowLevelSecurity.cs` | ✅ | `EnableFor`/`DisableFor` — emits the real RLS policy **and** grants the runtime role access, in the same migration |
+| `Persistence/TenantSessionInterceptor.cs` | ✅ | Sets the `brasa.tenant_id` Postgres session variable RLS policies read, per connection |
+| `Persistence/ModelBuilderExtensions.cs` | ✅ | `ApplyTenantQueryFilters`, `MapMoney`, `ApplyEntityConventions` (incl. the `ValueGeneratedNever` fix) |
+| `Persistence/PersistenceServiceCollectionExtensions.cs` | ✅ | `AddBrasaTenancy()` — one call wires tenancy + the session interceptor for a host |
+| `Tenancy/TenantContextAccessor.cs` | ✅ | `AsyncLocal`-backed singleton so EF's cached compiled model doesn't permanently capture one request's tenant |
 | `Messaging/IntegrationEvent.cs` | ✅ | Event, handler and dispatcher contracts. **Only sanctioned cross-module channel** |
 | `Messaging/OutboxMessage.cs` | ✅ | Transactional outbox row. Also the offline sync mechanism |
 
-⬜ **Missing:** the dispatcher implementation, EF Core configuration, DI registration.
+⬜ **Missing:** the dispatcher implementation.
 
-## `src/backend/Brasa.Api` 🚧
+## `src/backend/Brasa.Api` ✅ I0 walking skeleton
 
 | File | State | Contents |
 |---|---|---|
-| `Program.cs` | 🚧 | Serilog, ProblemDetails, OpenAPI, `/health`, `/api/v1/ping`. `partial class Program` so `WebApplicationFactory` can boot it. **No DB, no auth** |
-| `appsettings.json` | ✅ | Serilog console sink, Postgres connection string |
-| `appsettings.Development.json` | ✅ | Debug level, adds Seq sink at `localhost:5341` |
+| `Program.cs` | ✅ | Two-role DI wiring (runtime vs. migration connection — [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)), API versioning, migration runner, dev seeding, full middleware pipeline |
+| `Tenancy/DevTenantMiddleware.cs` | ✅ | Attributes every request to one hardcoded tenant. **The entire auth story until IDN-03…08 (I3).** Throws if `IsProduction()` |
+| `Idempotency/IdempotencyMiddleware.cs` | ✅ | Requires `Idempotency-Key` on mutating `/api` requests; replays the cached response on repeat. In-memory, per-instance — durable store needed before scaling out |
+| `ErrorMapping.cs` | ✅ | The only place `ErrorType` → HTTP status is decided |
+| `Endpoints/CatalogEndpoints.cs` | ✅ | `GET /menu` |
+| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders`, `GET /orders/{id}`, `POST /orders/{id}/lines`, `GET /orders/{id}/split`, `POST /orders/{id}/close` |
+| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`, `OrderDto`/`OrderLineDto`, `FiscalDocumentDto` + mappings |
+| `Seed/DevCatalogSeeder.cs` | ✅ | Seeds a Portuguese demo menu spanning both VAT bands. Guarded the same way as the mock fiscal provider |
+| `appsettings.json` | ✅ | **Two** connection strings — `Postgres` (runtime, `brasa_app`) and `PostgresMigrations` (`brasa`, superuser) |
 
-## `src/backend/Brasa.Modules.*` 📁
+## `src/backend/Brasa.Modules.*`
 
-All six are **empty projects** — `.csproj` only, zero source files. They exist so
-the structure is visible and the boundary rule is enforced by project references.
-
-| Module | Will own | Roadmap |
+| Module | State | Roadmap |
 |---|---|---|
-| `Identity` | Users, roles, staff PINs, terminal pairing | Month 0–1 (next) |
-| `Catalog` | Menu, modifiers, price lists, `TaxRule` | Month 1 |
-| `Ordering` | Orders, tables, courses, splits, transfers | Month 2 |
-| `Fiscal` | `IFiscalProvider`, document lifecycle, series, audit | Month 4 |
-| `Payments` | Tenders, cash sessions, tips | Month 4 |
-| `Reporting` | Read models, X/Z, VAT summaries | Month 5 |
+| `Identity` | 📁 empty | I3 |
+| `Catalog` | ✅ `MenuCategory`, `MenuItem`, `VatRate` (I0 placeholder for I1's full `TaxRule`), EF config + migration + design-time factory | — |
+| `Ordering` | ✅ `Order` aggregate, `OrderLine`, `OrderStatus`; EF config + migration + design-time factory | — |
+| `Fiscal` | ✅ `IFiscalProvider`, `FiscalDocument`, `FiscalDocumentLine` (VAT-inclusive derivation), `FiscalDocumentRequest`, `FiscalDocumentType` | — |
+| `Payments` | 📁 empty | I6 |
+| `Reporting` | 📁 empty | I8 |
 
-Each references **only** `Brasa.Shared`. Never each other.
+Each references **only** `Brasa.Shared`. Never each other. `Brasa.Api`'s
+`OrderEndpoints` composes Catalog + Ordering + Fiscal in one handler — that
+composition is the API layer's job, not something the modules do to each other.
 
-## `src/backend/Brasa.Fiscal.*` 📁
+## `src/backend/Brasa.Fiscal.*`
 
 | Project | State | Notes |
 |---|---|---|
-| `Fiscal.Portugal` | 📁 | ATCUD, RSA chain, QR, SAF-T, AT webservices. **The certification subject.** Month 4 |
-| `Fiscal.Mock` | 📁 | Deterministic fake so the POS can be built before certification. **Must never run in Production** |
+| `Fiscal.Portugal` | 📁 | ATCUD, RSA chain, QR, SAF-T, AT webservices. **The certification subject.** I7 |
+| `Fiscal.Mock` | ✅ | `MockFiscalProvider` — deterministic, every value `MOCK-`-prefixed. `FiscalMockServiceCollectionExtensions` throws if registered under `IsProduction()` |
 
 ## `src/agent/Brasa.SiteAgent` 🚧
 
@@ -103,14 +114,15 @@ REST + SignalR hub, cloud outbox sync.
 | Project | State | Notes |
 |---|---|---|
 | `Brasa.Shared.Tests` | ✅ | `Primitives/MoneyTests.cs` — 17 tests, exhaustive allocation over ~12,000 combinations |
-| `Brasa.Fiscal.Portugal.Tests` | 📁 | Golden-file fixture copying wired in `.csproj`; no tests yet |
+| `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 tests: `FiscalDocumentLineTests` (gross→net VAT derivation, exhaustive per rate — the regression test for the I0 VAT bug), `MockFiscalProviderTests` (per-tenant sequential numbering, mock markers, mixed-rate reconciliation) |
 | `Brasa.Api.IntegrationTests` | 📁 | Testcontainers + `Mvc.Testing` referenced; no tests yet |
 
 ## `infra/`
 
-| File | Purpose |
+| Path | Purpose |
 |---|---|
-| `docker-compose.yml` | PostgreSQL 18 (ICU, `pt-PT`) + Seq. Mounts `/var/lib/postgresql`, **not** `.../data` |
+| `docker-compose.yml` | PostgreSQL 18 (ICU, `pt-PT`) + Seq. Mounts `/var/lib/postgresql`, **not** `.../data`. Mounts `initdb/` for first-run role setup |
+| `initdb/01-app-role.sql` | Creates `brasa_app` — the unprivileged runtime role. Runs once, on first container init only. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 
 ## `docs/`
 
@@ -133,7 +145,7 @@ rewrites them to site index pages, so one file serves both.
 | `architecture/site-agent.md` | In-restaurant process design (stub status) |
 | `architecture/conventions.md` | Code conventions, build policy, suppression register |
 | `architecture/decisions/README.md` | ADR index with one-line summaries |
-| `architecture/decisions/0001..0009` | ADRs — each with a "Revisit when" trigger |
+| `architecture/decisions/0001..0010` | ADRs — each with a "Revisit when" trigger |
 | `fiscal/README.md` | ATCUD, signature chain, QR, SAF-T, document types, VAT |
 | `fiscal/certification.md` | AT process, prerequisites, what AT verifies |
 | `fiscal/key-management.md` | Signing key custody and open questions |
@@ -150,11 +162,14 @@ rewrites them to site index pages, so one file serves both.
 
 ## Not yet created
 
-| Path | Purpose | Roadmap |
+| Path | Purpose | Increment |
 |---|---|---|
-| `web/pos` | POS PWA (React + TS + Vite, offline-first) | Month 2 |
-| `web/kds` | Kitchen display | Month 3 |
-| `web/admin` | Back-office SPA | Month 1 |
-| `web/order` | QR self-ordering | Month 5 |
-| `web/ui` | Shared component library | Month 1 |
-| `web/sdk` | TypeScript client generated from OpenAPI | Month 1 |
+| `web/pos` | POS PWA (React + TS + Vite). I0's remaining piece — no offline yet, that's I5 | **I0, next** |
+| `web/ui` | Shared component library | I0/I1 |
+| `web/sdk` | TypeScript client generated from OpenAPI | I0/I1 |
+| `web/admin` | Back-office SPA | I1 |
+| `web/kds` | Kitchen display | I4 |
+| `web/order` | QR self-ordering | I8+ |
+
+Also not yet created: the deployment target for OPS-11 (I0), and the E2E test
+project for QA-01…06 (I0/I1).

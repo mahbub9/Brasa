@@ -33,6 +33,13 @@ RLS protects **all** of those, because the database refuses to return the rows
 regardless of how they were asked for. Given a choice of one mechanism, the one
 that cannot be bypassed is worth more than the one that is merely convenient.
 
+> **This claim was false in practice until [ADR 0010](0010-rls-runtime-role-split.md).**
+> A PostgreSQL superuser bypasses RLS unconditionally, and the role the
+> application connected as was one. The policies were correct; the connection
+> running them made them inert. Worth remembering: RLS is only the boundary
+> described above once the runtime role is verified non-superuser — it is not
+> a property of the SQL alone.
+
 `Guid` values are **UUIDv7** (`Guid.CreateVersion7()`), which are time-ordered —
 so they cluster well in B-tree indexes instead of scattering writes, and they can
 be generated offline by a disconnected terminal without collision risk.

@@ -66,6 +66,61 @@ Starts PostgreSQL 18 and Seq (structured log viewer, at `http://localhost:5341`)
 Credentials are development-only and committed on purpose; they grant access to
 nothing but a local container.
 
+**First run only:** `infra/initdb/01-app-role.sql` creates the `brasa_app`
+runtime role automatically — but only against a fresh, empty data volume. If
+you already had a `pgdata` volume from before this existed, recreate it:
+
+```powershell
+docker compose -f infra/docker-compose.yml down -v
+docker compose -f infra/docker-compose.yml up -d
+```
+
+**Why two roles.** `brasa` (`POSTGRES_USER`) is a Postgres **superuser**, and
+superusers bypass row-level security unconditionally — this was discovered the
+hard way, see [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md).
+The app connects as `brasa_app` (`ConnectionStrings:Postgres`) for everything;
+`brasa` (`ConnectionStrings:PostgresMigrations`) is used only to run migrations.
+If RLS ever appears to "not work" locally, check which role the query actually
+ran as before suspecting the policy.
+
+## Adding a migration
+
+Each module owns its EF Core migrations under its own `Persistence/Migrations/`
+folder. Install the tool once:
+
+```powershell
+dotnet tool install --global dotnet-ef
+```
+
+Then, for example, for Catalog:
+
+```powershell
+dotnet ef migrations add <Name> `
+  --project src/backend/Brasa.Modules.Catalog `
+  --startup-project src/backend/Brasa.Api `
+  --context CatalogDbContext `
+  --output-dir Persistence/Migrations
+```
+
+This uses `CatalogDbContextFactory`
+(`IDesignTimeDbContextFactory<CatalogDbContext>`), not `Brasa.Api`'s
+`Program.cs` — migration generation never depends on the app's startup
+behaviour (seeding, etc.). It connects with the **migration** role by default;
+override with the `BRASA_MIGRATIONS_CONNECTION` environment variable if your
+local setup differs from the default in `infra/docker-compose.yml`.
+
+**Every new tenant-owned table's migration must call
+`migrationBuilder.EnableFor(table, schema)`** in `Up()` (and `DisableFor` in
+`Down()`) — see [multi-tenancy.md](../architecture/multi-tenancy.md). A table
+created without it has no RLS policy at all, which is worse than one with a
+broken policy: at least a broken one is visibly present to review.
+
+Check whether a migration is actually needed before writing one by hand:
+
+```powershell
+dotnet ef migrations has-pending-model-changes --project src/backend/Brasa.Modules.Catalog --startup-project src/backend/Brasa.Api --context CatalogDbContext
+```
+
 ## Project conventions
 
 Read [../architecture/conventions.md](../architecture/conventions.md) before your

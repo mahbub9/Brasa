@@ -1,8 +1,14 @@
 # Multi-tenancy
 
-> **Status:** contracts exist (`ITenantContext`, `ITenantOwned`). The EF Core
-> layer and RLS policies are **not yet implemented** — see
-> [../product/status.md](../product/status.md).
+> **Status:** implemented and verified live for Catalog and Ordering — not yet
+> extended to the modules that don't exist yet (Identity, Payments, Reporting).
+> "Verified live" means what it says: a direct query as the runtime role,
+> tenant unset or set to the wrong tenant, returns zero rows; set to the owning
+> tenant, all rows. See [../product/status.md](../product/status.md) and
+> [ADR 0010](decisions/0010-rls-runtime-role-split.md) for a finding worth
+> reading before assuming this page describes something that just works: the
+> first implementation was fully policy-correct and completely inert, because
+> the connecting role was an undetected superuser.
 
 ## Hierarchy
 
@@ -36,6 +42,13 @@ asked for**. This is why ADR [0005](decisions/0005-plain-guid-ids.md) chose plai
 `Guid` ids over strongly-typed ones: compile-time typing protects only code paths
 that go through the type system, while RLS protects all of them.
 
+> ⚠️ **That guarantee has one precondition: the connecting role must not be a
+> superuser.** PostgreSQL superusers bypass RLS unconditionally — `FORCE ROW
+> LEVEL SECURITY` does not change this, it only affects the table *owner*. The
+> application connects as `brasa_app`, an ordinary role created by
+> `infra/initdb/01-app-role.sql` specifically because the default bootstrap
+> role is a superuser. See [ADR 0010](decisions/0010-rls-runtime-role-split.md).
+
 ## Tenant context
 
 [`ITenantContext`](https://github.com/mahbub9/Brasa/blob/main/src/backend/Brasa.Shared/Tenancy/ITenantContext.cs)
@@ -49,8 +62,18 @@ of silently serving one customer's data to another.
 ## The system context
 
 Some work legitimately crosses tenants — the monthly SAF-T submission sweep, for
-example. `TenantContext.ResolveAsSystem()` marks the scope as privileged and
-connects using a database role that bypasses RLS.
+example. `TenantContext.ResolveAsSystem()` marks the scope as privileged; no
+tenant is pushed to the query-filter accessor, so system code is expected to
+query across tenants explicitly rather than rely on an implicit single-tenant
+filter.
+
+> ⚠️ **Status: the flag exists; the privileged connection path does not yet.**
+> Given what [ADR 0010](decisions/0010-rls-runtime-role-split.md) found, the
+> tempting implementation — connect as a superuser or a `BYPASSRLS` role — is
+> exactly the mistake already made once for the ordinary runtime path, just
+> deliberately this time instead of accidentally. When this is built, it needs
+> its own explicit design (a third, narrowly-scoped role is the likely answer),
+> not an assumption that "system context" and "superuser" are the same thing.
 
 > **`ResolveAsSystem()` must never be reachable from an HTTP request path.** It is
 > for background jobs and migrations only.

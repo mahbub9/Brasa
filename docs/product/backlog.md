@@ -27,7 +27,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 **Legend** ✅ done · 🚧 in progress · ⬜ todo · 🔒 blocked · ⏭ deferred past MVP
 
-**Last updated:** 2026-08-08
+**Last updated:** 2026-08-09
 
 ---
 
@@ -35,29 +35,35 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | Epic | Area | Done | Total | Phase |
 |---|---|---:|---:|---|
-| **FND** | Foundation & shared kernel | 10 | 12 | Month 0 |
-| **OPS** | Infrastructure, CI, observability | 6 | 16 | Month 0 → ongoing |
-| **DOC** | Documentation system | 9 | 10 | Month 0 → ongoing |
-| **API** | API platform & mobile readiness | 0 | 18 | Month 0–1 |
-| **DAT** | Persistence, tenancy, RLS | 0 | 11 | Month 0–1 |
-| **IDN** | Identity & access | 0 | 16 | Month 1 |
-| **CAT** | Catalog & menu | 0 | 18 | Month 1 |
-| **FLR** | Floor plan & tables | 0 | 7 | Month 1 |
-| **ORD** | Ordering | 0 | 22 | Month 2 |
-| **SYN** | Offline sync engine | 0 | 13 | Month 2–3 |
-| **AGT** | Site Agent | 0 | 15 | Month 3 |
-| **KIT** | Kitchen printing & KDS | 0 | 14 | Month 3 |
-| **FIS** | Fiscal engine | 0 | 24 | Month 4 |
-| **PAY** | Payments & cash sessions | 0 | 14 | Month 4 |
-| **RPT** | Reporting | 0 | 12 | Month 5 |
-| **QR** | QR self-ordering | 0 | 9 | Month 5 |
-| **QA** | Automated testing | 0 | 14 | Month 1 → ongoing |
+| **FND** | Foundation & shared kernel | 10 | 12 | I0 |
+| **OPS** | Infrastructure, CI, observability | 6 | 16 | I0 → ongoing |
+| **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
+| **API** | API platform & mobile readiness | 3 | 18 | I0 (rest: I3) |
+| **DAT** | Persistence, tenancy, RLS | 9 | 11 | I0 |
+| **IDN** | Identity & access | 0 | 16 | I3 |
+| **CAT** | Catalog & menu | 3 | 18 | I0 (rest: I1) |
+| **FLR** | Floor plan & tables | 0 | 7 | I1 |
+| **ORD** | Ordering | 5 | 22 | I0 (rest: I2) |
+| **SYN** | Offline sync engine | 0 | 13 | I5 |
+| **AGT** | Site Agent | 0 | 15 | I4–I5 |
+| **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
+| **FIS** | Fiscal engine | 3 | 24 | I0 (rest: I7) |
+| **PAY** | Payments & cash sessions | 0 | 14 | I6 |
+| **RPT** | Reporting | 0 | 12 | I8 |
+| **QR** | QR self-ordering | 0 | 9 | Post-I8 |
+| **QA** | Automated testing | 0 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **25** | **278** | |
+| | **Total** | **48** | **278** | |
 
-> 25 of 278 is roughly the right shape for Month 0. Foundation work is a small
-> fraction of a product by task count and a large fraction of its risk.
+> Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
+> not the original Month-based sequencing — see
+> [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
+>
+> 48 of 278 — I0's backend half is done and proven live (details:
+> [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
+> epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
+> single vertical slice the walking-skeleton demo needs, not a whole epic.
 
 ---
 
@@ -82,16 +88,16 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| DAT-01 | EF Core + Npgsql wiring, connection resilience | ⬜ |
-| DAT-02 | Schema-per-module conventions | ⬜ |
-| DAT-03 | `Money` value converter / owned type mapping | ⬜ |
-| DAT-04 | Global query filter for `ITenantOwned` | ⬜ |
-| DAT-05 | PostgreSQL RLS policies on every tenant-owned table | ⬜ |
-| DAT-06 | Session variable set from `ITenantContext` per request | ⬜ |
-| DAT-07 | Privileged role + `ResolveAsSystem()` path for background jobs | ⬜ |
-| DAT-08 | Audit interceptor — `CreatedAt/By`, `ModifiedAt/By` | ⬜ |
-| DAT-09 | `AssignTenant` interceptor on insert | ⬜ |
-| DAT-10 | Initial migration + migration-on-startup policy | ⬜ |
+| DAT-01 | EF Core + Npgsql wiring, connection resilience | ✅ |
+| DAT-02 | Schema-per-module conventions | ✅ `catalog` / `ordering` schemas |
+| DAT-03 | `Money` value converter / owned type mapping | ✅ `MapMoney` |
+| DAT-04 | Global query filter for `ITenantOwned` | ✅ |
+| DAT-05 | PostgreSQL RLS policies on every tenant-owned table | ✅ **verified live** — see [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
+| DAT-06 | Session variable set from `ITenantContext` per request | ✅ `TenantSessionInterceptor` |
+| DAT-07 | Privileged role + `ResolveAsSystem()` path for background jobs | ⬜ flag exists; connection path not designed — see [multi-tenancy.md](../architecture/multi-tenancy.md#the-system-context) |
+| DAT-08 | Audit interceptor — `CreatedAt/By`, `ModifiedAt/By` | ✅ `TenantAwareDbContext.StampEntities` |
+| DAT-09 | `AssignTenant` interceptor on insert | ✅ |
+| DAT-10 | Initial migration + migration-on-startup policy | ✅ migrate-on-startup, elevated role only |
 | DAT-11 | Reflection test: every entity is `ITenantOwned` or allow-listed | ⬜ |
 
 ## API — API platform & mobile readiness
@@ -101,11 +107,11 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| API-01 | `/api/v1` versioning via `Asp.Versioning` | ⬜ |
+| API-01 | `/api/v1` versioning via `Asp.Versioning` | ✅ literal prefix + `ApiVersionSet`, not a templated segment — see commit message for why |
 | API-02 | `/api/public/v1` consumer surface, separated from tenant API | ⬜ |
-| API-03 | ProblemDetails mapping from `ErrorType` → HTTP status | ⬜ |
-| API-04 | Stable error-code registry + test that codes never change meaning | ⬜ |
-| API-05 | `Idempotency-Key` middleware + store | ⬜ |
+| API-03 | ProblemDetails mapping from `ErrorType` → HTTP status | ✅ |
+| API-04 | Stable error-code registry + test that codes never change meaning | ⬜ codes exist (`order.already_closed` etc.); no stability test yet |
+| API-05 | `Idempotency-Key` middleware + store | ✅ **verified live**: replayed request returns identical order id; DB confirms one row. In-memory store — durable store needed before scaling out |
 | API-06 | `X-Brasa-Client` header parsing (id / version / platform) | ⬜ |
 | API-07 | `GET /client-requirements` — min & recommended version, sunset | ⬜ |
 | API-08 | RFC 8594 `Deprecation` / `Sunset` response headers | ⬜ |
@@ -145,19 +151,19 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| CAT-01 | Menu categories, ordering, visibility | ⬜ |
-| CAT-02 | Menu items — name, description, image, allergens | ⬜ |
+| CAT-01 | Menu categories, ordering, visibility | ✅ |
+| CAT-02 | Menu items — name, description, image, allergens | 🚧 name/price/VAT only; description/image/allergens are I1 |
 | CAT-03 | Modifier groups (required / optional, min / max) | ⬜ |
 | CAT-04 | Modifiers with price deltas | ⬜ |
 | CAT-05 | Price lists per site | ⬜ |
 | CAT-06 | Channel pricing — dine-in / takeaway / delivery | ⬜ |
-| CAT-07 | `TaxRule` — item × channel × region, effective-dated | ⬜ |
+| CAT-07 | `TaxRule` — item × channel × region, effective-dated | ⬜ `VatRate` ships as the explicit I0 placeholder — see its doc comment |
 | CAT-08 | VAT resolution service with date-aware lookup | ⬜ |
-| CAT-09 | Alcohol flag driving the 23% band separation | ⬜ |
+| CAT-09 | Alcohol flag driving the 23% band separation | ✅ `MenuItem.IsAlcoholic` |
 | CAT-10 | Combos / menus (*menu do dia*) | ⬜ |
 | CAT-11 | *Prato do dia* — daily specials with schedules | ⬜ |
 | CAT-12 | *Couvert* handling — charged only when consumed | ⬜ |
-| CAT-13 | Item availability / 86-ing (out of stock) | ⬜ |
+| CAT-13 | Item availability / 86-ing (out of stock) | ✅ `MarkAvailable`/`MarkUnavailable` |
 | CAT-14 | Course assignment per item | ⬜ |
 | CAT-15 | Kitchen station routing per item | ⬜ |
 | CAT-16 | Menu versioning with effective dates | ⬜ |
@@ -180,10 +186,10 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| ORD-01 | Order aggregate — lifecycle and state machine | ⬜ |
-| ORD-02 | Open a table, set cover count | ⬜ |
-| ORD-03 | Add / remove / edit order lines | ⬜ |
-| ORD-04 | Line snapshots — name, price, VAT rate at time of sale | ⬜ |
+| ORD-01 | Order aggregate — lifecycle and state machine | ✅ `Open`/`Closed`; richer states (courses, kitchen status) are I2 |
+| ORD-02 | Open a table, set cover count | ✅ |
+| ORD-03 | Add / remove / edit order lines | 🚧 add only — remove/edit are I2 |
+| ORD-04 | Line snapshots — name, price, VAT rate at time of sale | ✅ |
 | ORD-05 | Apply modifiers to a line | ⬜ |
 | ORD-06 | Free-text kitchen notes | ⬜ |
 | ORD-07 | Courses and course firing | ⬜ |
@@ -194,7 +200,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ORD-12 | Transfer table | ⬜ |
 | ORD-13 | Transfer individual lines between tables | ⬜ |
 | ORD-14 | Merge orders | ⬜ |
-| ORD-15 | Split bill evenly (`Money.Allocate`) | ⬜ |
+| ORD-15 | Split bill evenly (`Money.Allocate`) | ✅ **verified live**: 22.60 EUR → 7.54/7.53/7.53, sums to the cent |
 | ORD-16 | Split bill by item | ⬜ |
 | ORD-17 | Split bill by cover | ⬜ |
 | ORD-18 | Pre-bill — *documento não fiscal*, correctly labelled | ⬜ |
@@ -267,9 +273,9 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| FIS-01 | `IFiscalProvider` abstraction | ⬜ |
-| FIS-02 | `Fiscal.Mock` deterministic provider | ⬜ |
-| FIS-03 | Production guard — mock must never load in Production | ⬜ |
+| FIS-01 | `IFiscalProvider` abstraction | ✅ |
+| FIS-02 | `Fiscal.Mock` deterministic provider | ✅ every value `MOCK-`-prefixed; VAT correctly derived from gross price |
+| FIS-03 | Production guard — mock must never load in Production | ✅ enforced at DI registration, not just documented |
 | FIS-04 | `FiscalSeries` entity and lifecycle | ⬜ |
 | FIS-05 | AT webservice client — series registration | ⬜ |
 | FIS-06 | Série validation code storage | ⬜ |

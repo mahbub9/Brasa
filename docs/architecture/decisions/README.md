@@ -22,6 +22,7 @@ it feels wrong.
 | [0007](0007-client-agnostic-api.md) | One client-agnostic API for every platform | Accepted | Android and iOS must ship without backend change; a BFF per platform is the opposite of that |
 | [0008](0008-token-auth-no-cookies.md) | Token auth, device-bound refresh, no cookies | Accepted | Cookie auth cannot serve native apps, and a POS terminal is trusted hardware, not a user |
 | [0009](0009-incremental-delivery.md) | Incremental delivery, walking skeleton first | Accepted | Vertical slices with a demo script as the definition of done; certification stays binary regardless |
+| [0010](0010-rls-runtime-role-split.md) | Split the DB role: unprivileged at runtime, superuser only for migrations | Accepted | The bootstrap Postgres role is a superuser, and superusers bypass RLS unconditionally — found via I0's first live test |
 
 ## Writing a new one
 

@@ -8,7 +8,7 @@
 > [backlog.md](backlog.md) — 278 tasks with stable IDs. This page is
 > component-level; the backlog is task-level.
 
-**Last updated:** 2026-08-08 · **Roadmap phase:** Month 0 — Foundations
+**Last updated:** 2026-08-09 · **Roadmap phase:** I0 — walking skeleton, backend proven end-to-end
 
 ## Legend
 
@@ -30,16 +30,16 @@
 | `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
 | `Brasa.Shared` — outbox contracts | ✅ | Types defined; **no dispatcher implementation yet** |
-| `Brasa.Api` | 🚧 | Boots. Serilog, ProblemDetails, OpenAPI, `/health`, `/api/v1/ping`. No DB, no auth |
-| EF Core + PostgreSQL + RLS | ⬜ | Next up |
-| `Modules.Identity` | 📁 | |
-| `Modules.Catalog` | 📁 | |
-| `Modules.Ordering` | 📁 | |
-| `Modules.Fiscal` | 📁 | `IFiscalProvider` not yet defined |
-| `Modules.Payments` | 📁 | |
-| `Modules.Reporting` | 📁 | |
-| `Fiscal.Portugal` | 📁 | **Nothing fiscal is implemented.** Month 4 |
-| `Fiscal.Mock` | 📁 | Month 2 |
+| `Brasa.Api` | ✅ | I0 walking skeleton: `/api/v1/ping`, `/menu`, `/orders` (+`/lines`, `/split`, `/close`), `/health`. Serilog, ProblemDetails, API versioning, idempotency |
+| EF Core + PostgreSQL + RLS | ✅ | **Verified live**, not just asserted: `brasa_app` (unprivileged runtime role) sees zero rows with no tenant set or the wrong tenant set, and cannot run DDL. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
+| `Modules.Identity` | 📁 | I3 (auth) |
+| `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem`, seeded demo menu spanning both VAT bands |
+| `Modules.Ordering` | ✅ | `Order` aggregate — open, add line (price/VAT snapshot), even split, close |
+| `Modules.Fiscal` | ✅ | `IFiscalProvider`, `FiscalDocument`, VAT correctly derived from gross (menu prices are VAT-inclusive) |
+| `Modules.Payments` | 📁 | I6 |
+| `Modules.Reporting` | 📁 | I8 |
+| `Fiscal.Portugal` | 📁 | **Nothing fiscal is implemented.** I7 |
+| `Fiscal.Mock` | ✅ | Deterministic, `MOCK-`-prefixed output, production guard enforced at DI registration |
 
 ## Site Agent
 
@@ -55,7 +55,7 @@
 
 | Client | State |
 |---|---|
-| `pos` | ⬜ |
+| `pos` | ⬜ Next |
 | `kds` | ⬜ |
 | `admin` | ⬜ |
 | `order` (QR self-ordering) | ⬜ |
@@ -65,8 +65,36 @@
 | Suite | State | Notes |
 |---|---|---|
 | `Brasa.Shared.Tests` | ✅ | 17 passing, incl. exhaustive allocation check |
-| `Brasa.Fiscal.Portugal.Tests` | 📁 | Golden-file fixtures wired in csproj; no tests yet |
+| `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | 📁 | Testcontainers referenced and Docker available; no tests written yet |
+| E2E (Playwright) | ⬜ | Next session — see [../development/e2e-testing.md](../development/e2e-testing.md) |
+
+## I0 demo — verified live, not just unit-tested
+
+Run end-to-end against the real API and a real PostgreSQL container on
+2026-08-09: open a table → add 2× Frango na Brasa (13%) + 2× Imperial (23%) →
+preview an even 3-way split (7.54/7.53/7.53, summing to the cent) → close →
+receive a fiscal document whose gross total matches the order total shown
+throughout service, with net + VAT reconciling to the cent. Idempotency
+verified by replaying an identical `POST /orders` and confirming, via direct
+SQL, that only one row was created.
+
+Three real bugs were found and fixed by this live run — none were caught by
+`dotnet build` or the pre-existing unit tests:
+
+1. **RLS was a complete no-op.** The bootstrap Postgres role is a superuser,
+   and superusers bypass row-level security unconditionally regardless of
+   `FORCE ROW LEVEL SECURITY`. Fixed by splitting into an unprivileged runtime
+   role and a migration-only owner role. See
+   [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md).
+2. **New order lines were tracked `Modified` instead of `Added`.** EF Core's
+   default `Guid` key convention assumes a non-default key on a
+   navigation-discovered entity means it already exists. Fixed with
+   `ValueGeneratedNever()` — see the comment on `ApplyEntityConventions` in
+   `Brasa.Shared/Persistence/ModelBuilderExtensions.cs`.
+3. **VAT was computed backwards.** Portuguese menu prices are VAT-inclusive;
+   the fiscal document must derive net/VAT from the gross price, not add VAT
+   on top. See [docs/fiscal/README.md](../fiscal/README.md#menu-prices-are-vat-inclusive).
 
 ## Mobile readiness
 

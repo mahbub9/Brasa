@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-08 · **Phase:** Month 0 complete → Month 1 starting
+**Last verified:** 2026-08-09 · **Phase:** I0 backend proven live end-to-end; web POS shell, deployment and E2E harness remain
 
 ---
 
@@ -58,14 +58,16 @@ things look finished.
 
 Condensed:
 
-- ✅ **Built and tested:** solution + build policy, `Money` (17 tests, exhaustive
-  allocation), `Result`/`Error`, `ITenantContext`, `IClock` + Portuguese regions,
-  `Entity`/UUIDv7, outbox *contracts*, API bootstrap (`/health`, `/api/v1/ping`),
-  Docker Compose (PostgreSQL 18 + Seq), full docs tree, CI.
-- 📁 **Empty projects (structure only, zero logic):** all six modules,
-  `Fiscal.Portugal`, `Fiscal.Mock`.
+- ✅ **Built, tested, and proven live** (not just unit-tested — see §3a):
+  `Money` (17 tests), `Result`/`Error`, tenancy + **real RLS** (DAT-01…06),
+  `Catalog` (categories/items, seeded), `Ordering` (open/add-line/split/close),
+  `Fiscal` contract + `Fiscal.Mock`, API layer (versioning, ProblemDetails,
+  idempotency, the full order flow), Docker Compose (PostgreSQL 18 + Seq), full
+  docs tree, CI.
+- 📁 **Empty projects (structure only, zero logic):** `Modules.Identity`,
+  `Modules.Payments`, `Modules.Reporting`, `Fiscal.Portugal`.
 - 🚧 **Stub:** `SiteAgent` starts and stops; nothing else.
-- ⬜ **Not started:** EF Core + RLS, all web clients, everything fiscal.
+- ⬜ **Not started:** every web client, the E2E harness, deployment.
 
 **Delivery is incremental** — vertical slices, each ending in a runnable demo.
 **[../product/roadmap.md](../product/roadmap.md) says what to build next**;
@@ -73,22 +75,45 @@ Condensed:
 status. Reference IDs in commits: `feat(identity): terminal pairing (IDN-07)`,
 and update the status in the same commit.
 
-**Current increment: I0 — walking skeleton, week 1.** The thinnest slice through
-every layer, deployed. Demo: open a table, add three items, split the bill three
-ways, produce a receipt, in a browser on a real URL.
+**Current increment: I0 — walking skeleton, week 1.** Backend done and proven;
+remaining: the POS web shell, deployment (OPS-11), and the Playwright E2E
+harness (QA-01…06 — see [../development/e2e-testing.md](../development/e2e-testing.md)).
 
-I0 tasks: DAT-01/03/04/**05**/06/10 · API-01/03/05 · CAT-01/02/07 ·
-ORD-01/02/03/04/15 · FIS-01/02/03 · OPS-11 · minimal POS shell.
+Backend I0 tasks — **done**: DAT-01/03/04/**05**/06/10 · API-01/03/05 ·
+CAT-01/02/07 · ORD-01/02/03/04/15 · FIS-01/02/03.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 
-> RLS (DAT-05), idempotency (API-05) and `/api/v1` (API-01) are in I0 **on
-> purpose**. They are conventions, not features, and conventions are only free
-> if they start at line one. Do not defer them to "when it matters".
+> RLS (DAT-05), idempotency (API-05) and `/api/v1` (API-01) were in I0 **on
+> purpose**, and it was the right call: RLS in particular turned out to be
+> silently broken (§3a) in a way that would have been far more expensive to
+> discover after other modules copied the same pattern.
 
-The E2E harness (QA-01…06, Playwright — see
-[../development/e2e-testing.md](../development/e2e-testing.md)) lands alongside
-I0–I1, not after.
+### 3a. Verified live — and what that caught
+
+I0's backend was driven end-to-end against a real API process and a real
+PostgreSQL container, not only against unit tests: open a table → mixed
+food+alcohol order → even 3-way split → close → fiscal document, plus an
+idempotency replay checked directly against the database. Full script and
+numbers: [../product/status.md](../product/status.md#i0-demo-verified-live-not-just-unit-tested).
+
+This surfaced three real bugs that `dotnet build` and the pre-existing unit
+tests both missed:
+
+1. **RLS was inert.** The bootstrap Postgres role is a superuser; superusers
+   bypass RLS unconditionally, `FORCE ROW LEVEL SECURITY` notwithstanding. Now
+   [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md).
+2. **New order lines were tracked `Modified`, not `Added`.** EF Core's `Guid`
+   key convention assumes a non-default key means "already exists." Fixed with
+   `ValueGeneratedNever()` in `ApplyEntityConventions`.
+3. **VAT was computed backwards.** Menu prices are VAT-inclusive under
+   Portuguese law; the fiscal document must derive net/VAT from gross, not add
+   VAT on top. See §7 and `docs/fiscal/README.md`.
+
+**The lesson, not just the fix:** a clean build and green unit tests proved
+nothing about whether tenant isolation actually worked. If you build something
+that depends on database-level behaviour (RLS, triggers, constraints), run it
+against the real database and try to break it before calling it done.
 
 ## 4. Repo map
 
@@ -149,6 +174,7 @@ there is actually met.
 | [0007](../architecture/decisions/0007-client-agnostic-api.md) | One client-agnostic API for every platform — **no BFF** |
 | [0008](../architecture/decisions/0008-token-auth-no-cookies.md) | Token auth with PKCE, device-bound refresh, **no cookies** |
 | [0009](../architecture/decisions/0009-incremental-delivery.md) | Incremental delivery; walking skeleton first, demo script is done |
+| [0010](../architecture/decisions/0010-rls-runtime-role-split.md) | Split the DB role: unprivileged at runtime, superuser only for migrations |
 
 ## 7. Traps — things that look wrong but are intentional
 
