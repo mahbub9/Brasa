@@ -33,6 +33,7 @@ as any change to an error code, the same rule as everything else in
 | `order.already_closed` | Conflict | 409 | `Close()` was called on an order that is already `Closed`. |
 | `order.empty` | Validation | 400 | `Close()` or `EnsureCanGeneratePreBill()` was called on an order with zero lines. |
 | `order.invalid_cover_count` | Validation | 400 | `POST /orders`'s `coverCount` is less than 1. |
+| `order.invalid_cursor` | Validation | 400 | `GET /orders`'s `cursor` query parameter isn't a token `X-Next-Cursor` (API-09) produced. |
 | `order.invalid_merge_target` | Validation | 400 | `POST /orders/{id}/merge`'s `secondaryOrderId` is the same as the primary order. |
 | `order.invalid_quantity` | Validation | 400 | An order line's `quantity` is less than 1. |
 | `order.invalid_split` | Validation | 400 | `SplitEvenly`'s `parts` is less than 1; `SplitByItem()`'s groups are empty, a group has no lines, or a line's quantity isn't allocated exactly once across the groups; or `SplitByCover()`'s cover groups are empty, contain a group below 1 cover, or don't sum to the order's `CoverCount`. |

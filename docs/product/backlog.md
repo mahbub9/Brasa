@@ -38,7 +38,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **FND** | Foundation & shared kernel | 10 | 12 | I0 |
 | **OPS** | Infrastructure, CI, observability | 7 | 16 | I0 → ongoing |
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
-| **API** | API platform & mobile readiness | 7 | 18 | I0 (rest: I3) |
+| **API** | API platform & mobile readiness | 8 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 6 | 18 | I0 (rest: I1) |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **81** | **291** | |
+| | **Total** | **82** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 81 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 82 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -98,7 +98,10 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > which client is calling and answer "what version do you need to be"
 > (API-06/07, `X-Brasa-Client` parsing + `GET /client-requirements`) —
 > ahead of any client that sends the header yet, same as CAT-02/CAT-18
-> shipped ahead of their UI
+> shipped ahead of their UI, and `GET /orders` — the one collection here
+> that's genuinely unbounded over a restaurant's lifetime — now paginates
+> via an opaque `X-Next-Cursor` header rather than the flat capped `take`
+> it shipped with (API-09, additive: the response body shape didn't change)
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -154,7 +157,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | API-06 | `X-Brasa-Client` header parsing (id / version / platform) | ✅ `ClientVersionMiddleware` — best-effort: no client sends this header yet, so a missing/malformed value never fails the request, it just skips enrichment. Parsed `ClientInfo` is stashed on `HttpContext.Items` for `GET /client-requirements` (API-07) and pushed into Serilog's `LogContext` (`ClientId`/`ClientVersion`/`ClientPlatform`) so every log line for the request carries it — **verified live** via the console/Seq output |
 | API-07 | `GET /client-requirements` — min & recommended version, sunset | ✅ Looks up the calling client's id (from `X-Brasa-Client`, API-06) in a config-bound `ClientRequirements` section — no admin UI to edit this yet, so it's configuration, not a database table. **Verified live**: known client id → `200` with its policy; missing/malformed header → `400 client.header_required`; well-formed header naming an unconfigured client id → `404 client.unknown_client_id` |
 | API-08 | RFC 8594 `Deprecation` / `Sunset` response headers | ⬜ |
-| API-09 | Cursor pagination helper, applied to every collection | ⬜ |
+| API-09 | Cursor pagination helper, applied to every collection | ✅ `CursorPagination` (opaque base64 bookmark token) applied to `GET /orders` (ORD-22) — the only genuinely unbounded collection today; `/menu` and `/floor` are both bounded by the restaurant's own size and don't need it yet. Additive, not a body-shape change: the response is still a bare array exactly as it shipped, an `X-Next-Cursor` response header carries the next page's bookmark (present only when the page came back full). **Verified live**: page 1 returns the header, page 2 fetched with it returns older, non-overlapping rows; a malformed `cursor` 400s (`order.invalid_cursor`) |
 | API-10 | `ETag` / `If-None-Match` on config and menu reads | ✅ `GET /menu` only — deliberately not `GET /floor`, whose state changes continuously through service. **Verified live**: 200 with a computed `ETag` on first pull, 304 with no body when it's echoed back as `If-None-Match`. Caught a real bug in review: the helper's own JSON serialization used `System.Text.Json`'s default (PascalCase) instead of ASP.NET Core's configured camelCase, silently breaking the `pos` client — fixed by resolving the app's configured `JsonSerializerOptions` from DI instead of using the type default |
 | API-11 | Response compression | ⬜ |
 | API-12 | Rate limiting, keyed by client and tenant | ⬜ |

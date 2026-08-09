@@ -104,10 +104,11 @@ builder.Services.AddCors(options =>
     {
         if (allowedOrigins.Length > 0)
         {
-            // ETag is not one of the CORS "simple" response headers browsers
-            // expose to JS by default (API-10) — without this, a web client
-            // could never read it to send back as If-None-Match.
-            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().WithExposedHeaders("ETag");
+            // ETag and X-Next-Cursor are not CORS "simple" response headers
+            // browsers expose to JS by default (API-10, API-09) — without
+            // this, a web client could never read ETag to send back as
+            // If-None-Match, or read X-Next-Cursor to fetch the next page.
+            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().WithExposedHeaders("ETag", "X-Next-Cursor");
         }
     });
 });

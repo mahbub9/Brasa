@@ -168,12 +168,25 @@ public static class OrderEndpoints
     /// (that's RPT, I8); this queries Ordering's own table directly, which is
     /// still within bounds for I2's scale.
     /// </summary>
+    /// <remarks>
+    /// Cursor pagination (API-09) is additive, not a body-shape change: the
+    /// response is still a bare <see cref="OrderSummaryDto"/> array exactly
+    /// like it shipped, and an <c>X-Next-Cursor</c> response header carries
+    /// the bookmark for the next page — present only when the page came back
+    /// full, since that's the only case where there might be more. A caller
+    /// that never sends <c>cursor</c> gets page one, same as before this
+    /// existed; changing the body shape on an already-shipped <c>/api/v1</c>
+    /// endpoint would be the breaking change <c>api-contract.md</c> §3
+    /// reserves for <c>/api/v2</c>.
+    /// </remarks>
     private static async Task<IResult> SearchOrdersAsync(
+        HttpContext httpContext,
         OrderingDbContext db,
         string? status,
         Guid? tableId,
         DateTimeOffset? openedFrom,
         DateTimeOffset? openedTo,
+        string? cursor,
         CancellationToken cancellationToken,
         int take = 50)
     {
@@ -192,6 +205,17 @@ public static class OrderEndpoints
         if (take is < 1 or > 200)
         {
             return Error.Validation("order.invalid_take", "take must be between 1 and 200.").ToProblem();
+        }
+
+        DateTimeOffset? cursorBookmark = null;
+        if (cursor is not null)
+        {
+            if (!CursorPagination.TryDecode(cursor, out var bookmark))
+            {
+                return Error.Validation("order.invalid_cursor", "cursor is not a valid pagination token.").ToProblem();
+            }
+
+            cursorBookmark = bookmark;
         }
 
         var query = db.Orders.Include(o => o.Lines).ThenInclude(l => l.Modifiers).AsQueryable();
@@ -216,11 +240,26 @@ public static class OrderEndpoints
             query = query.Where(o => o.OpenedAtUtc <= openedTo);
         }
 
+        if (cursorBookmark is not null)
+        {
+            // Strictly-before the cursor's bookmark, matching the descending
+            // sort below — two orders opened at the exact same instant would
+            // be a gap here, but OpenedAtUtc is set once per HTTP request by
+            // IClock and Postgres timestamptz precision is microseconds, so
+            // that can't happen at this restaurant's realistic order rate.
+            query = query.Where(o => o.OpenedAtUtc < cursorBookmark);
+        }
+
         var orders = await query
             .OrderByDescending(o => o.OpenedAtUtc)
             .Take(take)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
+
+        if (orders.Count == take)
+        {
+            httpContext.Response.Headers["X-Next-Cursor"] = CursorPagination.Encode(orders[^1].OpenedAtUtc);
+        }
 
         return Results.Ok(orders.Select(o => o.ToSummaryDto()).ToArray());
     }
