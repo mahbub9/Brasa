@@ -53,6 +53,10 @@ public static class OrderEndpoints
             .WithName("TransferOrder")
             .WithSummary("Moves an open order to a different table (ORD-12).");
 
+        group.MapPost("/orders/{orderId:guid}/lines/{lineId:guid}/transfer", TransferLineAsync)
+            .WithName("TransferOrderLine")
+            .WithSummary("Moves a single line onto a different open order (ORD-13).");
+
         group.MapGet("/orders/{orderId:guid}/split", PreviewSplitAsync)
             .WithName("PreviewOrderSplit")
             .WithSummary("Computes an even split of the current total, without changing order state.");
@@ -348,6 +352,66 @@ public static class OrderEndpoints
 
         await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Results.Ok(order.ToDto());
+    }
+
+    /// <summary>
+    /// Moves a single line from one open order onto another (ORD-13). Purely
+    /// an Ordering-module operation — unlike <c>TransferOrderAsync</c>, no
+    /// Floor table changes hands, since both orders' tables stay exactly as
+    /// occupied as they were. Both orders' status is checked before either
+    /// is touched, so a rejection here never leaves the line half-detached.
+    /// </summary>
+    private static async Task<IResult> TransferLineAsync(
+        Guid orderId,
+        Guid lineId,
+        TransferLineRequest request,
+        OrderingDbContext db,
+        CancellationToken cancellationToken)
+    {
+        if (request.DestinationOrderId == orderId)
+        {
+            return Error.Validation(
+                "order.invalid_transfer_target", "Destination order must be different from the source order.")
+                .ToProblem();
+        }
+
+        var sourceOrder = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
+        if (sourceOrder is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        var destinationOrder = await FindOrderAsync(db, request.DestinationOrderId, cancellationToken).ConfigureAwait(false);
+        if (destinationOrder is null)
+        {
+            return Error.NotFound(
+                "order.not_found", $"Order {request.DestinationOrderId} was not found.").ToProblem();
+        }
+
+        if (sourceOrder.Status != OrderStatus.Open)
+        {
+            return Error.Conflict(
+                "order.not_open", "Cannot transfer a line from an order that is not open.").ToProblem();
+        }
+
+        if (destinationOrder.Status != OrderStatus.Open)
+        {
+            return Error.Conflict(
+                "order.not_open", "Cannot transfer a line onto an order that is not open.").ToProblem();
+        }
+
+        var detachResult = sourceOrder.DetachLine(lineId);
+        if (detachResult.IsFailure)
+        {
+            return detachResult.Error.ToProblem();
+        }
+
+        // Both orders' status was already confirmed Open above, so this
+        // cannot fail in practice — see ReceiveLine's own remarks.
+        destinationOrder.ReceiveLine(detachResult.Value);
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Ok(new TransferLineResponse(sourceOrder.ToDto(), destinationOrder.ToDto()));
     }
 
     private static async Task<IResult> PreviewSplitAsync(

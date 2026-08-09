@@ -20,6 +20,12 @@ public sealed record TransferOrderRequest(Guid NewTableId);
 /// <summary>Request body to set or clear a line's free-text kitchen note (ORD-06). Null/whitespace clears it.</summary>
 public sealed record SetLineNotesRequest(string? Notes);
 
+/// <summary>Request body to move a single line onto a different open order (ORD-13).</summary>
+public sealed record TransferLineRequest(Guid DestinationOrderId);
+
+/// <summary>Response body after transferring a line — both orders' new state, since both changed.</summary>
+public sealed record TransferLineResponse(OrderDto SourceOrder, OrderDto DestinationOrder);
+
 /// <summary>A modifier selected on an order line, as returned to clients.</summary>
 public sealed record OrderLineModifierDto(Guid Id, string Name, MoneyDto PriceDelta);
 

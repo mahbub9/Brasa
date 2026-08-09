@@ -30,11 +30,11 @@
 | `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
 | `Brasa.Shared` — outbox contracts | ✅ | Types defined; **no dispatcher implementation yet** |
-| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete), `/floor`, `/orders` (+`GET` search/history — ORD-22, `/lines`, `/lines/{id}/notes` — ORD-06, `/split`, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
+| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete), `/floor`, `/orders` (+`GET` search/history — ORD-22, `/lines`, `/lines/{id}/notes` — ORD-06, `/lines/{id}/transfer` — ORD-13, `/split`, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
 | EF Core + PostgreSQL + RLS | ✅ | **Verified live**, not just asserted: `brasa_app` (unprivileged runtime role) sees zero rows with no tenant set or the wrong tenant set, and cannot run DDL. Re-verified against the new `floor` schema too. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | `Modules.Identity` | 📁 | I3 (auth) |
 | `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem`, seeded demo menu spanning both VAT bands, soft delete (CAT-18), modifier groups (CAT-03/04) |
-| `Modules.Ordering` | ✅ | `Order` aggregate — open against a real `Table` (`TableId`), add line with modifiers (price/VAT/modifier snapshot, ORD-05), per-line kitchen notes (ORD-06), even split, pre-bill preview (ORD-18/19), transfer to a different table (ORD-12), close, history/search (ORD-22) |
+| `Modules.Ordering` | ✅ | `Order` aggregate — open against a real `Table` (`TableId`), add line with modifiers (price/VAT/modifier snapshot, ORD-05), per-line kitchen notes (ORD-06), even split, pre-bill preview (ORD-18/19), transfer to a different table (ORD-12) or move a single line onto a different order (ORD-13), close, history/search (ORD-22) |
 | `Modules.Floor` | ✅ | `Room`, `Table` — full `Free ⇄ Occupied ⇄ Dirty ⇄ Free` lifecycle (`BillRequested` transition exists, unused by any endpoint yet), plus `Release()` — `Occupied`/`BillRequested` straight back to `Free`, skipping `Dirty`, used only for table transfers (ORD-12). `xmin`-based optimistic concurrency on `Table` so two concurrent occupy attempts can't both win. Seeded: 2 rooms, 16 tables |
 | `Modules.Fiscal` | ✅ | `IFiscalProvider`, `FiscalDocument`, VAT correctly derived from gross (menu prices are VAT-inclusive) |
 | `Modules.Payments` | 📁 | I6 |
@@ -68,7 +68,7 @@
 | `Brasa.Shared.Tests` | ✅ | 18 passing, incl. exhaustive allocation check and the error-code registry test (API-04) |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 5 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused. The automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 23 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the 8-table pool under back-to-back full runs — a QA-02 scaling limitation, not a product bug; see e2e-testing.md). UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 25 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -159,6 +159,22 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > picker was open rendered completely hidden behind its backdrop. Fixed by
 > giving `.error-banner` `position: fixed` and a higher `z-index` — general
 > correctness, not specific to this one flow.
+
+> **Update (line transfer, ORD-13):** `POST /orders/{id}/lines/{lineId}/transfer`
+> moves a single line onto a different open order — a dish following a guest
+> who joins another table, or splitting a large party across two tables.
+> Pure Ordering, unlike ORD-12: no Floor table changes hands, since both
+> tables stay exactly as occupied as they were. Both orders' status is
+> checked before either is touched, so a rejection never leaves a line
+> half-detached. No `pos` UI yet, deliberately — the screen only ever shows
+> one open order at a time, and picking *another* currently-open order is a
+> real product-design question (search by table? a list?) that shouldn't be
+> answered by inventing a UI nobody asked for, the same scoping call already
+> made for ORD-22. Verified live at the API level (`transfer-line.spec.ts`):
+> the line moves and both orders' totals update correctly, it's persisted
+> (re-fetched independently, not just trusted from the response), and the
+> guards (same order as destination, unknown line, unknown destination,
+> either order closed) all fire with the right codes.
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:

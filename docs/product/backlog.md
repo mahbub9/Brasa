@@ -43,7 +43,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 6 | 18 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
-| **ORD** | Ordering | 11 | 22 | I0 (rest: I2) |
+| **ORD** | Ordering | 12 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 6 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **72** | **291** | |
+| | **Total** | **73** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 72 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 73 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -76,9 +76,10 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > anywhere on the wire, and never issued through `IFiscalProvider` —
 > `GET /orders` (ORD-22) gives history/search by status, table and
 > opened-date range, a line can now carry a free-text kitchen note
-> (ORD-06) added after it's rung up, and a party can transfer to a
+> (ORD-06) added after it's rung up, a party can transfer to a
 > different table mid-service (ORD-12) with both the old and new table's
-> state committing atomically (details:
+> state committing atomically, and a single line can move onto a different
+> open order instead (ORD-13) (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -216,7 +217,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ORD-10 | Void a line, with reason and manager authorisation | ⬜ |
 | ORD-11 | Discounts — line, order, percentage and fixed | ⬜ |
 | ORD-12 | Transfer table | ✅ `POST /orders/{id}/transfer` — moves an open order to a different `Free` table. Order status checked before either table is touched; the old table's `Release()` and the new table's `Occupy()` then commit atomically together in one `FloorDbContext.SaveChangesAsync` |
-| ORD-13 | Transfer individual lines between tables | ⬜ |
+| ORD-13 | Transfer individual lines between tables | ✅ `POST /orders/{id}/lines/{lineId}/transfer` — moves one line onto a different open order. Pure Ordering, no Floor involvement (unlike ORD-12). No `pos` UI yet — deliberately: picking *another* currently-open order is a real product-design question, same scoping call already made for ORD-22 |
 | ORD-14 | Merge orders | ⬜ |
 | ORD-15 | Split bill evenly (`Money.Allocate`) | ✅ **verified live**: 22.60 EUR → 7.54/7.53/7.53, sums to the cent |
 | ORD-16 | Split bill by item | ⬜ |

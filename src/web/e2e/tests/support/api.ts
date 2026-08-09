@@ -119,6 +119,14 @@ export async function openOrderOnAnyFreeTable(
   throw new Error('unreachable');
 }
 
+export async function getOrder(request: APIRequestContext, orderId: string): Promise<OrderDto> {
+  const response = await request.get(`${apiBaseUrl}/orders/${orderId}`);
+  if (!response.ok()) {
+    throw new Error(`GET /orders/${orderId} failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 export async function addLine(
   request: APIRequestContext,
   orderId: string,
@@ -189,6 +197,62 @@ export async function transferOrder(request: APIRequestContext, orderId: string,
   const response = await transferOrderResponse(request, orderId, newTableId);
   if (!response.ok()) {
     throw new Error(`POST /orders/${orderId}/transfer failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/**
+ * Picks a free table and transfers the order onto it, retrying against a
+ * different table on a 409 (`floor.table_not_free`) — the same race
+ * `openOrderOnAnyFreeTable` handles for initial seating, now possible here
+ * too since another worker can occupy the picked table between reading the
+ * floor and this request landing.
+ */
+export async function transferOrderToAnyFreeTable(
+  request: APIRequestContext,
+  orderId: string,
+  attempts = 5,
+): Promise<{ order: OrderDto; table: TableDto }> {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const table = findFreeTable(await getFloor(request));
+    const response = await transferOrderResponse(request, orderId, table.id);
+
+    if (response.ok()) {
+      return { order: await response.json(), table };
+    }
+
+    if (response.status() !== 409 || attempt === attempts) {
+      throw new Error(`POST /orders/${orderId}/transfer failed: ${response.status()} ${await response.text()}`);
+    }
+  }
+
+  throw new Error('unreachable');
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-13). */
+export function transferLineResponse(
+  request: APIRequestContext,
+  orderId: string,
+  lineId: string,
+  destinationOrderId: string,
+) {
+  return request.post(`${apiBaseUrl}/orders/${orderId}/lines/${lineId}/transfer`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { destinationOrderId },
+  });
+}
+
+export async function transferLine(
+  request: APIRequestContext,
+  orderId: string,
+  lineId: string,
+  destinationOrderId: string,
+): Promise<{ sourceOrder: OrderDto; destinationOrder: OrderDto }> {
+  const response = await transferLineResponse(request, orderId, lineId, destinationOrderId);
+  if (!response.ok()) {
+    throw new Error(
+      `POST /orders/${orderId}/lines/${lineId}/transfer failed: ${response.status()} ${await response.text()}`,
+    );
   }
   return response.json();
 }

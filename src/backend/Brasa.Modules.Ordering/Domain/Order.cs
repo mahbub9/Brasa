@@ -158,6 +158,56 @@ public sealed class Order : Entity
     }
 
     /// <summary>
+    /// Removes a line from this order so it can be attached to a different
+    /// one (ORD-13) — a dish moving to the table a guest is joining, or a
+    /// large party splitting across two tables mid-service. The line itself
+    /// carries over untouched: price, VAT rate, modifiers and notes were all
+    /// already snapshotted at the time it was rung up. Requires this order to
+    /// be <c>Open</c>.
+    /// </summary>
+    public Result<OrderLine> DetachLine(Guid lineId)
+    {
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure<OrderLine>(
+                Error.Conflict("order.not_open", "Cannot transfer a line from an order that is not open."));
+        }
+
+        var line = _lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null)
+        {
+            return Result.Failure<OrderLine>(
+                Error.NotFound("order.line_not_found", $"Line {lineId} was not found on this order."));
+        }
+
+        _lines.Remove(line);
+        return Result.Success(line);
+    }
+
+    /// <summary>
+    /// Attaches a line detached from a different order (ORD-13). Requires
+    /// this order to be <c>Open</c> — call sites should check both orders'
+    /// status before calling <see cref="DetachLine"/> at all, so this failing
+    /// after a successful detach should not happen in practice; it is still
+    /// checked here rather than trusted, the same defence-in-depth as
+    /// <see cref="EnsureCanGeneratePreBill"/>.
+    /// </summary>
+    public Result ReceiveLine(OrderLine line)
+    {
+        ArgumentNullException.ThrowIfNull(line);
+
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure(
+                Error.Conflict("order.not_open", "Cannot transfer a line onto an order that is not open."));
+        }
+
+        line.ReassignToOrder(Id);
+        _lines.Add(line);
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Moves this order onto a different table (ORD-12) — a party changing
     /// seats mid-service, not a new order. The caller (API layer) is
     /// responsible for freeing the old <c>Floor.Table</c> and occupying the

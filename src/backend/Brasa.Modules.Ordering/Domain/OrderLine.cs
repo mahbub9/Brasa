@@ -54,6 +54,16 @@ public sealed class OrderLine : Entity
     public Guid OrderId { get; private set; }
 
     /// <summary>
+    /// Reassigns this line to a different order — used only when transferring
+    /// it between tables mid-service (ORD-13). Only <see cref="Order.ReceiveLine"/>
+    /// calls this.
+    /// </summary>
+    internal void ReassignToOrder(Guid newOrderId)
+    {
+        OrderId = newOrderId;
+    }
+
+    /// <summary>
     /// The catalog item this line was rung up from. A value reference only — the
     /// Ordering module never joins across the schema boundary into Catalog's
     /// tables.

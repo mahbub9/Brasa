@@ -3,13 +3,12 @@ import { expect, test } from '@playwright/test';
 import {
   addLine,
   closeOrderAndClearTable,
-  findFreeTable,
   findMenuItem,
   getFloor,
   getMenu,
   openOrderOnAnyFreeTable,
-  transferOrder,
   transferOrderResponse,
+  transferOrderToAnyFreeTable,
 } from './support/api';
 import { openAnyFreeTable, transferToAnyFreeTable } from './support/ui';
 
@@ -26,10 +25,8 @@ test.describe('table transfer', () => {
     const { order, table: oldTable } = await openOrderOnAnyFreeTable(request, 2);
     await addLine(request, order.id, imperial.id, 1);
 
-    const newTable = findFreeTable(await getFloor(request));
+    const { order: transferred, table: newTable } = await transferOrderToAnyFreeTable(request, order.id);
     expect(newTable.id).not.toBe(oldTable.id);
-
-    const transferred = await transferOrder(request, order.id, newTable.id);
     expect(transferred.tableId).toBe(newTable.id);
     expect(transferred.tableLabel).toBe(newTable.label);
     // The line rung up before the transfer must survive it untouched.
@@ -76,7 +73,7 @@ test.describe('table transfer', () => {
     // This test chains two independently-retrying helpers — openAnyFreeTable
     // for the initial seating, then transferToAnyFreeTable for the move —
     // each good for up to 5 attempts × 5s under real contention for the
-    // shared 8-table pool (QA-02). Their worst cases can add, so the default
+    // shared 16-table pool (QA-02). Their worst cases can add, so the default
     // 30s (or even 60s) test timeout is too tight; this gives real headroom.
     test.setTimeout(120_000);
 
