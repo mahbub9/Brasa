@@ -81,6 +81,8 @@ export const api = {
 
   clearTable: (tableId: string) => post<TableDto>(`/tables/${tableId}/clear`),
 
+  requestBill: (tableId: string) => post<TableDto>(`/tables/${tableId}/request-bill`),
+
   openOrder: (body: OpenOrderRequest) => post<OrderDto>('/orders', body),
 
   openTakeawayOrder: (body: OpenTakeawayOrderRequest) => post<OrderDto>('/orders/takeaway', body),

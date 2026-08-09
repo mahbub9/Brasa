@@ -56,6 +56,7 @@ export const en = {
     splitWays: 'ways',
     previewSplit: 'Preview split',
     preBill: 'View bill',
+    requestBill: 'Request bill',
     close: 'Close & issue receipt',
     closing: 'Closing…',
     addNote: 'Add note',

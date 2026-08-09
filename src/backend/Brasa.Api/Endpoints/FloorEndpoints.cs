@@ -21,6 +21,10 @@ public static class FloorEndpoints
             .WithName("ClearTable")
             .WithSummary("Marks a dirty table cleared and free for the next party.");
 
+        group.MapPost("/tables/{tableId:guid}/request-bill", RequestBillAsync)
+            .WithName("RequestBill")
+            .WithSummary("Flags that the table has asked for the bill (FLR-04) — a floor-plan signal for staff, separate from actually previewing the bill (ORD-18/19).");
+
         return group;
     }
 
@@ -72,6 +76,39 @@ public static class FloorEndpoints
             // now, it isn't the Dirty state we just checked, so report the
             // same conflict a stale in-memory check would have given.
             return Error.Conflict("floor.table_not_dirty", $"Table {table.Label} is not dirty.").ToProblem();
+        }
+
+        return Results.Ok(table.ToDto());
+    }
+
+    private static async Task<IResult> RequestBillAsync(Guid tableId, FloorDbContext db, CancellationToken cancellationToken)
+    {
+        var table = await db.Tables
+            .FirstOrDefaultAsync(t => t.Id == tableId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (table is null)
+        {
+            return Error.NotFound("floor.table_not_found", $"Table {tableId} was not found.").ToProblem();
+        }
+
+        var requestBillResult = table.RequestBill();
+        if (requestBillResult.IsFailure)
+        {
+            return requestBillResult.Error.ToProblem();
+        }
+
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Someone else's request touched this table between our read and
+            // our write — see TableConfiguration.cs. Whatever state it's in
+            // now, it isn't the Occupied state we just checked, so report the
+            // same conflict a stale in-memory check would have given.
+            return Error.Conflict("floor.table_not_occupied", $"Table {table.Label} is not occupied.").ToProblem();
         }
 
         return Results.Ok(table.ToDto());

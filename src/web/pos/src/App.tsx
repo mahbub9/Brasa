@@ -156,6 +156,20 @@ export default function App() {
     }
   }
 
+  async function handleRequestBill() {
+    if (!order) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await api.requestBill(order.tableId);
+      loadFloor(); // visible next time the floor plan is shown, not on this screen
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleOpenTransferPicker() {
     setBusy(true);
     setError(null);
@@ -237,6 +251,7 @@ export default function App() {
               onPreviewSplit={handlePreviewSplit}
               onSetLineNotes={handleSetLineNotes}
               onPreBill={handlePreBill}
+              onRequestBill={handleRequestBill}
               onTransferTable={handleOpenTransferPicker}
               onClose={handleCloseOrder}
               busy={busy}

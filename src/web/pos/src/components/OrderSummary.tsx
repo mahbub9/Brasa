@@ -11,6 +11,7 @@ interface OrderSummaryProps {
   onPreviewSplit: () => void;
   onSetLineNotes: (lineId: string, notes: string | null) => void;
   onPreBill: () => void;
+  onRequestBill: () => void;
   onTransferTable: () => void;
   onClose: () => void;
   busy: boolean;
@@ -24,6 +25,7 @@ export function OrderSummary({
   onPreviewSplit,
   onSetLineNotes,
   onPreBill,
+  onRequestBill,
   onTransferTable,
   onClose,
   busy,
@@ -110,6 +112,18 @@ export function OrderSummary({
       >
         {t('order.preBill')}
       </button>
+
+      {!order.isTakeaway && (
+        <button
+          type="button"
+          className="request-bill-trigger"
+          data-testid="request-bill-button"
+          onClick={onRequestBill}
+          disabled={busy}
+        >
+          {t('order.requestBill')}
+        </button>
+      )}
 
       <button
         type="button"

@@ -58,6 +58,7 @@ export const pt = {
     splitWays: 'vezes',
     previewSplit: 'Pré-visualizar divisão',
     preBill: 'Ver conta',
+    requestBill: 'Pedir conta',
     close: 'Fechar e emitir recibo',
     closing: 'A fechar…',
     addNote: 'Adicionar nota',

@@ -515,7 +515,8 @@ main {
   border-radius: 6px;
 }
 
-.pre-bill-trigger {
+.pre-bill-trigger,
+.request-bill-trigger {
   padding: 0.75rem;
   border: 1px solid var(--brasa);
   border-radius: 8px;
@@ -536,6 +537,7 @@ main {
 
 .close-order:disabled,
 .pre-bill-trigger:disabled,
+.request-bill-trigger:disabled,
 .split-preview button:disabled {
   opacity: 0.5;
   cursor: not-allowed;

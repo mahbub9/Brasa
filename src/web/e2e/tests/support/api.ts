@@ -410,3 +410,10 @@ export async function closeOrderAndClearTable(
     throw new Error(`POST /tables/${tableId}/clear failed: ${clearResponse.status()} ${await clearResponse.text()}`);
   }
 }
+
+/** Raw response so callers can assert on status/body for the failure cases too (FLR-04). */
+export function requestBillResponse(request: APIRequestContext, tableId: string) {
+  return request.post(`${apiBaseUrl}/tables/${tableId}/request-bill`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+  });
+}

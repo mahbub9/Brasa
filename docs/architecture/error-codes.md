@@ -31,7 +31,7 @@ as any change to an error code, the same rule as everything else in
 | `floor.table_not_dirty` | Conflict | 409 | `POST /tables/{id}/clear` was called on a table that isn't `Dirty`. |
 | `floor.table_not_free` | Conflict | 409 | `POST /orders` or `POST /orders/{id}/transfer` targeted a table that isn't `Free` — including the `xmin` concurrency-token case where two requests raced for it. |
 | `floor.table_not_found` | NotFound | 404 | The table id in the request doesn't exist. |
-| `floor.table_not_occupied` | Conflict | 409 | `RequestBill`/`MarkDirty`/`Release` was called on a table that isn't `Occupied` (`RequestBill` has no endpoint yet — domain-only). |
+| `floor.table_not_occupied` | Conflict | 409 | `POST /tables/{id}/request-bill` (FLR-04) or `MarkDirty`/`Release` (both domain-only, no endpoint) was called on a table that isn't `Occupied`. |
 | `order.already_closed` | Conflict | 409 | `Close()` was called on an order that is already `Closed`. |
 | `order.empty` | Validation | 400 | `Close()` or `EnsureCanGeneratePreBill()` was called on an order with zero lines. |
 | `order.invalid_cover_count` | Validation | 400 | `POST /orders`'s `coverCount` is less than 1. |
