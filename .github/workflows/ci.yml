@@ -83,6 +83,14 @@ jobs:
         run: npm install
         working-directory: src/web/pos
 
+      # WEB-09/10 — admin is a second web client playwright.config.ts's own
+      # webServer list now starts too (port 5174); its dependencies need
+      # installing here the same way pos's do, or that webServer entry
+      # fails outright.
+      - name: Install admin dependencies
+        run: npm install
+        working-directory: src/web/admin
+
       - name: Install e2e dependencies
         run: npm install
         working-directory: src/web/e2e
@@ -91,8 +99,9 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: src/web/e2e
 
-      # Starts the API and the pos dev server itself (playwright.config.ts
-      # webServer) — Docker is the only external dependency.
+      # Starts the API, the pos dev server and the admin dev server
+      # (playwright.config.ts webServer) — Docker is the only external
+      # dependency.
       - name: Run E2E suite
         run: npx playwright test
         working-directory: src/web/e2e
