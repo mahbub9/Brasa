@@ -43,6 +43,10 @@ public static class CatalogEndpoints
             .WithName("UpdateMenuItemAvailability")
             .WithSummary("86's a menu item, or brings it back (CAT-13).");
 
+        group.MapPut("/menu/items/{itemId:guid}/price", UpdateMenuItemPriceAsync)
+            .WithName("UpdateMenuItemPrice")
+            .WithSummary("Changes a menu item's price for future orders. Past order lines keep their own snapshot.");
+
         return group;
     }
 
@@ -168,6 +172,47 @@ public static class CatalogEndpoints
         else
         {
             item.MarkUnavailable();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(item.ToDto());
+    }
+
+    /// <summary>
+    /// Changes a menu item's price for future orders (<c>MenuItem.Reprice</c>
+    /// existed with its own validation since I0, with nothing calling it —
+    /// found the same way as CAT-13's availability gap). Safe by
+    /// construction, not by convention: <c>OrderLine.UnitPrice</c> snapshots
+    /// the price at the moment a line is added, so repricing an item never
+    /// rewrites what a past order charged — see <c>MenuItem.Price</c>'s own
+    /// doc comment. Ships ahead of any UI that will call it, same as
+    /// CAT-02/CAT-13/CAT-17/CAT-18.
+    /// </summary>
+    private static async Task<IResult> UpdateMenuItemPriceAsync(
+        Guid itemId,
+        UpdateMenuItemPriceRequest request,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        try
+        {
+            item.Reprice(Money.FromDecimal(request.Price));
+        }
+        catch (ArgumentException)
+        {
+            return Error.Validation("catalog.invalid_price", "Price must not be negative.").ToProblem();
         }
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

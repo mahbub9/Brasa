@@ -41,6 +41,14 @@ public sealed record UpdateMenuItemDetailsRequest(string? Description, IReadOnly
 public sealed record UpdateMenuItemAvailabilityRequest(bool IsAvailable);
 
 /// <summary>
+/// Request body to change a menu item's price. A decimal in major units
+/// (e.g. <c>9.50</c>), matching the CSV import convention (CAT-17) — not a
+/// full <see cref="MoneyDto"/>, since EUR is the only currency this system
+/// represents today.
+/// </summary>
+public sealed record UpdateMenuItemPriceRequest(decimal Price);
+
+/// <summary>
 /// Bulk menu import request (CAT-17). <c>Csv</c> is the raw file content,
 /// header row required: <c>CategoryName,Name,Description,Price,VatRate,IsAlcoholic</c>.
 /// Creates only — an existing item with the same name is not matched or

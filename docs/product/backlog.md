@@ -41,7 +41,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **API** | API platform & mobile readiness | 10 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
-| **CAT** | Catalog & menu | 7 | 18 | I0 (rest: I1) |
+| **CAT** | Catalog & menu | 8 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
 | **ORD** | Ordering | 16 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **86** | **291** | |
+| | **Total** | **87** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 86 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 87 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -114,7 +114,12 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > unused; only the endpoint connecting a "Pedir conta" button to them was
 > missing. Same story for 86-ing (CAT-13): `MarkAvailable`/`MarkUnavailable`
 > and the `AddLine` guard that respects them both existed since I0, but
-> nothing could ever actually set `IsAvailable` to `false` until now
+> nothing could ever actually set `IsAvailable` to `false` until now — and
+> a third instance of the identical shape, `MenuItem.Reprice` (CAT-19,
+> newly minted): the domain method and its negative-price guard existed
+> since I0 with no caller either, and past order lines were already
+> immune to a future reprice by construction (they snapshot the price at
+> add-time), so the only missing piece really was the endpoint
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -224,6 +229,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | CAT-16 | Menu versioning with effective dates | ⬜ |
 | CAT-17 | Bulk import (CSV / Excel) | 🚧 `POST /menu/items/import` — CSV only, Excel not built. Hand-written RFC 4180 parser (`CsvParser`, 8 unit tests — quoting, escaped quotes, embedded newlines, CRLF/LF, blank lines), no new dependency. Rows import independently — an unknown category or an unparsable price is reported per-row (1-indexed against the data rows) rather than failing the whole file. Create-only, not upsert: importing the same file twice creates duplicates. **Verified live**: 2 valid + 2 invalid rows in one file → `created: 2`, two row-level errors with the exact bad value named; empty CSV and a header missing a required column both `400` |
 | CAT-18 | Soft delete preserving historical order references | ✅ `MenuItem` only (what `OrderLine.MenuItemId` can reference) — `DELETE /menu/items/{id}`, no admin UI yet. Verified live: deleted item vanishes from `/menu` and can't be re-ordered, but a past order's line keeps its name/price. See `ISoftDeletable` in `docs/architecture/multi-tenancy.md` |
+| CAT-19 | Menu item price editing | ✅ `MenuItem.Reprice` existed with its own negative-price guard since I0, with no endpoint calling it — found the same way as CAT-13's availability gap. `PUT /menu/items/{id}/price` closes it; ships ahead of any UI, same as CAT-02/13/17/18. Safe by construction, not convention: `OrderLine.UnitPrice` snapshots at add-time, so repricing never rewrites a past order. **Verified live**: reprice a seeded item, confirm the *already-open* order's existing line total is unchanged while `GET /menu` shows the new price; negative price and unknown item both rejected (`catalog.invalid_price`/`catalog.item_not_found`) |
 
 ## FLR — Floor plan & tables
 

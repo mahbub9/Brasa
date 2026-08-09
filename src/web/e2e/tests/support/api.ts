@@ -101,6 +101,14 @@ export function updateMenuItemAvailabilityResponse(request: APIRequestContext, i
   });
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too. */
+export function updateMenuItemPriceResponse(request: APIRequestContext, itemId: string, price: number) {
+  return request.put(`${apiBaseUrl}/menu/items/${itemId}/price`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { price },
+  });
+}
+
 export async function updateMenuItemDetails(
   request: APIRequestContext,
   itemId: string,
