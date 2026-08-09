@@ -27,6 +27,16 @@ public sealed record TransferOrderRequest(Guid NewTableId);
 /// <summary>Request body to set or clear a line's free-text kitchen note (ORD-06). Null/whitespace clears it.</summary>
 public sealed record SetLineNotesRequest(string? Notes);
 
+/// <summary>
+/// Request body to set or clear a discount (ORD-11) — on one line
+/// (<c>PUT /orders/{id}/lines/{lineId}/discount</c>) or the whole order
+/// (<c>PUT /orders/{id}/discount</c>). <c>Type</c> is <c>"Percentage"</c> or
+/// <c>"FixedAmount"</c> (case-insensitive), the same string-not-JSON-enum
+/// convention every enum-shaped field in this API already uses (e.g.
+/// <see cref="OrderDto.Status"/>). Both fields null clears an existing discount.
+/// </summary>
+public sealed record SetDiscountRequest(string? Type, decimal? Value);
+
 /// <summary>Request body to move a single line onto a different open order (ORD-13).</summary>
 public sealed record TransferLineRequest(Guid DestinationOrderId);
 
@@ -69,7 +79,13 @@ public sealed record SplitByItemResponse(IReadOnlyList<SplitByItemGroupDto> Grou
 /// <summary>A modifier selected on an order line, as returned to clients.</summary>
 public sealed record OrderLineModifierDto(Guid Id, string Name, MoneyDto PriceDelta);
 
-/// <summary>One line of an order, as returned to clients.</summary>
+/// <summary>
+/// One line of an order, as returned to clients. <c>DiscountType</c>/
+/// <c>DiscountValue</c> are null together when no discount is set on this
+/// line (ORD-11); <c>DiscountAmount</c> is always present and zero in that
+/// case, so a client can render it without a null check. <c>LineTotal</c>
+/// already has the discount taken off.
+/// </summary>
 public sealed record OrderLineDto(
     Guid Id,
     Guid MenuItemId,
@@ -77,10 +93,19 @@ public sealed record OrderLineDto(
     MoneyDto UnitPrice,
     int Quantity,
     IReadOnlyList<OrderLineModifierDto> Modifiers,
+    string? DiscountType,
+    decimal? DiscountValue,
+    MoneyDto DiscountAmount,
     MoneyDto LineTotal,
     string? Notes);
 
-/// <summary>An order, as returned to clients.</summary>
+/// <summary>
+/// An order, as returned to clients. <c>DiscountType</c>/<c>DiscountValue</c>/
+/// <c>DiscountAmount</c> describe the order-level discount (ORD-11), on top
+/// of whatever each line's own discount already took off — same null/zero
+/// convention as <see cref="OrderLineDto"/>. <c>Total</c> already has both
+/// taken off.
+/// </summary>
 public sealed record OrderDto(
     Guid Id,
     Guid TableId,
@@ -88,6 +113,9 @@ public sealed record OrderDto(
     int CoverCount,
     bool IsTakeaway,
     string Status,
+    string? DiscountType,
+    decimal? DiscountValue,
+    MoneyDto DiscountAmount,
     MoneyDto Total,
     IReadOnlyList<OrderLineDto> Lines);
 
@@ -156,6 +184,9 @@ public static class OrderDtoMappings
         order.CoverCount,
         order.IsTakeaway,
         order.Status.ToString(),
+        order.DiscountKind?.ToString(),
+        order.DiscountValue,
+        order.OrderDiscountAmount.ToDto(),
         order.Total.ToDto(),
         [.. order.Lines.Select(l => l.ToDto())]);
 
@@ -179,6 +210,9 @@ public static class OrderDtoMappings
         line.UnitPrice.ToDto(),
         line.Quantity,
         [.. line.Modifiers.Select(m => new OrderLineModifierDto(m.Id, m.Name, m.PriceDelta.ToDto()))],
+        line.DiscountKind?.ToString(),
+        line.DiscountValue,
+        line.DiscountAmount.ToDto(),
         line.LineTotal.ToDto(),
         line.Notes);
 

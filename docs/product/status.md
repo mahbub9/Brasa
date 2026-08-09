@@ -8,7 +8,7 @@
 > [backlog.md](backlog.md) — 291 tasks with stable IDs. This page is
 > component-level; the backlog is task-level.
 
-**Last updated:** 2026-08-09 · **Roadmap phase:** I0 complete except deployment (OPS-11); I1's opening slice (real rooms and tables, FLR) proven end-to-end
+**Last updated:** 2026-08-10 · **Roadmap phase:** I0 complete except deployment (OPS-11); I1's opening slice (real rooms and tables, FLR) proven end-to-end
 
 ## Legend
 
@@ -25,7 +25,7 @@
 |---|---|---|
 | Solution + build pipeline | ✅ | .NET 10, central package management, zero-warning build |
 | `Brasa.Shared` — `Money` | ✅ | Integer cents, allocation-based splitting, 17 tests passing |
-| `Brasa.Shared` — `Result`/`Error` | ✅ | Expected failures as values. `ResultTests`/`ErrorTests` — 20 tests, incl. the `Value`-on-failure exception naming the error code, `Match`, implicit conversion, `ToResult`. `ErrorMappingTests` (in `Brasa.Api.IntegrationTests`, since `ErrorMapping` lives in `Brasa.Api`) pins all 5 `ErrorType`→HTTP status mappings in one place, not just indirectly through whichever status each endpoint's own tests happen to trigger |
+| `Brasa.Shared` — `Result`/`Error` | ✅ | Expected failures as values. `ResultTests`/`ErrorTests` — 20 tests, incl. the `Value`-on-failure exception naming the error code, `Match`, implicit conversion, `ToResult`. `ErrorMappingTests` (in `Brasa.Api.IntegrationTests`, since `ErrorMapping` lives in `Brasa.Api`) pins all 6 `ErrorType`→HTTP status mappings in one place (a 6th, `RateLimited`→429, joined the original 5 with API-12), not just indirectly through whichever status each endpoint's own tests happen to trigger |
 | `Brasa.Shared` — tenancy | ✅ | `ITenantContext`, resolve-once-per-scope `TenantContext` |
 | `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation. `PortugueseTimeZone` — 14 tests: IANA ids actually resolve on this runtime, Azores is 1h behind the mainland year-round, the rollover-hour boundary is inclusive, and the same UTC instant can land on two different business days in different regions (the exact scenario the type's own doc comment warns about) |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
@@ -237,6 +237,39 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > issues a real fiscal document exactly like a dine-in order (Close/Fiscal
 > never look at Floor at all), and the UI flow works end-to-end through a
 > real receipt.
+
+> **Update (discounts, ORD-11):** `PUT /orders/{id}/lines/{lineId}/discount`
+> and `PUT /orders/{id}/discount` set or clear a percentage or fixed-amount
+> discount on one line or the whole order; both fields null clears it. They
+> compose — an order-level discount applies on top of the subtotal after any
+> line discounts, not instead of them. A fixed amount that would exceed the
+> total it's applied to is rejected outright rather than silently clamped,
+> so a mistyped value surfaces immediately instead of quietly comping an
+> item. No manager-authorisation gate exists yet (IDN-11, once staff
+> accounts and roles exist) — ships ahead of that trigger, the same shape as
+> CAT-13's 86-ing and CAT-19's repricing. The part that needed real care:
+> `CloseOrderAsync`'s own invariant, `order.Total` must equal
+> `document.GrossTotal` to the cent, still has to hold with a discount
+> applied. It does, by construction rather than convention — a shared
+> `BuildFiscalLines` helper (now used by both the pre-bill preview and
+> close, closing a small duplication that existed before this) renders each
+> line's discount as its own negative `FiscalDocumentLine` at that line's
+> own VAT rate, and prorates an order-level discount across lines by
+> `Money.Allocate`, the same proportional-distribution tool `SplitByCover`
+> already uses — so the shares it returns always sum back to exactly the
+> discount taken off `order.Total`, with no remainder lost. Known,
+> documented gap: `SplitByItem`'s by-item preview doesn't yet reflect a
+> discount (it computes portions from a line's raw unit price, not
+> `OrderLine.LineTotal`) — `SplitEvenly`/`SplitByCover` don't have this gap,
+> since both inherit a discount automatically through `Order.Total`.
+> Verified live (`discounts.spec.ts`): a line discount reducing only that
+> line, an order discount reducing the post-line-discount subtotal further,
+> clearing restoring the original total, every rejection path (unrecognised
+> type string, percentage outside (0, 100], a fixed amount exceeding the
+> total, only one of type/value given, an unknown line, a closed order), and
+> — the fiscally load-bearing checks — the pre-bill's VAT breakdown still
+> sums to `order.Total` and `document.GrossTotal` still equals `order.Total`
+> to the cent once the order is actually closed with a discount applied.
 
 > **Update (menu item details, CAT-02):** `PUT /menu/items/{id}/details`
 > sets a menu item's description and declared allergens. Allergens are

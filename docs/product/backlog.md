@@ -27,7 +27,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 **Legend** ✅ done · 🚧 in progress · ⬜ todo · 🔒 blocked · ⏭ deferred past MVP
 
-**Last updated:** 2026-08-09
+**Last updated:** 2026-08-10
 
 ---
 
@@ -43,7 +43,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 8 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
-| **ORD** | Ordering | 16 | 22 | I0 (rest: I2) |
+| **ORD** | Ordering | 17 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **91** | **292** | |
+| | **Total** | **92** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 91 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 92 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -163,6 +163,29 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
+> Discounts (ORD-11) now exist too — a manager comping half off a late dish,
+> or a regular's 10% off the whole table — both line- and order-level,
+> percentage or fixed, composing (line discounts apply first, then the
+> order-level one on top of the already-discounted subtotal). No
+> manager-authorisation gate yet, the same "ship the seam ahead of the
+> trigger" shape as CAT-13/19: IDN-11 is the real gate once staff accounts
+> and roles exist. The two most fiscally sensitive edges got real design
+> attention rather than an approximation: a fixed discount that would exceed
+> the total it's applied to is rejected outright, not silently clamped, so a
+> mistyped value surfaces immediately instead of quietly comping an item;
+> and `CloseOrderAsync`'s own invariant (`order.Total` must equal
+> `document.GrossTotal` to the cent) still holds with a discount applied,
+> because the same discount amount that reduces `OrderLine.LineTotal`/
+> `Order.Total` is rendered as its own negative `FiscalDocumentLine` on the
+> issued document — an order-level discount prorated across lines by
+> `Money.Allocate`, the same proportional-distribution tool `SplitByCover`
+> already uses, so it reconciles by construction rather than by convention.
+> Pre-bill and close now share one `BuildFiscalLines` helper for this, which
+> also tightens ORD-19's own guarantee (a pre-bill must match the eventual
+> invoice) to cover the discounted case, not just the undiscounted one it
+> already covered. Known, documented gap: `SplitByItem`'s by-item preview
+> doesn't yet fold in a discount, unlike `SplitEvenly`/`SplitByCover`, which
+> inherit it automatically through `Total`.
 
 ---
 
@@ -296,7 +319,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ORD-08 | Send to kitchen (partial and full) | ⬜ |
 | ORD-09 | Order line status tracking | ⬜ |
 | ORD-10 | Void a line, with reason and manager authorisation | ⬜ |
-| ORD-11 | Discounts — line, order, percentage and fixed | ⬜ |
+| ORD-11 | Discounts — line, order, percentage and fixed | ✅ `PUT /orders/{id}/lines/{lineId}/discount` and `PUT /orders/{id}/discount` — both fields null clears an existing discount; a percentage must be in (0, 100], a fixed amount must be positive and not exceed the total it's applied to (rejected, never silently clamped). Composes: an order-level discount applies on top of the already line-discounted subtotal. No manager-authorisation gate yet — ships ahead of that trigger, same as CAT-13/19; IDN-11 is the real gate once staff accounts and roles exist. `SplitByItem`'s preview doesn't yet account for it (documented gap); `SplitEvenly`/`SplitByCover` do, automatically, via `Total`. **Verified live**: line + order discount composing correctly, clearing, every rejection path (bad type, out-of-range percentage, oversized fixed, one-of-the-pair, unknown line, closed order), and — the fiscally load-bearing check — `document.GrossTotal` still equals `order.Total` to the cent through `CloseOrderAsync` with a discount applied, and the pre-bill's VAT breakdown still sums to the same total (`discounts.spec.ts`) |
 | ORD-12 | Transfer table | ✅ `POST /orders/{id}/transfer` — moves an open order to a different `Free` table. Order status checked before either table is touched; the old table's `Release()` and the new table's `Occupy()` then commit atomically together in one `FloorDbContext.SaveChangesAsync` |
 | ORD-13 | Transfer individual lines between tables | ✅ `POST /orders/{id}/lines/{lineId}/transfer` — moves one line onto a different open order. Pure Ordering, no Floor involvement (unlike ORD-12). No `pos` UI yet — deliberately: picking *another* currently-open order is a real product-design question, same scoping call already made for ORD-22 |
 | ORD-14 | Merge orders | ✅ `POST /orders/{id}/merge` — moves every line from a secondary open order into the primary, marks the secondary `Merged` (new terminal status, distinct from `Closed`: no fiscal document was ever issued for it), frees its table directly via `Release()`. No `pos` UI yet, same scoping call as ORD-13 |

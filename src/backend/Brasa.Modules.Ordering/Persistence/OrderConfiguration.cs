@@ -19,10 +19,15 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.Status).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(o => o.OpenedAtUtc).IsRequired();
         builder.Property(o => o.ClosedAtUtc);
+        builder.Property(o => o.DiscountKind).HasConversion<string>().HasMaxLength(20);
+        builder.Property(o => o.DiscountValue).HasColumnType("numeric(10,2)");
 
-        // Total is derived from Lines and must never be persisted separately —
-        // a stored total could drift from the lines that produce it.
+        // Total, LinesSubtotal and OrderDiscountAmount are all derived and must
+        // never be persisted separately — a stored total could drift from the
+        // lines (and discount) that produce it.
         builder.Ignore(o => o.Total);
+        builder.Ignore(o => o.LinesSubtotal);
+        builder.Ignore(o => o.OrderDiscountAmount);
 
         builder.HasMany(o => o.Lines)
             .WithOne()

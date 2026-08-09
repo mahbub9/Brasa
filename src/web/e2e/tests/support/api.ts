@@ -285,6 +285,62 @@ export async function setLineNotes(
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-11). `type`/`value` both null clears the discount. */
+export function setLineDiscountResponse(
+  request: APIRequestContext,
+  orderId: string,
+  lineId: string,
+  type: string | null,
+  value: number | null,
+) {
+  return request.put(`${apiBaseUrl}/orders/${orderId}/lines/${lineId}/discount`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { type, value },
+  });
+}
+
+export async function setLineDiscount(
+  request: APIRequestContext,
+  orderId: string,
+  lineId: string,
+  type: string | null,
+  value: number | null,
+): Promise<OrderDto> {
+  const response = await setLineDiscountResponse(request, orderId, lineId, type, value);
+  if (!response.ok()) {
+    throw new Error(
+      `PUT /orders/${orderId}/lines/${lineId}/discount failed: ${response.status()} ${await response.text()}`,
+    );
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-11). `type`/`value` both null clears the discount. */
+export function setOrderDiscountResponse(
+  request: APIRequestContext,
+  orderId: string,
+  type: string | null,
+  value: number | null,
+) {
+  return request.put(`${apiBaseUrl}/orders/${orderId}/discount`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { type, value },
+  });
+}
+
+export async function setOrderDiscount(
+  request: APIRequestContext,
+  orderId: string,
+  type: string | null,
+  value: number | null,
+): Promise<OrderDto> {
+  const response = await setOrderDiscountResponse(request, orderId, type, value);
+  if (!response.ok()) {
+    throw new Error(`PUT /orders/${orderId}/discount failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (ORD-12). */
 export function transferOrderResponse(request: APIRequestContext, orderId: string, newTableId: string) {
   return request.post(`${apiBaseUrl}/orders/${orderId}/transfer`, {
@@ -430,19 +486,22 @@ export async function closeOrder(request: APIRequestContext, orderId: string): P
   return response.json();
 }
 
-export async function closeOrderAndClearTable(
-  request: APIRequestContext,
-  orderId: string,
-  tableId: string,
-): Promise<void> {
-  await closeOrder(request, orderId);
-
+export async function clearTable(request: APIRequestContext, tableId: string): Promise<void> {
   const clearResponse = await request.post(`${apiBaseUrl}/tables/${tableId}/clear`, {
     headers: { 'Idempotency-Key': idempotencyKey() },
   });
   if (!clearResponse.ok()) {
     throw new Error(`POST /tables/${tableId}/clear failed: ${clearResponse.status()} ${await clearResponse.text()}`);
   }
+}
+
+export async function closeOrderAndClearTable(
+  request: APIRequestContext,
+  orderId: string,
+  tableId: string,
+): Promise<void> {
+  await closeOrder(request, orderId);
+  await clearTable(request, tableId);
 }
 
 /** Raw response so callers can assert on status/body for the failure cases too (FLR-04). */

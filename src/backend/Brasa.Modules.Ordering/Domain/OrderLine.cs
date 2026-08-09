@@ -108,8 +108,62 @@ public sealed class OrderLine : Entity
         : Money.Sum(_modifiers.Select(m => m.PriceDelta));
 
     /// <summary>
-    /// (Unit price + modifiers) times quantity. Not persisted — always
-    /// derived, the same as <see cref="Order.Total"/>.
+    /// A discount applied to this one line (ORD-11), or null when none is set.
+    /// Named <c>DiscountKind</c>, not <c>DiscountType</c>, so it doesn't shadow
+    /// the <see cref="Domain.DiscountType"/> enum's own name inside this class —
+    /// C# resolves a bare type name to an instance member first when both share
+    /// an identifier, which would make the enum's own members unreachable here.
     /// </summary>
-    public Money LineTotal => (UnitPrice + ModifiersTotal) * Quantity;
+    public DiscountType? DiscountKind { get; private set; }
+
+    /// <summary>
+    /// The discount's magnitude — a percentage (0–100) when <see cref="DiscountKind"/>
+    /// is <see cref="Domain.DiscountType.Percentage"/>, or a euro amount when it's
+    /// <see cref="Domain.DiscountType.FixedAmount"/>. Null exactly when <see cref="DiscountKind"/> is.
+    /// </summary>
+    public decimal? DiscountValue { get; private set; }
+
+    /// <summary>
+    /// (Unit price + modifiers) times quantity, before <see cref="DiscountAmount"/>
+    /// is taken off. What this line would total with no discount applied.
+    /// </summary>
+    public Money GrossBeforeDiscount => (UnitPrice + ModifiersTotal) * Quantity;
+
+    /// <summary>
+    /// The amount <see cref="DiscountKind"/>/<see cref="DiscountValue"/> take off
+    /// <see cref="GrossBeforeDiscount"/>. Zero when no discount is set. Clamped so
+    /// it can never exceed the line's own gross — defence in depth on top of the
+    /// same check <see cref="Order.SetLineDiscount"/> already performs before a
+    /// fixed discount is accepted.
+    /// </summary>
+    public Money DiscountAmount
+    {
+        get
+        {
+            if (DiscountKind is null || DiscountValue is null)
+            {
+                return Money.ZeroIn(UnitPrice.Currency);
+            }
+
+            var gross = GrossBeforeDiscount;
+            var raw = DiscountKind == DiscountType.Percentage
+                ? gross * (DiscountValue.Value / 100m)
+                : Money.FromDecimal(DiscountValue.Value, gross.Currency);
+
+            return raw > gross ? gross : raw;
+        }
+    }
+
+    /// <summary>
+    /// <see cref="GrossBeforeDiscount"/> less <see cref="DiscountAmount"/>. Not
+    /// persisted — always derived, the same as <see cref="Order.Total"/>.
+    /// </summary>
+    public Money LineTotal => GrossBeforeDiscount - DiscountAmount;
+
+    /// <summary>Sets or clears this line's discount. Only <see cref="Order.SetLineDiscount"/> calls this.</summary>
+    internal void SetDiscount(DiscountType? kind, decimal? value)
+    {
+        DiscountKind = kind;
+        DiscountValue = value;
+    }
 }

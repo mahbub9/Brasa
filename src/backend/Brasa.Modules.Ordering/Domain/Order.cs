@@ -123,8 +123,50 @@ public sealed class Order : Entity
     /// <summary>The lines rung up so far.</summary>
     public IReadOnlyList<OrderLine> Lines => _lines;
 
-    /// <summary>Sum of every line. Zero for an order with no lines yet.</summary>
-    public Money Total => _lines.Count == 0 ? Money.Zero : Money.Sum(_lines.Select(l => l.LineTotal));
+    /// <summary>
+    /// A discount applied to the whole order (ORD-11), on top of any per-line
+    /// discounts — or null when none is set. See <see cref="OrderLine.DiscountKind"/>
+    /// for why this isn't named <c>DiscountType</c>.
+    /// </summary>
+    public DiscountType? DiscountKind { get; private set; }
+
+    /// <summary>
+    /// The order-level discount's magnitude — a percentage (0–100) or a euro
+    /// amount, per <see cref="DiscountKind"/>. Null exactly when <see cref="DiscountKind"/> is.
+    /// </summary>
+    public decimal? DiscountValue { get; private set; }
+
+    /// <summary>Sum of every line's own (already line-discounted) total. What the order would total with no order-level discount.</summary>
+    public Money LinesSubtotal => _lines.Count == 0 ? Money.Zero : Money.Sum(_lines.Select(l => l.LineTotal));
+
+    /// <summary>
+    /// The amount <see cref="DiscountKind"/>/<see cref="DiscountValue"/> take off
+    /// <see cref="LinesSubtotal"/>. Zero when no order-level discount is set.
+    /// Clamped the same way as <see cref="OrderLine.DiscountAmount"/>.
+    /// </summary>
+    public Money OrderDiscountAmount
+    {
+        get
+        {
+            if (DiscountKind is null || DiscountValue is null)
+            {
+                return Money.Zero;
+            }
+
+            var subtotal = LinesSubtotal;
+            var raw = DiscountKind == DiscountType.Percentage
+                ? subtotal * (DiscountValue.Value / 100m)
+                : Money.FromDecimal(DiscountValue.Value, subtotal.Currency);
+
+            return raw > subtotal ? subtotal : raw;
+        }
+    }
+
+    /// <summary>
+    /// <see cref="LinesSubtotal"/> less <see cref="OrderDiscountAmount"/>. Zero
+    /// for an order with no lines yet.
+    /// </summary>
+    public Money Total => LinesSubtotal - OrderDiscountAmount;
 
     /// <summary>
     /// Rings up a quantity of a menu item, copying its current price and VAT
@@ -227,6 +269,15 @@ public sealed class Order : Entity
     /// allocation's portion is an exact multiple of the line's own per-unit
     /// price, so the shares are exact by construction.
     /// </summary>
+    /// <remarks>
+    /// Known gap (ORD-11): portions are computed from each line's own
+    /// unit price and modifiers, not <see cref="OrderLine.LineTotal"/> — so a
+    /// line or order-level discount is not yet reflected here, unlike
+    /// <see cref="SplitEvenly"/> and <see cref="SplitByCover"/>, which inherit
+    /// it automatically through <see cref="Total"/>. Combining an active
+    /// discount with a by-item split preview is a narrow, undocumented-to-staff
+    /// edge case for now.
+    /// </remarks>
     public Result<IReadOnlyList<Money>> SplitByItem(IReadOnlyList<IReadOnlyList<LineAllocation>> groups)
     {
         if (groups.Count == 0)
@@ -426,6 +477,127 @@ public sealed class Order : Entity
 
         line.SetNotes(notes);
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Sets or clears a discount on one line (ORD-11) — a manager comping half
+    /// off a dish that arrived late, say. No manager-authorisation gate exists
+    /// yet: this ships ahead of that trigger the same way CAT-13's 86-ing and
+    /// CAT-19's repricing did, with IDN-11 tracked separately as the real gate
+    /// once staff accounts and roles exist.
+    /// </summary>
+    /// <param name="lineId">The line to discount.</param>
+    /// <param name="kind">
+    /// The discount's shape, or null together with <paramref name="value"/> to
+    /// clear an existing one. Providing exactly one of the pair is rejected.
+    /// </param>
+    /// <param name="value">
+    /// A percentage (0–100] or a euro amount, per <paramref name="kind"/>. A
+    /// fixed amount that would exceed the line's own pre-discount total is
+    /// rejected rather than silently clamped, so a mistyped value surfaces
+    /// immediately instead of quietly comping the whole line.
+    /// </param>
+    public Result SetLineDiscount(Guid lineId, DiscountType? kind, decimal? value)
+    {
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure(
+                Error.Conflict("order.not_open", "Cannot change a line's discount on an order that is not open."));
+        }
+
+        var line = _lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null)
+        {
+            return Result.Failure(Error.NotFound("order.line_not_found", $"Line {lineId} was not found on this order."));
+        }
+
+        var validation = ValidateDiscount(kind, value, line.GrossBeforeDiscount);
+        if (validation.IsFailure)
+        {
+            return validation;
+        }
+
+        line.SetDiscount(kind, value);
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Sets or clears a discount on the whole order (ORD-11), applied on top
+    /// of any per-line discounts already set — a regular's 10% loyalty
+    /// discount on the whole table, say. Same "no authorisation gate yet"
+    /// shape as <see cref="SetLineDiscount"/>.
+    /// </summary>
+    /// <param name="kind">
+    /// The discount's shape, or null together with <paramref name="value"/> to
+    /// clear an existing one.
+    /// </param>
+    /// <param name="value">
+    /// A percentage (0–100] or a euro amount, per <paramref name="kind"/>. A
+    /// fixed amount that would exceed the current <see cref="LinesSubtotal"/>
+    /// is rejected — which also means an order with no lines yet can't take a
+    /// fixed order-level discount, the same as it can't generate a pre-bill.
+    /// </param>
+    public Result SetDiscount(DiscountType? kind, decimal? value)
+    {
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure(
+                Error.Conflict("order.not_open", "Cannot change an order's discount on an order that is not open."));
+        }
+
+        var validation = ValidateDiscount(kind, value, LinesSubtotal);
+        if (validation.IsFailure)
+        {
+            return validation;
+        }
+
+        DiscountKind = kind;
+        DiscountValue = value;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Shared validation for <see cref="SetLineDiscount"/> and <see cref="SetDiscount"/>:
+    /// both a type and a value, or neither; a percentage in (0, 100]; a fixed
+    /// amount that is positive and doesn't exceed <paramref name="cap"/> — the
+    /// line's own gross for a line discount, <see cref="LinesSubtotal"/> for an
+    /// order-level one.
+    /// </summary>
+    private static Result ValidateDiscount(DiscountType? kind, decimal? value, Money cap)
+    {
+        if (kind is null != value is null)
+        {
+            return Result.Failure(Error.Validation(
+                "order.invalid_discount", "A discount needs both a type and a value, or neither to clear it."));
+        }
+
+        // kind and value are null together (checked above), so kind being
+        // non-null here guarantees value is too — this pattern match makes
+        // that guarantee visible to nullable flow analysis, rather than a
+        // null-forgiving `value.Value` the compiler can't actually verify.
+        if (kind is null || value is not decimal discountValue)
+        {
+            return Result.Success();
+        }
+
+        if (kind == DiscountType.Percentage)
+        {
+            return discountValue is > 0 and <= 100
+                ? Result.Success()
+                : Result.Failure(Error.Validation(
+                    "order.invalid_discount", "A percentage discount must be greater than 0 and at most 100."));
+        }
+
+        if (discountValue <= 0)
+        {
+            return Result.Failure(Error.Validation("order.invalid_discount", "A fixed discount must be greater than 0."));
+        }
+
+        var amount = Money.FromDecimal(discountValue, cap.Currency);
+        return amount > cap
+            ? Result.Failure(Error.Validation(
+                "order.invalid_discount", "A fixed discount cannot exceed the total it's applied to."))
+            : Result.Success();
     }
 
     /// <summary>

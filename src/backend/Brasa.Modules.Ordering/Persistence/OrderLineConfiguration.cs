@@ -18,11 +18,16 @@ internal sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLin
         builder.Property(l => l.VatRateFraction).HasColumnType("numeric(4,2)").IsRequired();
         builder.Property(l => l.Quantity).IsRequired();
         builder.Property(l => l.Notes).HasMaxLength(300);
+        builder.Property(l => l.DiscountKind).HasConversion<string>().HasMaxLength(20);
+        builder.Property(l => l.DiscountValue).HasColumnType("numeric(10,2)");
 
         builder.MapMoney(l => l.UnitPrice, "unit_price");
 
-        // LineTotal and ModifiersTotal are derived and never persisted.
+        // LineTotal, GrossBeforeDiscount, DiscountAmount and ModifiersTotal are
+        // derived and never persisted.
         builder.Ignore(l => l.LineTotal);
+        builder.Ignore(l => l.GrossBeforeDiscount);
+        builder.Ignore(l => l.DiscountAmount);
         builder.Ignore(l => l.ModifiersTotal);
 
         builder.HasMany(l => l.Modifiers)

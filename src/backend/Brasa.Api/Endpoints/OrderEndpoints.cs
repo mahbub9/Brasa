@@ -53,6 +53,14 @@ public static class OrderEndpoints
             .WithName("SetOrderLineNotes")
             .WithSummary("Sets or clears a line's free-text kitchen note (ORD-06).");
 
+        group.MapPut("/orders/{orderId:guid}/lines/{lineId:guid}/discount", SetLineDiscountAsync)
+            .WithName("SetOrderLineDiscount")
+            .WithSummary("Sets or clears a percentage/fixed discount on one line (ORD-11).");
+
+        group.MapPut("/orders/{orderId:guid}/discount", SetOrderDiscountAsync)
+            .WithName("SetOrderDiscount")
+            .WithSummary("Sets or clears a percentage/fixed discount on the whole order (ORD-11).");
+
         group.MapPost("/orders/{orderId:guid}/transfer", TransferOrderAsync)
             .WithName("TransferOrder")
             .WithSummary("Moves an open order to a different table (ORD-12).");
@@ -347,6 +355,85 @@ public static class OrderEndpoints
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Results.Ok(order.ToDto());
+    }
+
+    private static async Task<IResult> SetLineDiscountAsync(
+        Guid orderId,
+        Guid lineId,
+        SetDiscountRequest request,
+        OrderingDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
+        if (order is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        var kindResult = ParseDiscountKind(request.Type);
+        if (kindResult.IsFailure)
+        {
+            return kindResult.Error.ToProblem();
+        }
+
+        var result = order.SetLineDiscount(lineId, kindResult.Value, request.Value);
+        if (result.IsFailure)
+        {
+            return result.Error.ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Ok(order.ToDto());
+    }
+
+    private static async Task<IResult> SetOrderDiscountAsync(
+        Guid orderId,
+        SetDiscountRequest request,
+        OrderingDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
+        if (order is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        var kindResult = ParseDiscountKind(request.Type);
+        if (kindResult.IsFailure)
+        {
+            return kindResult.Error.ToProblem();
+        }
+
+        var result = order.SetDiscount(kindResult.Value, request.Value);
+        if (result.IsFailure)
+        {
+            return result.Error.ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Ok(order.ToDto());
+    }
+
+    /// <summary>
+    /// Parses <see cref="SetDiscountRequest.Type"/> — <c>"Percentage"</c> or
+    /// <c>"FixedAmount"</c>, case-insensitive, or null to clear. The domain
+    /// methods this feeds (<see cref="Order.SetLineDiscount"/>/<see cref="Order.SetDiscount"/>)
+    /// still validate the type/value pairing and range; this only turns an
+    /// unrecognised string into the same <c>order.invalid_discount</c> code
+    /// they use, rather than a raw enum-parse exception.
+    /// </summary>
+    private static Result<DiscountType?> ParseDiscountKind(string? type)
+    {
+        if (type is null)
+        {
+            return Result.Success<DiscountType?>(null);
+        }
+
+        return Enum.TryParse<DiscountType>(type, ignoreCase: true, out var parsed)
+            ? Result.Success<DiscountType?>(parsed)
+            : Result.Failure<DiscountType?>(Error.Validation(
+                "order.invalid_discount",
+                $"\"{type}\" is not a recognised discount type. Use \"Percentage\" or \"FixedAmount\"."));
     }
 
     /// <summary>
@@ -685,9 +772,7 @@ public static class OrderEndpoints
         // calculator (Brasa.Modules.Fiscal) — IFiscalProvider is never
         // called, so nothing is issued or numbered. A pre-bill is a
         // documento não fiscal; see EnsureCanGeneratePreBill and PreBillDto.
-        var fiscalLines = order.Lines
-            .Select(l => new FiscalDocumentLine(l.ItemName, l.Quantity, l.UnitPrice + l.ModifiersTotal, l.VatRateFraction))
-            .ToArray();
+        var fiscalLines = BuildFiscalLines(order);
 
         return Results.Ok(order.ToPreBillDto(fiscalLines, clock.UtcNow));
     }
@@ -719,9 +804,9 @@ public static class OrderEndpoints
         // price per line. Itemising modifiers as their own fiscal lines is
         // real fiscal-engine work (I7), not needed for I1's correctness bar:
         // order.Total and document.GrossTotal must still agree to the cent.
-        var fiscalLines = order.Lines
-            .Select(l => new FiscalDocumentLine(l.ItemName, l.Quantity, l.UnitPrice + l.ModifiersTotal, l.VatRateFraction))
-            .ToArray();
+        // BuildFiscalLines folds in any ORD-11 discount the same way — see its
+        // own remarks — so that invariant holds with a discount applied too.
+        var fiscalLines = BuildFiscalLines(order);
 
         var fiscalRequest = new FiscalDocumentRequest(tenantContext.TenantId, order.Id, fiscalLines);
         var fiscalResult = await fiscalProvider
@@ -776,6 +861,61 @@ public static class OrderEndpoints
 
     private static Error OrderNotFound(Guid orderId)
         => Error.NotFound("order.not_found", $"Order {orderId} was not found.");
+
+    /// <summary>
+    /// Builds the per-line fiscal figures for an order — shared by the
+    /// pre-bill preview and the real close/issue path (ORD-19: a pre-bill
+    /// must match the eventual invoice exactly) — folding in any ORD-11
+    /// discount as its own negative line rather than adjusting
+    /// <see cref="OrderLine.UnitPrice"/>, so the price a line was rung up at
+    /// is never disturbed.
+    /// </summary>
+    /// <remarks>
+    /// A line-level discount becomes its own <c>"Desconto: {ItemName}"</c>
+    /// line at that line's own VAT rate — no cross-rate question, since it
+    /// only ever reduces the one line it was set on. An order-level discount
+    /// is prorated across every line by each line's own (post-line-discount)
+    /// share of the subtotal, via <see cref="Money.Allocate(ReadOnlySpan{int})"/>
+    /// — the same proportional-distribution tool <c>SplitByCover</c> already
+    /// uses — then folded into that same discount line rather than added as a
+    /// second one. Both together sum, by construction, to exactly
+    /// <c>order.Total</c>: <see cref="Order.OrderDiscountAmount"/> is what
+    /// <c>Allocate</c> is handed, and it guarantees the shares it returns sum
+    /// back to that amount with no remainder lost.
+    /// </remarks>
+    private static List<FiscalDocumentLine> BuildFiscalLines(Order order)
+    {
+        var fiscalLines = new List<FiscalDocumentLine>(order.Lines.Count * 2);
+
+        var orderDiscount = order.OrderDiscountAmount;
+        Money[]? orderDiscountShares = null;
+        if (orderDiscount.IsPositive)
+        {
+            var weights = order.Lines.Select(l => (int)l.LineTotal.MinorUnits).ToArray();
+            orderDiscountShares = orderDiscount.Allocate(weights);
+        }
+
+        for (var i = 0; i < order.Lines.Count; i++)
+        {
+            var line = order.Lines[i];
+            fiscalLines.Add(new FiscalDocumentLine(
+                line.ItemName, line.Quantity, line.UnitPrice + line.ModifiersTotal, line.VatRateFraction));
+
+            var lineDiscount = line.DiscountAmount;
+            if (orderDiscountShares is not null)
+            {
+                lineDiscount += orderDiscountShares[i];
+            }
+
+            if (lineDiscount.IsPositive)
+            {
+                fiscalLines.Add(new FiscalDocumentLine(
+                    $"Desconto: {line.ItemName}", 1, lineDiscount.Negate(), line.VatRateFraction));
+            }
+        }
+
+        return fiscalLines;
+    }
 
     /// <summary>
     /// Resolves the requested modifier ids against <paramref name="menuItem"/>'s

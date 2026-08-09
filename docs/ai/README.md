@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), per-tenant-and-client rate limiting (API-12, a sixth `ErrorType.RateLimited` → 429), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1; every request now logs with `TenantId` attached (OPS-07, still 🚧 — doesn't yet reach the HTTP completion-summary line, a known pipeline-ordering gap not a silent one); the two deep-link verification documents exist too (API-18, honestly empty — no bundle id/package name exists to put in either until a native app does)
+**Last verified:** 2026-08-10 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), line and order discounts (ORD-11, percentage or fixed, composing, no manager-authorisation gate yet), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), per-tenant-and-client rate limiting (API-12, a sixth `ErrorType.RateLimited` → 429), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1; every request now logs with `TenantId` attached (OPS-07, still 🚧 — doesn't yet reach the HTTP completion-summary line, a known pipeline-ordering gap not a silent one); the two deep-link verification documents exist too (API-18, honestly empty — no bundle id/package name exists to put in either until a native app does)
 
 ---
 
@@ -67,7 +67,7 @@ Condensed:
   type's own doc comment warns about), `Result`/`Error`/`ErrorMapping`
   (23 tests across `Brasa.Shared.Tests` and `Brasa.Api.IntegrationTests` —
   `Value` on a failed `Result<T>` throws with the error code named, and all
-  5 `ErrorType`→HTTP status mappings are pinned directly rather than only
+  6 `ErrorType`→HTTP status mappings are pinned directly rather than only
   through whichever status each endpoint's own tests happen to trigger),
   tenancy +
   **real RLS** (DAT-01…06),
@@ -77,7 +77,9 @@ Condensed:
   bulk CSV import — CAT-17, still 🚧, Excel not built, rows import
   independently so one bad row doesn't fail the file),
   `Ordering` (open against a real table/add-line-with-modifiers
-  — ORD-05/per-line kitchen notes — ORD-06/transfer to a different table —
+  — ORD-05/per-line kitchen notes — ORD-06/line and order discounts,
+  percentage or fixed, composing — ORD-11, no manager-authorisation gate
+  yet (IDN-11)/transfer to a different table —
   ORD-12/transfer a single line to a different order — ORD-13/merge two
   orders — ORD-14, new `OrderStatus.Merged`, no migration needed/split
   evenly, by item or by cover — ORD-15/16/17/takeaway order with no table —
@@ -97,7 +99,7 @@ Condensed:
   `GET /menu/all` that deliberately doesn't filter the way the guest-facing
   `GET /menu` does; floor-plan editing, FLR-03, isn't built), a Playwright
   E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 74
+  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 77
   tests green on a clean run — the seeded floor plan was doubled to 16
   tables after back-to-back full runs started exhausting the original 8, a
   QA-02 scaling limitation, not a product bug; see
@@ -312,6 +314,23 @@ there is actually met.
   an unchanged order reproduces identical figures (the "reprint" requirement,
   ORD-19) for free — verified live in `pre-bill.spec.ts`, not just asserted by
   the type shape.
+- **A discount (ORD-11) never touches `OrderLine.UnitPrice`.** It would be
+  tempting to apply a discount by reducing the unit price handed to
+  `FiscalDocumentLine`, but that price is a snapshot taken at add-time and
+  must stay exactly what the guest was charged when the line was rung up —
+  the same "order lines copy the price" rule above. Instead
+  `OrderEndpoints.BuildFiscalLines` renders a discount as its own **separate
+  negative** `FiscalDocumentLine` (`"Desconto: {ItemName}"`) at the
+  discounted line's own VAT rate. This also sidesteps a real correctness
+  trap: a line-level discount doesn't divide evenly across a multi-quantity
+  line (`Money` deliberately has no division operator — see
+  [money.md](../architecture/money.md)), so trying to fold it into a
+  per-unit price for a `quantity > 1` line would either lose a cent or need
+  `Allocate`'s own remainder logic for no reason. An order-level discount is
+  prorated across lines by `Money.Allocate` (the same tool `SplitByCover`
+  uses) before being folded into that same per-line discount entry — so
+  `order.Total` and `document.GrossTotal` reconcile to the cent by
+  construction, not because the two code paths happened to agree.
 - **VAT rates are data with effective dates, not constants.** They are unconfirmed
   by an accountant and politically contested. Never hardcode them.
 - **Menu prices are VAT-inclusive (gross), not net.** `MenuItem.Price` and

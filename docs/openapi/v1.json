@@ -541,6 +541,85 @@
         }
       }
     },
+    "/api/v1/orders/{orderId}/lines/{lineId}/discount": {
+      "put": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Sets or clears a percentage/fixed discount on one line (ORD-11).",
+        "operationId": "SetOrderLineDiscount",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDiscountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/discount": {
+      "put": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Sets or clears a percentage/fixed discount on the whole order (ORD-11).",
+        "operationId": "SetOrderDiscount",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetDiscountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/orders/{orderId}/transfer": {
       "post": {
         "tags": [
@@ -922,6 +1001,30 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "SetDiscountRequest": {
+        "required": [
+          "type",
+          "value"
+        ],
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "value": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },

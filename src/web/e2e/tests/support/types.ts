@@ -66,6 +66,10 @@ export interface OrderLineDto {
   id: string;
   itemName: string;
   quantity: number;
+  discountType: string | null;
+  discountValue: number | null;
+  discountAmount: MoneyDto;
+  lineTotal: MoneyDto;
   notes: string | null;
 }
 
@@ -76,6 +80,9 @@ export interface OrderDto {
   coverCount: number;
   isTakeaway: boolean;
   status: string;
+  discountType: string | null;
+  discountValue: number | null;
+  discountAmount: MoneyDto;
   total: MoneyDto;
   lines: OrderLineDto[];
 }
