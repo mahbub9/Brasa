@@ -36,7 +36,7 @@ public static class CatalogEndpoints
         return group;
     }
 
-    private static async Task<IResult> GetMenuAsync(CatalogDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> GetMenuAsync(HttpContext httpContext, CatalogDbContext db, CancellationToken cancellationToken)
     {
         var categories = await db.Categories
             .Where(c => c.IsVisible)
@@ -61,7 +61,9 @@ public static class CatalogEndpoints
                 [.. itemsByCategory[c.Id].Select(i => i.ToDto())]))
             .ToList();
 
-        return Results.Ok(dto);
+        // API-10: the menu changes rarely, so most POS pulls should come
+        // back as a bodyless 304 rather than the same JSON every time.
+        return ETagResults.OkWithETag(httpContext, dto);
     }
 
     private static async Task<IResult> DeleteMenuItemAsync(

@@ -30,7 +30,7 @@
 | `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
 | `Brasa.Shared` — outbox contracts | ✅ | Types defined; **no dispatcher implementation yet** |
-| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete, `/items/{id}/details` — CAT-02), `/floor`, `/orders` (+`GET` search/history — ORD-22, `/takeaway` — ORD-20, `/lines`, `/lines/{id}/notes` — ORD-06, `/lines/{id}/transfer` — ORD-13, `/merge` — ORD-14, `/split`, `/split/by-item` — ORD-16, `/split/by-cover` — ORD-17, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
+| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete, `/items/{id}/details` — CAT-02, `ETag`/`If-None-Match` caching — API-10), `/floor`, `/orders` (+`GET` search/history — ORD-22, `/takeaway` — ORD-20, `/lines`, `/lines/{id}/notes` — ORD-06, `/lines/{id}/transfer` — ORD-13, `/merge` — ORD-14, `/split`, `/split/by-item` — ORD-16, `/split/by-cover` — ORD-17, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`, `ETag` exposed for browser reads) |
 | EF Core + PostgreSQL + RLS | ✅ | **Verified live**, not just asserted: `brasa_app` (unprivileged runtime role) sees zero rows with no tenant set or the wrong tenant set, and cannot run DDL. Re-verified against the new `floor` schema too. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | `Modules.Identity` | 📁 | I3 (auth) |
 | `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem` (incl. optional `Description` and declared `Allergens` — CAT-02), seeded demo menu spanning both VAT bands, soft delete (CAT-18), modifier groups (CAT-03/04) |
@@ -68,7 +68,7 @@
 | `Brasa.Shared.Tests` | ✅ | 18 passing, incl. exhaustive allocation check and the error-code registry test (API-04) |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 5 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused. The automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 37 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 39 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). That same repeated-run discipline is what caught the API-10 JSON-casing regression below before it reached a commit. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), menu `ETag`/304 caching (API-10), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -259,6 +259,26 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > unrecognised allergen name 400s (`catalog.invalid_allergen`), an unknown
 > item 404s, and the description and allergen tags render correctly on a
 > real menu button.
+
+> **Update (menu ETag, API-10):** `GET /menu` now returns a strong `ETag`
+> (SHA256 over the serialized body) and answers a repeat pull with a
+> bodyless `304` when the client's `If-None-Match` already matches —
+> the menu changes rarely, so most POS syncs should not re-transfer the
+> same JSON. Deliberately not applied to `GET /floor`: table state changes
+> continuously through service, so almost every request would be a genuine
+> cache miss. `Cors:AllowedOrigins` now exposes `ETag` too — it is not one
+> of the CORS "simple" response headers, so without this a browser client
+> could never read it to send back as `If-None-Match`. Verified live: first
+> pull is `200` with an `ETag` header, a repeat with that value in
+> `If-None-Match` is `304` with no body. A real bug surfaced by that live
+> check, not by `dotnet build` or the unit suite: the helper computed the
+> `ETag` and body by calling `JsonSerializer` with its own default options
+> (PascalCase field names) instead of the app's configured ones (camelCase),
+> which silently changed every field name `GET /menu` returned and broke
+> `pos`'s menu screen (`category.items` came back `undefined`). Fixed by
+> resolving `IOptions<JsonOptions>` from `HttpContext.RequestServices` —
+> the same options `Results.Ok(...)` already uses — instead of the type
+> default.
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:

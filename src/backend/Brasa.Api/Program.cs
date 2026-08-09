@@ -96,7 +96,10 @@ builder.Services.AddCors(options =>
     {
         if (allowedOrigins.Length > 0)
         {
-            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+            // ETag is not one of the CORS "simple" response headers browsers
+            // expose to JS by default (API-10) — without this, a web client
+            // could never read it to send back as If-None-Match.
+            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().WithExposedHeaders("ETag");
         }
     });
 });

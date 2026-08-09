@@ -38,7 +38,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **FND** | Foundation & shared kernel | 10 | 12 | I0 |
 | **OPS** | Infrastructure, CI, observability | 7 | 16 | I0 → ongoing |
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
-| **API** | API platform & mobile readiness | 4 | 18 | I0 (rest: I3) |
+| **API** | API platform & mobile readiness | 5 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 6 | 18 | I0 (rest: I1) |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 6 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **77** | **291** | |
+| | **Total** | **78** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 77 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 78 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -87,7 +87,11 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > weighted overload directly), a counter sale can be rung up with no
 > table at all (ORD-20, `Order.IsTakeaway`), and a menu item can now declare
 > a description and its allergens (CAT-02, still 🚧 — image upload needs
-> file storage infra not built yet) (details:
+> file storage infra not built yet), and `GET /menu` now answers a repeat
+> pull with a bodyless `304` when the client's `If-None-Match` shows it
+> already has the current menu (API-10 — deliberately not extended to
+> `GET /floor`, whose state changes too often for caching to pay off)
+> (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -143,7 +147,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | API-07 | `GET /client-requirements` — min & recommended version, sunset | ⬜ |
 | API-08 | RFC 8594 `Deprecation` / `Sunset` response headers | ⬜ |
 | API-09 | Cursor pagination helper, applied to every collection | ⬜ |
-| API-10 | `ETag` / `If-None-Match` on config and menu reads | ⬜ |
+| API-10 | `ETag` / `If-None-Match` on config and menu reads | ✅ `GET /menu` only — deliberately not `GET /floor`, whose state changes continuously through service. **Verified live**: 200 with a computed `ETag` on first pull, 304 with no body when it's echoed back as `If-None-Match`. Caught a real bug in review: the helper's own JSON serialization used `System.Text.Json`'s default (PascalCase) instead of ASP.NET Core's configured camelCase, silently breaking the `pos` client — fixed by resolving the app's configured `JsonSerializerOptions` from DI instead of using the type default |
 | API-11 | Response compression | ⬜ |
 | API-12 | Rate limiting, keyed by client and tenant | ⬜ |
 | API-13 | OpenAPI document generation, committed to the repo | ⬜ |
