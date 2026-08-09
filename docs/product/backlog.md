@@ -36,7 +36,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | Epic | Area | Done | Total | Phase |
 |---|---|---:|---:|---|
 | **FND** | Foundation & shared kernel | 10 | 12 | I0 |
-| **OPS** | Infrastructure, CI, observability | 6 | 16 | I0 → ongoing |
+| **OPS** | Infrastructure, CI, observability | 7 | 16 | I0 → ongoing |
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
 | **API** | API platform & mobile readiness | 4 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
@@ -55,21 +55,22 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 6 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **65** | **291** | |
+| | **Total** | **66** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 65 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 66 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04) — is done and proven against a
 > live API, there is now a real automated regression test for tenant
 > isolation (QA-09/10, DAT-11) instead of only the manual verification that
 > first caught ADR 0010, an accessibility scan (QA-14) that found and fixed
-> 5 real contrast failures on its first run, and the error-code contract
-> (hard rule 11) is now mechanically enforced (API-04), not just stated
-> (details:
+> 5 real contrast failures on its first run, the error-code contract (hard
+> rule 11) is now mechanically enforced (API-04) rather than just stated,
+> and `/health/ready` (OPS-09) actually checks PostgreSQL instead of only
+> proving the process itself is alive (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -415,7 +416,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | OPS-06 | Issue and PR templates | ✅ |
 | OPS-07 | Structured logging with tenant / site / terminal enrichment | ⬜ |
 | OPS-08 | OpenTelemetry traces and metrics | ⬜ |
-| OPS-09 | Health and readiness probes including the database | ⬜ |
+| OPS-09 | Health and readiness probes including the database | ✅ `GET /health` (liveness, no dependencies) / `GET /health/ready` (PostgreSQL reachability, `DatabaseHealthCheck`). Verified live: healthy with DB up, `503` with the container stopped, recovers once it's back |
 | OPS-10 | Hangfire setup and dashboard | ⬜ |
 | OPS-11 | Production deployment (Hetzner + Caddy) | ⬜ |
 | OPS-12 | Automated database backup and a tested restore drill | ⬜ |

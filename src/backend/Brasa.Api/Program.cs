@@ -1,6 +1,7 @@
 using System.Globalization;
 using Asp.Versioning;
 using Brasa.Api.Endpoints;
+using Brasa.Api.HealthChecks;
 using Brasa.Api.Idempotency;
 using Brasa.Api.Seed;
 using Brasa.Api.Tenancy;
@@ -14,6 +15,7 @@ using Brasa.Modules.Ordering.Persistence;
 using Brasa.Shared.Persistence;
 using Brasa.Shared.Tenancy;
 using Brasa.Shared.Time;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -68,7 +70,12 @@ builder.Services.AddMockFiscalProvider(builder.Environment);
 // RFC 9457 responses for every failure, so clients get one error shape.
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
-builder.Services.AddHealthChecks();
+
+// "ready" is tagged separately from the untagged liveness checks (there are
+// none) so /health stays a pure "is the process up" probe and /health/ready
+// is the one that actually depends on PostgreSQL — see the mapping below.
+builder.Services.AddHealthChecks()
+    .AddCheck("postgres", new DatabaseHealthCheck(connectionString), tags: ["ready"]);
 
 builder.Services.AddApiVersioning(options =>
 {
@@ -126,9 +133,20 @@ app.UseCors(WebClientsCorsPolicy);
 app.UseMiddleware<DevTenantMiddleware>();
 app.UseMiddleware<IdempotencyMiddleware>();
 
-// Liveness only. A readiness probe that also checks PostgreSQL arrives with a
-// dedicated health check package once more than one dependency needs watching.
-app.MapHealthChecks("/health");
+// Liveness: is the process itself able to respond, regardless of PostgreSQL.
+// Predicate excludes every registered check (all of them are tagged "ready"),
+// so this always reports Healthy as long as the process can serve the
+// request at all — the point of a liveness probe.
+app.MapHealthChecks("/health", new HealthCheckOptions { Predicate = _ => false });
+
+// Readiness: can this instance actually serve a request right now? OPS-09.
+// A load balancer or orchestrator should stop routing traffic here — but
+// not restart the process — when this fails; PostgreSQL being briefly
+// unreachable is not a reason to kill and reschedule the API.
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+});
 
 var apiVersionSet = app.NewApiVersionSet()
     .HasApiVersion(new ApiVersion(1, 0))

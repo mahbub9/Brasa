@@ -30,7 +30,7 @@
 | `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
 | `Brasa.Shared` — outbox contracts | ✅ | Types defined; **no dispatcher implementation yet** |
-| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete), `/floor`, `/orders` (+`/lines`, `/split`, `/close`), `/tables/{id}/clear`, `/health`. Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
+| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete), `/floor`, `/orders` (+`/lines`, `/split`, `/close`), `/tables/{id}/clear`, `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
 | EF Core + PostgreSQL + RLS | ✅ | **Verified live**, not just asserted: `brasa_app` (unprivileged runtime role) sees zero rows with no tenant set or the wrong tenant set, and cannot run DDL. Re-verified against the new `floor` schema too. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | `Modules.Identity` | 📁 | I3 (auth) |
 | `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem`, seeded demo menu spanning both VAT bands, soft delete (CAT-18), modifier groups (CAT-03/04) |

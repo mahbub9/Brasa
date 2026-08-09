@@ -67,7 +67,8 @@ Depended on by every module; depends on no module. Deliberately small.
 
 | File | State | Contents |
 |---|---|---|
-| `Program.cs` | ✅ | Two-role DI wiring (runtime vs. migration connection — [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)), API versioning, CORS (`Cors:AllowedOrigins`, for web clients), migration runner, dev seeding (Catalog + Floor), full middleware pipeline |
+| `Program.cs` | ✅ | Two-role DI wiring (runtime vs. migration connection — [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)), API versioning, CORS (`Cors:AllowedOrigins`, for web clients), migration runner, dev seeding (Catalog + Floor), full middleware pipeline, `/health` liveness + `/health/ready` readiness (OPS-09) |
+| `HealthChecks/DatabaseHealthCheck.cs` | ✅ | `IHealthCheck` running `SELECT 1` against the runtime (`brasa_app`) connection. Tagged `"ready"` — mapped only at `/health/ready`, never at the liveness `/health` — so PostgreSQL being briefly unreachable stops traffic routing but never triggers a process restart. OPS-09 |
 | `Tenancy/DevTenantMiddleware.cs` | ✅ | Attributes every request to one hardcoded tenant. **The entire auth story until IDN-03…08 (I3).** Throws if `IsProduction()` |
 | `Idempotency/IdempotencyMiddleware.cs` | ✅ | Requires `Idempotency-Key` on mutating `/api` requests; replays the cached response on repeat. In-memory, per-instance — durable store needed before scaling out |
 | `ErrorMapping.cs` | ✅ | The only place `ErrorType` → HTTP status is decided |

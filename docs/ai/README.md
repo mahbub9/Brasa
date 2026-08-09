@@ -75,7 +75,9 @@ Condensed:
   tests green across several consecutive full runs under real parallelism),
   `Brasa.Api.IntegrationTests` (DAT-11,
   QA-09/10 — real Testcontainers Postgres proving tenant isolation by
-  automated test, not just manual psql anymore), Docker Compose
+  automated test, not just manual psql anymore), a liveness/readiness split
+  (`/health`, `/health/ready` — OPS-09, live-verified against a stopped and
+  restarted PostgreSQL container), Docker Compose
   (PostgreSQL 18 + Seq), full docs tree, CI (including an `e2e` job —
   written, not yet run in CI).
 - 📁 **Empty projects (structure only, zero logic):** `Modules.Identity`,
@@ -96,7 +98,7 @@ modifiers (CAT-03/04) are both done and proven; price lists (CAT-05) and the
 
 Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/**11**/10 · API-01/03/05 ·
 CAT-01/02/03/04/07/18 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01/05/13 ·
-QA-01/03/05/**09**/**10**/**14** · FLR-01/02/04 · API-**04**.
+QA-01/03/05/**09**/**10**/**14** · FLR-01/02/04 · API-**04** · OPS-**09**.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 
