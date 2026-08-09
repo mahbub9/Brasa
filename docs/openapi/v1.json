@@ -93,6 +93,135 @@
         }
       }
     },
+    "/api/v1/menu/items/import": {
+      "post": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "Bulk-creates menu items from a CSV file (CAT-17).",
+        "operationId": "ImportMenuItems",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportMenuItemsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/menu/items/{itemId}/availability": {
+      "put": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "86's a menu item, or brings it back (CAT-13).",
+        "operationId": "UpdateMenuItemAvailability",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMenuItemAvailabilityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/menu/items/{itemId}/price": {
+      "put": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "Changes a menu item's price for future orders. Past order lines keep their own snapshot.",
+        "operationId": "UpdateMenuItemPrice",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMenuItemPriceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/menu/categories/{categoryId}/visibility": {
+      "put": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "Hides a whole category (and every item under it) from GET /menu, or shows it again (CAT-01).",
+        "operationId": "UpdateMenuCategoryVisibility",
+        "parameters": [
+          {
+            "name": "categoryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMenuCategoryVisibilityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/floor": {
       "get": {
         "tags": [
@@ -114,6 +243,31 @@
         ],
         "summary": "Marks a dirty table cleared and free for the next party.",
         "operationId": "ClearTable",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/tables/{tableId}/request-bill": {
+      "post": {
+        "tags": [
+          "FloorEndpoints"
+        ],
+        "summary": "Flags that the table has asked for the bill (FLR-04) — a floor-plan signal for staff, separate from actually previewing the bill (ORD-18/19).",
+        "operationId": "RequestBill",
         "parameters": [
           {
             "name": "tableId",
@@ -675,6 +829,17 @@
           }
         }
       },
+      "ImportMenuItemsRequest": {
+        "required": [
+          "csv"
+        ],
+        "type": "object",
+        "properties": {
+          "csv": {
+            "type": "string"
+          }
+        }
+      },
       "MergeOrdersRequest": {
         "required": [
           "secondaryOrderId"
@@ -809,6 +974,28 @@
           }
         }
       },
+      "UpdateMenuCategoryVisibilityRequest": {
+        "required": [
+          "isVisible"
+        ],
+        "type": "object",
+        "properties": {
+          "isVisible": {
+            "type": "boolean"
+          }
+        }
+      },
+      "UpdateMenuItemAvailabilityRequest": {
+        "required": [
+          "isAvailable"
+        ],
+        "type": "object",
+        "properties": {
+          "isAvailable": {
+            "type": "boolean"
+          }
+        }
+      },
       "UpdateMenuItemDetailsRequest": {
         "required": [
           "description",
@@ -830,6 +1017,22 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "UpdateMenuItemPriceRequest": {
+        "required": [
+          "price"
+        ],
+        "type": "object",
+        "properties": {
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       }
