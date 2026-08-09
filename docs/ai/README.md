@@ -64,7 +64,12 @@ Condensed:
   `PortugueseTimeZone` (14 tests — IANA ids resolve on this runtime, Azores
   stays 1h behind the mainland year-round, the same instant can land on two
   different business days in different regions, the exact scenario the
-  type's own doc comment warns about), tenancy +
+  type's own doc comment warns about), `Result`/`Error`/`ErrorMapping`
+  (23 tests across `Brasa.Shared.Tests` and `Brasa.Api.IntegrationTests` —
+  `Value` on a failed `Result<T>` throws with the error code named, and all
+  5 `ErrorType`→HTTP status mappings are pinned directly rather than only
+  through whichever status each endpoint's own tests happen to trigger),
+  tenancy +
   **real RLS** (DAT-01…06),
   `Catalog` (categories/items, seeded, soft delete — CAT-18, modifier groups
   — CAT-03/04, description + declared allergens — CAT-02, a fixed EU-wide
