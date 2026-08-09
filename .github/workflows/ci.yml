@@ -114,6 +114,64 @@ jobs:
           path: src/web/e2e/playwright-report/
           retention-days: 14
 
+  openapi-drift:
+    name: OpenAPI drift check
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Start local infrastructure
+        run: docker compose -f infra/docker-compose.yml up -d --wait
+
+      - name: Build API
+        run: dotnet build Brasa.slnx --configuration Debug
+
+      # API-14. docs/openapi/README.md documents regenerating
+      # docs/openapi/v1.json by hand after any endpoint change — this job
+      # is what actually enforces that step isn't forgotten, instead of
+      # relying on remembering to run it. Not true breaking-change
+      # detection (it doesn't distinguish an additive change from a
+      # removed field) — that's a real gap, not implied away — but it
+      # catches every drift a hand-regeneration step could silently miss,
+      # which is exactly what happened earlier in this project's own
+      # history (FLR-04/CAT-01/13/17/19 all shipped before the committed
+      # document caught up).
+      - name: Regenerate and diff the OpenAPI document
+        env:
+          ASPNETCORE_ENVIRONMENT: Development
+        run: |
+          dotnet run --project src/backend/Brasa.Api --no-build &
+          API_PID=$!
+
+          ready=false
+          for _ in $(seq 1 30); do
+            if curl -sf http://localhost:5216/health > /dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+
+          if [ "$ready" != "true" ]; then
+            echo "::error::API never became healthy within 30s."
+            kill "$API_PID" 2>/dev/null || true
+            exit 1
+          fi
+
+          curl -sf http://localhost:5216/openapi/v1.json | jq 'del(.servers)' > /tmp/openapi-live.json
+          kill "$API_PID" 2>/dev/null || true
+
+          if ! diff -u docs/openapi/v1.json /tmp/openapi-live.json; then
+            echo "::error::docs/openapi/v1.json is out of date. Regenerate it (see docs/openapi/README.md) and commit the result in the same PR as the endpoint change that caused this drift."
+            exit 1
+          fi
+
   vulnerable-packages:
     name: Vulnerable package scan
     runs-on: ubuntu-latest

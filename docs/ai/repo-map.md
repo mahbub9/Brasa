@@ -29,7 +29,7 @@
 
 | File | Purpose |
 |---|---|
-| `workflows/ci.yml` | Build (zero-warning gate) + test + transitive vulnerability scan + `e2e` job (Playwright, `src/web/e2e` — written, **not yet exercised by an actual CI run**; installs `pos` **and** `admin` dependencies now that `admin` (WEB-09) is a second app `playwright.config.ts`'s own `webServer` list starts — a fresh checkout would otherwise fail at that step, found while it still had no CI run to catch it) |
+| `workflows/ci.yml` | Build (zero-warning gate) + test + transitive vulnerability scan + `e2e` job (Playwright, `src/web/e2e` — written, **not yet exercised by an actual CI run**; installs `pos` **and** `admin` dependencies now that `admin` (WEB-09) is a second app `playwright.config.ts`'s own `webServer` list starts — a fresh checkout would otherwise fail at that step, found while it still had no CI run to catch it) + `openapi-drift` job (API-14 — starts the real API, regenerates `docs/openapi/v1.json` the documented way, fails on any diff; not semantic breaking-change detection, just drift detection, and honestly labelled as such. Also **not yet exercised by an actual CI run** — validated locally instead by deliberately breaking a copy of the committed file and confirming the diff catches it) |
 | `workflows/docs.yml` | Relative-link check across all markdown; warns when source changes without a `status.md` update |
 | `workflows/pages.yml` | Builds the VitePress site from `docs/` and deploys to GitHub Pages |
 | `pull_request_template.md` | Docs checklist, plus fiscal and money sections |
