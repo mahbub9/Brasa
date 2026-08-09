@@ -1,0 +1,855 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "Brasa.Api | v1",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/v1/ping": {
+      "get": {
+        "tags": [
+          "Brasa.Api"
+        ],
+        "summary": "Cheap reachability check used by the POS to decide whether the cloud is available.",
+        "operationId": "Ping",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/menu": {
+      "get": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "Every visible category and its available items, for the POS to render.",
+        "operationId": "GetMenu",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/menu/items/{itemId}": {
+      "delete": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "Soft-deletes a menu item. Past orders keep their own snapshot of its name and price.",
+        "operationId": "DeleteMenuItem",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/menu/items/{itemId}/details": {
+      "put": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "Sets a menu item's description and declared allergens (CAT-02).",
+        "operationId": "UpdateMenuItemDetails",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMenuItemDetailsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/floor": {
+      "get": {
+        "tags": [
+          "FloorEndpoints"
+        ],
+        "summary": "Every room and its tables, with current state, for the POS to render as a table picker.",
+        "operationId": "GetFloor",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/tables/{tableId}/clear": {
+      "post": {
+        "tags": [
+          "FloorEndpoints"
+        ],
+        "summary": "Marks a dirty table cleared and free for the next party.",
+        "operationId": "ClearTable",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders": {
+      "post": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Opens a table.",
+        "operationId": "OpenOrder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Order history/search — filter by status, table and opened-date range (ORD-22).",
+        "operationId": "SearchOrders",
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "tableId",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "openedFrom",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "openedTo",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "take",
+            "in": "query",
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/takeaway": {
+      "post": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Opens a takeaway/counter-sale order — no Floor table involved (ORD-20).",
+        "operationId": "OpenTakeawayOrder",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenTakeawayOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}": {
+      "get": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Current state of an order.",
+        "operationId": "GetOrder",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/lines": {
+      "post": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Rings up a menu item onto an open order.",
+        "operationId": "AddOrderLine",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddLineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/lines/{lineId}/notes": {
+      "put": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Sets or clears a line's free-text kitchen note (ORD-06).",
+        "operationId": "SetOrderLineNotes",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLineNotesRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/transfer": {
+      "post": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Moves an open order to a different table (ORD-12).",
+        "operationId": "TransferOrder",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferOrderRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/lines/{lineId}/transfer": {
+      "post": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Moves a single line onto a different open order (ORD-13).",
+        "operationId": "TransferOrderLine",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferLineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/merge": {
+      "post": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Merges another open order's lines into this one and frees its table (ORD-14).",
+        "operationId": "MergeOrders",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MergeOrdersRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/split": {
+      "get": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Computes an even split of the current total, without changing order state.",
+        "operationId": "PreviewOrderSplit",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "parts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "pattern": "^-?(?:0|[1-9]\\d*)$",
+              "type": [
+                "integer",
+                "string"
+              ],
+              "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/split/by-item": {
+      "post": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Previews a bill split by item (ORD-16), without changing order state.",
+        "operationId": "PreviewOrderSplitByItem",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SplitByItemRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/split/by-cover": {
+      "get": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Previews a bill split proportionally by covers per group (ORD-17), without changing order state.",
+        "operationId": "PreviewOrderSplitByCover",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "covers",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "pattern": "^-?(?:0|[1-9]\\d*)$",
+                "type": [
+                  "integer",
+                  "string"
+                ],
+                "format": "int32"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/pre-bill": {
+      "get": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Pre-bill preview for the table — a documento não fiscal, not an invoice. Safe to call repeatedly.",
+        "operationId": "GetOrderPreBill",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/close": {
+      "post": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Closes the order and issues its fiscal document.",
+        "operationId": "CloseOrder",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/client-requirements": {
+      "get": {
+        "tags": [
+          "ClientEndpoints"
+        ],
+        "summary": "Minimum/recommended version and sunset date for the calling client (API-07).",
+        "operationId": "GetClientRequirements",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AddLineRequest": {
+        "required": [
+          "menuItemId",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "menuItemId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "selectedModifierIds": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        }
+      },
+      "MergeOrdersRequest": {
+        "required": [
+          "secondaryOrderId"
+        ],
+        "type": "object",
+        "properties": {
+          "secondaryOrderId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "OpenOrderRequest": {
+        "required": [
+          "tableId",
+          "coverCount"
+        ],
+        "type": "object",
+        "properties": {
+          "tableId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "coverCount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "OpenTakeawayOrderRequest": {
+        "required": [
+          "label"
+        ],
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SetLineNotesRequest": {
+        "required": [
+          "notes"
+        ],
+        "type": "object",
+        "properties": {
+          "notes": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "SplitByItemAllocationRequest": {
+        "required": [
+          "lineId",
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "lineId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
+      "SplitByItemGroupRequest": {
+        "required": [
+          "lines"
+        ],
+        "type": "object",
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SplitByItemAllocationRequest"
+            }
+          }
+        }
+      },
+      "SplitByItemRequest": {
+        "required": [
+          "groups"
+        ],
+        "type": "object",
+        "properties": {
+          "groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SplitByItemGroupRequest"
+            }
+          }
+        }
+      },
+      "TransferLineRequest": {
+        "required": [
+          "destinationOrderId"
+        ],
+        "type": "object",
+        "properties": {
+          "destinationOrderId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "TransferOrderRequest": {
+        "required": [
+          "newTableId"
+        ],
+        "type": "object",
+        "properties": {
+          "newTableId": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      },
+      "UpdateMenuItemDetailsRequest": {
+        "required": [
+          "description",
+          "allergens"
+        ],
+        "type": "object",
+        "properties": {
+          "description": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "allergens": {
+            "type": [
+              "null",
+              "array"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Brasa.Api"
+    },
+    {
+      "name": "CatalogEndpoints"
+    },
+    {
+      "name": "FloorEndpoints"
+    },
+    {
+      "name": "OrderEndpoints"
+    },
+    {
+      "name": "ClientEndpoints"
+    }
+  ]
+}

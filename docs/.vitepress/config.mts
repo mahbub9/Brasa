@@ -124,6 +124,7 @@ export default defineConfig({
           { text: 'Testing', link: '/development/testing' },
           { text: 'End-to-end testing', link: '/development/e2e-testing' },
           { text: 'Documentation contract', link: '/development/documentation' },
+          { text: 'OpenAPI document', link: '/openapi/' },
         ],
       },
       {

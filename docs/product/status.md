@@ -360,6 +360,18 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > confirmed compression and `ETag`'s `304` path (API-10) don't interfere
 > with each other.
 
+> **Update (OpenAPI document, API-13):** [docs/openapi/v1.json](../openapi/v1.json)
+> — the `/api/v1` OpenAPI 3.1 document, fetched from the already-wired
+> `Microsoft.AspNetCore.OpenApi` dev endpoint (`GET /openapi/v1.json`) and
+> committed so the API's public shape is reviewable in a diff, not only
+> inspectable by running the app. The `servers` array is stripped before
+> committing — it's filled in from whichever host generated the document
+> (`localhost:<port>` locally), so keeping it would make every regeneration
+> a noisy diff implying a URL the document doesn't actually promise. No CI
+> enforcement that it's current yet; that's API-14, a separate, deliberately
+> not-yet-built task — see [docs/openapi/README.md](../openapi/README.md)
+> for the manual regeneration steps in the meantime.
+
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
 
