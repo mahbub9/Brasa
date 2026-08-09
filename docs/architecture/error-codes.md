@@ -24,9 +24,9 @@ as any change to an error code, the same rule as everything else in
 | `catalog.modifier_selection_invalid` | Validation | 400 | A modifier group's selection count is outside its `MinSelect`/`MaxSelect` range. |
 | `fiscal.no_lines` | Validation | 400 | `IssueSimplifiedInvoiceAsync` was called with an empty line list. |
 | `floor.table_not_dirty` | Conflict | 409 | `POST /tables/{id}/clear` was called on a table that isn't `Dirty`. |
-| `floor.table_not_free` | Conflict | 409 | `POST /orders` targeted a table that isn't `Free` — including the `xmin` concurrency-token case where two requests raced for it. |
+| `floor.table_not_free` | Conflict | 409 | `POST /orders` or `POST /orders/{id}/transfer` targeted a table that isn't `Free` — including the `xmin` concurrency-token case where two requests raced for it. |
 | `floor.table_not_found` | NotFound | 404 | The table id in the request doesn't exist. |
-| `floor.table_not_occupied` | Conflict | 409 | `RequestBill`/`MarkDirty` was called on a table that isn't `Occupied` (`RequestBill` has no endpoint yet — domain-only). |
+| `floor.table_not_occupied` | Conflict | 409 | `RequestBill`/`MarkDirty`/`Release` was called on a table that isn't `Occupied` (`RequestBill` has no endpoint yet — domain-only). |
 | `order.already_closed` | Conflict | 409 | `Close()` was called on an order that is already `Closed`. |
 | `order.empty` | Validation | 400 | `Close()` or `EnsureCanGeneratePreBill()` was called on an order with zero lines. |
 | `order.invalid_cover_count` | Validation | 400 | `POST /orders`'s `coverCount` is less than 1. |
@@ -36,7 +36,7 @@ as any change to an error code, the same rule as everything else in
 | `order.invalid_take` | Validation | 400 | `GET /orders`'s `take` query parameter is outside 1–200. |
 | `order.line_not_found` | NotFound | 404 | `SetLineNotes()`'s `lineId` doesn't belong to the order. |
 | `order.not_found` | NotFound | 404 | The order id in the request doesn't exist. |
-| `order.not_open` | Conflict | 409 | `AddLine()`, `EnsureCanGeneratePreBill()` or `SetLineNotes()` was called on an order that isn't `Open`. |
+| `order.not_open` | Conflict | 409 | `AddLine()`, `EnsureCanGeneratePreBill()`, `SetLineNotes()` or `TransferToTable()` was called on an order that isn't `Open`. |
 | `order.notes_too_long` | Validation | 400 | `SetLineNotes()`'s `notes` is over 300 characters. |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |
 

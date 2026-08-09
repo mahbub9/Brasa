@@ -14,6 +14,9 @@ public sealed record OpenOrderRequest(Guid TableId, int CoverCount);
 /// </summary>
 public sealed record AddLineRequest(Guid MenuItemId, int Quantity, IReadOnlyList<Guid>? SelectedModifierIds = null);
 
+/// <summary>Request body to move an open order to a different table (ORD-12).</summary>
+public sealed record TransferOrderRequest(Guid NewTableId);
+
 /// <summary>Request body to set or clear a line's free-text kitchen note (ORD-06). Null/whitespace clears it.</summary>
 public sealed record SetLineNotesRequest(string? Notes);
 

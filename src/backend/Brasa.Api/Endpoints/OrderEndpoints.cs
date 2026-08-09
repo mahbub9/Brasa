@@ -49,6 +49,10 @@ public static class OrderEndpoints
             .WithName("SetOrderLineNotes")
             .WithSummary("Sets or clears a line's free-text kitchen note (ORD-06).");
 
+        group.MapPost("/orders/{orderId:guid}/transfer", TransferOrderAsync)
+            .WithName("TransferOrder")
+            .WithSummary("Moves an open order to a different table (ORD-12).");
+
         group.MapGet("/orders/{orderId:guid}/split", PreviewSplitAsync)
             .WithName("PreviewOrderSplit")
             .WithSummary("Computes an even split of the current total, without changing order state.");
@@ -264,6 +268,85 @@ public static class OrderEndpoints
         }
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Ok(order.ToDto());
+    }
+
+    /// <summary>
+    /// Moves an open order to a different table (ORD-12) — a party changing
+    /// seats mid-service. Order status is checked before either table is
+    /// touched: if the order can't be transferred, nothing about Floor
+    /// should change either. Both table mutations then live in the same
+    /// <see cref="FloorDbContext"/>, so freeing the old table and occupying
+    /// the new one commit atomically together — unlike
+    /// <c>OpenOrderAsync</c>/<c>CloseOrderAsync</c>, which must coordinate
+    /// two separate <c>DbContext</c>s. See module-boundaries.md rule 5.
+    /// </summary>
+    private static async Task<IResult> TransferOrderAsync(
+        Guid orderId,
+        TransferOrderRequest request,
+        OrderingDbContext orderingDb,
+        FloorDbContext floorDb,
+        CancellationToken cancellationToken)
+    {
+        var order = await FindOrderAsync(orderingDb, orderId, cancellationToken).ConfigureAwait(false);
+        if (order is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        if (order.Status != OrderStatus.Open)
+        {
+            return Error.Conflict(
+                "order.not_open", "Cannot transfer a table on an order that is not open.").ToProblem();
+        }
+
+        var newTable = await floorDb.Tables
+            .FirstOrDefaultAsync(t => t.Id == request.NewTableId, cancellationToken)
+            .ConfigureAwait(false);
+        if (newTable is null)
+        {
+            return Error.NotFound("floor.table_not_found", $"Table {request.NewTableId} was not found.").ToProblem();
+        }
+
+        var oldTable = await floorDb.Tables
+            .FirstOrDefaultAsync(t => t.Id == order.TableId, cancellationToken)
+            .ConfigureAwait(false);
+
+        var occupyResult = newTable.Occupy();
+        if (occupyResult.IsFailure)
+        {
+            return occupyResult.Error.ToProblem();
+        }
+
+        if (oldTable is not null)
+        {
+            var releaseResult = oldTable.Release();
+            if (releaseResult.IsFailure)
+            {
+                return releaseResult.Error.ToProblem();
+            }
+        }
+
+        try
+        {
+            await floorDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Error.Conflict("floor.table_not_free", $"Table {newTable.Label} is not free.").ToProblem();
+        }
+
+        // Floor has already committed at this point, so the tables are
+        // correctly swapped even in the (should-be-impossible, since Open
+        // was just checked above) case this fails — see the same reasoning
+        // as CloseOrderAsync's best-effort MarkDirty, mirrored here.
+        var transferResult = order.TransferToTable(newTable.Id, newTable.Label);
+        if (transferResult.IsFailure)
+        {
+            return transferResult.Error.ToProblem();
+        }
+
+        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Results.Ok(order.ToDto());
     }
 

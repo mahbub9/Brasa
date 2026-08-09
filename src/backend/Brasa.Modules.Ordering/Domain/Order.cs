@@ -158,6 +158,38 @@ public sealed class Order : Entity
     }
 
     /// <summary>
+    /// Moves this order onto a different table (ORD-12) — a party changing
+    /// seats mid-service, not a new order. The caller (API layer) is
+    /// responsible for freeing the old <c>Floor.Table</c> and occupying the
+    /// new one; Ordering only ever holds the opaque id/label pair, the same
+    /// pattern <see cref="Open"/> uses.
+    /// </summary>
+    /// <param name="newTableId">The Floor module table's id being transferred to.</param>
+    /// <param name="newTableLabel">The new table's label at the moment of transfer, to snapshot.</param>
+    public Result TransferToTable(Guid newTableId, string newTableLabel)
+    {
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure(
+                Error.Conflict("order.not_open", "Cannot transfer a table on an order that is not open."));
+        }
+
+        if (newTableId == Guid.Empty)
+        {
+            throw new ArgumentException("Table id must not be empty.", nameof(newTableId));
+        }
+
+        if (string.IsNullOrWhiteSpace(newTableLabel))
+        {
+            throw new ArgumentException("Table label must not be empty.", nameof(newTableLabel));
+        }
+
+        TableId = newTableId;
+        TableLabel = newTableLabel;
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Sets or clears a line's free-text kitchen note (ORD-06) — added after
     /// the line was already rung up, since editing a line itself isn't built
     /// yet (ORD-03: add only until I2). Notes are staff/kitchen visibility

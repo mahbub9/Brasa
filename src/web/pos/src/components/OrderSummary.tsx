@@ -11,6 +11,7 @@ interface OrderSummaryProps {
   onPreviewSplit: () => void;
   onSetLineNotes: (lineId: string, notes: string | null) => void;
   onPreBill: () => void;
+  onTransferTable: () => void;
   onClose: () => void;
   busy: boolean;
 }
@@ -23,6 +24,7 @@ export function OrderSummary({
   onPreviewSplit,
   onSetLineNotes,
   onPreBill,
+  onTransferTable,
   onClose,
   busy,
 }: OrderSummaryProps) {
@@ -30,7 +32,12 @@ export function OrderSummary({
 
   return (
     <aside className="order-summary">
-      <h2>{order.tableLabel}</h2>
+      <div className="order-summary-heading">
+        <h2>{order.tableLabel}</h2>
+        <button type="button" className="transfer-table-trigger" data-testid="transfer-table-button" onClick={onTransferTable} disabled={busy}>
+          {t('order.transferTable')}
+        </button>
+      </div>
       <p className="covers">{t('order.covers', { count: order.coverCount })}</p>
 
       {order.lines.length === 0 ? (

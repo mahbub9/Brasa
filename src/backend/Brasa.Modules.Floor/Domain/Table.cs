@@ -112,6 +112,25 @@ public sealed class Table : Entity
         return Result.Success();
     }
 
+    /// <summary>
+    /// Frees the table directly, skipping <see cref="TableState.Dirty"/> —
+    /// used only when a party transfers to a different table mid-service
+    /// (ORD-12), never when they've paid and left. Closing a bill always
+    /// goes through <see cref="MarkDirty"/>/<see cref="Clear"/> so staff
+    /// still physically reset the table; a transfer skips that because the
+    /// party is simply moving, not finishing.
+    /// </summary>
+    public Result Release()
+    {
+        if (State is not (TableState.Occupied or TableState.BillRequested))
+        {
+            return Result.Failure(Error.Conflict("floor.table_not_occupied", $"Table {Label} is not occupied."));
+        }
+
+        State = TableState.Free;
+        return Result.Success();
+    }
+
     /// <summary>Staff confirms the table has been cleared and reset. Requires the table to be dirty.</summary>
     public Result Clear()
     {

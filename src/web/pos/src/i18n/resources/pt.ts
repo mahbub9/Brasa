@@ -46,6 +46,12 @@ export const pt = {
     notesPlaceholder: 'ex.: sem cebola',
     notesSave: 'Guardar',
     notesCancel: 'Cancelar',
+    transferTable: 'Transferir mesa',
+  },
+  transfer: {
+    title: 'Transferir para',
+    noFreeTables: 'Sem mesas livres.',
+    cancel: 'Cancelar',
   },
   preBill: {
     title: 'Conta',

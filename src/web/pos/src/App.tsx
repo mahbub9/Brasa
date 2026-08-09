@@ -19,6 +19,7 @@ import { OrderSummary } from './components/OrderSummary';
 import { PreBill } from './components/PreBill';
 import { Receipt } from './components/Receipt';
 import { TablePicker } from './components/TablePicker';
+import { TransferTablePicker } from './components/TransferTablePicker';
 import './App.css';
 
 /**
@@ -36,6 +37,7 @@ export default function App() {
   const [splitParts, setSplitParts] = useState(2);
   const [splitAmounts, setSplitAmounts] = useState<MoneyDto[] | null>(null);
   const [preBill, setPreBill] = useState<PreBillDto | null>(null);
+  const [transferPicker, setTransferPicker] = useState<RoomDto[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerItem, setPickerItem] = useState<MenuItemDto | null>(null);
@@ -142,6 +144,40 @@ export default function App() {
     }
   }
 
+  async function handleOpenTransferPicker() {
+    setBusy(true);
+    setError(null);
+    try {
+      // Re-fetched fresh rather than reusing `floor` state, which was last
+      // loaded before this table was even opened and may be stale.
+      setTransferPicker(await api.getFloor());
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleTransferTable(newTableId: string) {
+    if (!order) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setOrder(await api.transferOrder(order.id, { newTableId }));
+      setTransferPicker(null);
+    } catch (err) {
+      setError(describeError(err));
+      // Someone else may have just taken that table — refresh the picker's list.
+      try {
+        setTransferPicker(await api.getFloor());
+      } catch {
+        setTransferPicker(null);
+      }
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleCloseOrder() {
     if (!order) return;
     setBusy(true);
@@ -161,6 +197,7 @@ export default function App() {
     setSplitAmounts(null);
     setSplitParts(2);
     setPreBill(null);
+    setTransferPicker(null);
     loadFloor();
   }
 
@@ -188,6 +225,7 @@ export default function App() {
               onPreviewSplit={handlePreviewSplit}
               onSetLineNotes={handleSetLineNotes}
               onPreBill={handlePreBill}
+              onTransferTable={handleOpenTransferPicker}
               onClose={handleCloseOrder}
               busy={busy}
             />
@@ -212,6 +250,15 @@ export default function App() {
       )}
 
       {preBill && <PreBill preBill={preBill} onClose={() => setPreBill(null)} />}
+
+      {transferPicker && (
+        <TransferTablePicker
+          rooms={transferPicker}
+          busy={busy}
+          onSelect={handleTransferTable}
+          onCancel={() => setTransferPicker(null)}
+        />
+      )}
     </div>
   );
 }

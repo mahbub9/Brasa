@@ -45,3 +45,41 @@ export async function openAnyFreeTable(page: Page, coverCount: number, attempts 
 
   throw new Error('unreachable');
 }
+
+/**
+ * Opens the transfer-table dialog (ORD-12) and picks the first free table it
+ * offers, retrying against a different one if the server rejects it with a
+ * 409 (`floor.table_not_free`) — the same race `openAnyFreeTable` handles on
+ * initial seating, now possible on the transfer side too since another
+ * worker can occupy the picker's target between its fetch and this click.
+ * Assumes the transfer-table dialog is already open.
+ */
+export async function transferToAnyFreeTable(page: Page, attempts = 5): Promise<string> {
+  const dialog = page.getByRole('dialog', { name: 'Transferir para' });
+  const errorBanner = page.getByRole('alert');
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const targetButton = dialog.locator('.transfer-picker-tables button').first();
+    const targetLabel = await targetButton.textContent();
+    await targetButton.click();
+
+    const outcome = await Promise.race([
+      dialog.waitFor({ state: 'hidden', timeout: 5_000 }).then(() => 'transferred' as const),
+      errorBanner.waitFor({ timeout: 5_000 }).then(() => 'conflict' as const),
+    ]).catch(() => 'timeout' as const);
+
+    if (outcome === 'transferred') {
+      return targetLabel ?? '';
+    }
+
+    if (attempt === attempts) {
+      throw new Error(
+        `Could not transfer to a free table after ${attempts} attempts (last outcome: ${outcome}, table: "${targetLabel}").`,
+      );
+    }
+
+    await errorBanner.getByRole('button').click().catch(() => {});
+  }
+
+  throw new Error('unreachable');
+}

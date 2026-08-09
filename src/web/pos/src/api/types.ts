@@ -75,6 +75,10 @@ export interface SetLineNotesRequest {
   notes: string | null;
 }
 
+export interface TransferOrderRequest {
+  newTableId: string;
+}
+
 export interface OrderLineModifierDto {
   id: string;
   name: string;

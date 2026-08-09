@@ -44,6 +44,12 @@ export const en = {
     notesPlaceholder: 'e.g. no onion',
     notesSave: 'Save',
     notesCancel: 'Cancel',
+    transferTable: 'Transfer table',
+  },
+  transfer: {
+    title: 'Transfer to',
+    noFreeTables: 'No free tables.',
+    cancel: 'Cancel',
   },
   preBill: {
     title: 'Bill',

@@ -9,6 +9,7 @@ import type {
   RoomDto,
   SetLineNotesRequest,
   TableDto,
+  TransferOrderRequest,
 } from './types';
 
 // http://localhost:5216 is the "http" launch profile in
@@ -88,6 +89,9 @@ export const api = {
 
   setLineNotes: (orderId: string, lineId: string, body: SetLineNotesRequest) =>
     put<OrderDto>(`/orders/${orderId}/lines/${lineId}/notes`, body),
+
+  transferOrder: (orderId: string, body: TransferOrderRequest) =>
+    post<OrderDto>(`/orders/${orderId}/transfer`, body),
 
   previewSplit: (orderId: string, parts: number) =>
     request<{ amount: number; currency: string }[]>(`/orders/${orderId}/split?parts=${parts}`),

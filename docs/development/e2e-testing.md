@@ -1,10 +1,11 @@
 # End-to-end testing
 
-> **Status: I0/I1 harness built.** `src/web/e2e` — Playwright + TypeScript,
-> against the real `pos` UI and the real API (QA-01/02/03/05/09/10/14 — see
-> [../product/backlog.md](../product/backlog.md)). QA-04 (clock control) and
-> QA-06 (offline chaos) are **not** built yet — see §"What's actually built"
-> below for why, honestly, rather than pretending they're covered.
+> **Status: I0/I1 harness built, plus a first slice of I2.** `src/web/e2e` —
+> Playwright + TypeScript, against the real `pos` UI and the real API
+> (QA-01/02/03/05/09/10/14 — see [../product/backlog.md](../product/backlog.md)).
+> QA-04 (clock control) and QA-06 (offline chaos) are **not** built yet — see
+> §"What's actually built" below for why, honestly, rather than pretending
+> they're covered.
 
 ## Why this needs a plan
 
@@ -73,6 +74,25 @@ a service actually survives a Saturday night.**
   by more than one cent. This is intentionally an API-level test, not a UI
   one — it's cheap enough to sweep cases the UI spec doesn't bother
   enumerating.
+- **`tests/pre-bill.spec.ts`** (ORD-18/19) — the wire shape has no fiscal
+  fields at all (no document number, ATCUD or QR), VAT-band reconciliation,
+  a reprint matching byte-for-byte, 400/409 guards, and a WCAG scan on the
+  dialog.
+- **`tests/order-history.spec.ts`** (ORD-22) — `GET /orders` filtering by
+  status/table shows a just-opened order and drops it the instant it closes,
+  correct totals and line counts, invalid-filter 400s.
+- **`tests/line-notes.spec.ts`** (ORD-06) — set/overwrite/clear a line's
+  kitchen note via the API, unknown-line/too-long/closed-order guards, and
+  the inline editor in `pos` (re-opening starts from the saved value, not a
+  stale draft).
+- **`tests/transfer-table.spec.ts`** (ORD-12) — moving an order to a
+  different table frees the old one and occupies the new one in the same
+  response cycle, the order's lines survive untouched, and the guards
+  (occupied target, unknown table, closed order) all fire. The UI case uses
+  `transferToAnyFreeTable` (`support/ui.ts`) — a second, independent
+  retry-on-409 loop layered on top of `openAnyFreeTable`'s — and needs a
+  longer test timeout (`test.setTimeout(120_000)`) because their worst
+  cases can add up under real contention for the 8-table pool.
 - **CI** — a `.github/workflows/ci.yml` job (`e2e`) starts Postgres via
   `infra/docker-compose.yml`, builds the API in Debug (what `--no-build`
   picks up), installs both npm projects and Chromium, and runs the suite.
@@ -83,13 +103,25 @@ a service actually survives a Saturday night.**
 
 Verified locally from a warm state, from a cold start (both dev processes
 killed first, so `webServer` launching them from nothing is actually
-exercised), and across **four-plus consecutive full runs** under Playwright's
-real 2-worker parallelism. That last form of repetition is what actually
-matters here: a single green run never exercised two tests genuinely racing
-for the same table, and that race is exactly what surfaced a real
-concurrency bug in `Table.Occupy()` — see
+exercised), and across many consecutive full runs under Playwright's real
+2-worker parallelism. That last form of repetition is what actually matters
+here: a single green run never exercised two tests genuinely racing for the
+same table, and that race is exactly what surfaced a real concurrency bug in
+`Table.Occupy()` — see
 [status.md](../product/status.md#a-real-concurrency-bug-found-by-running-the-suite-enough-times).
-10/10 passing, every run, since the fix.
+23/23 passing on a clean run.
+
+**A growing-pains flake, not a product bug.** Running the full suite
+back-to-back with no pause in between (heavier than any real CI run, which
+fires once per push) occasionally exhausts the 8-table pool — a test's
+`openAnyFreeTable`/`openOrderOnAnyFreeTable` retries (5 attempts) can all
+lose the race when several other specs are simultaneously mid-flight against
+the same never-reset dev database. This is QA-02's already-documented
+limitation showing up in practice as the suite has grown past twenty tests,
+not a defect in any one spec. If you hit "No free table available", check
+`GET /orders?status=Open` for a leftover order, close it, `POST
+/tables/{id}/clear` any `Dirty` table, and re-run — or just wait for a
+disposable-per-run database (see "What's next" below).
 
 ### What's deliberately not built yet
 
@@ -173,7 +205,12 @@ If that passes reliably, the core product promise is proven.
    database is the persistent dev one (`docker compose up -d`), not spun up
    fresh per run. A disposable-per-run database (Testcontainers-driven, or a
    `docker compose` invocation from `globalSetup`) is a reasonable follow-up
-   once tests start wanting to run in parallel against independent data.
+   once tests start wanting to run in parallel against independent data —
+   **now observably worth doing**: at 23 tests sharing 8 seeded tables,
+   back-to-back full runs have started occasionally exhausting the pool (see
+   the note above). A cheaper interim mitigation — more seeded tables in
+   `DevFloorSeeder` — buys headroom without the bigger lift of per-run
+   isolation.
 2. ~~**QA-05** happy path~~ — done (`walking-skeleton.spec.ts`).
 3. ~~Wire into CI~~ — done (`.github/workflows/ci.yml`, job `e2e`), **not yet
    verified by an actual CI run**.

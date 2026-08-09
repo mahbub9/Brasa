@@ -177,6 +177,22 @@ export async function setLineNotes(
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-12). */
+export function transferOrderResponse(request: APIRequestContext, orderId: string, newTableId: string) {
+  return request.post(`${apiBaseUrl}/orders/${orderId}/transfer`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { newTableId },
+  });
+}
+
+export async function transferOrder(request: APIRequestContext, orderId: string, newTableId: string): Promise<OrderDto> {
+  const response = await transferOrderResponse(request, orderId, newTableId);
+  if (!response.ok()) {
+    throw new Error(`POST /orders/${orderId}/transfer failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (ORD-18/19). */
 export function getPreBillResponse(request: APIRequestContext, orderId: string) {
   return request.get(`${apiBaseUrl}/orders/${orderId}/pre-bill`);
