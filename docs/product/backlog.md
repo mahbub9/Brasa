@@ -84,8 +84,10 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > fiscal document was issued for it), and a bill can be split by item
 > instead of evenly (ORD-16, exact per-allocation portions, no `Allocate`
 > remainder needed) or by cover (ORD-17, reusing `Money.Allocate`'s own
-> weighted overload directly), and a counter sale can be rung up with no
-> table at all (ORD-20, `Order.IsTakeaway`) (details:
+> weighted overload directly), a counter sale can be rung up with no
+> table at all (ORD-20, `Order.IsTakeaway`), and a menu item can now declare
+> a description and its allergens (CAT-02, still 🚧 — image upload needs
+> file storage infra not built yet) (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -177,7 +179,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ID | Task | Status |
 |---|---|---|
 | CAT-01 | Menu categories, ordering, visibility | ✅ |
-| CAT-02 | Menu items — name, description, image, allergens | 🚧 name/price/VAT only; description/image/allergens are I1 |
+| CAT-02 | Menu items — name, description, image, allergens | 🚧 `PUT /menu/items/{id}/details` sets description + declared allergens (14 fixed EU-regulated allergens, Regulation (EU) No 1169/2011 — stable taxonomy, not a Portugal-specific figure needing an accountant's confirmation like `VatRate`); rendered on the `pos` menu screen. Image upload still not built — needs file storage infra |
 | CAT-03 | Modifier groups (required / optional, min / max) | ✅ `ModifierGroup` belongs to one `MenuItem` (not yet shared across items — see its doc comment); server enforces min/max on `POST /orders/{id}/lines`, not just the UI |
 | CAT-04 | Modifiers with price deltas | ✅ `Modifier.PriceDelta` (can be negative — e.g. "Meia dose"); snapshotted onto `OrderLineModifier` at the time of sale, folded into `LineTotal` and the fiscal document's gross total |
 | CAT-05 | Price lists per site | ⬜ |

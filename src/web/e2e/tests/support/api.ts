@@ -62,6 +62,32 @@ export function defaultRequiredModifierIds(item: MenuItemDto): string[] {
     .filter((id): id is string => id !== undefined);
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-02). */
+export function updateMenuItemDetailsResponse(
+  request: APIRequestContext,
+  itemId: string,
+  description: string | null,
+  allergens: string[],
+) {
+  return request.put(`${apiBaseUrl}/menu/items/${itemId}/details`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { description, allergens },
+  });
+}
+
+export async function updateMenuItemDetails(
+  request: APIRequestContext,
+  itemId: string,
+  description: string | null,
+  allergens: string[],
+): Promise<MenuItemDto> {
+  const response = await updateMenuItemDetailsResponse(request, itemId, description, allergens);
+  if (!response.ok()) {
+    throw new Error(`PUT /menu/items/${itemId}/details failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Fetches the live seeded floor plan. */
 export async function getFloor(request: APIRequestContext): Promise<RoomDto[]> {
   const response = await request.get(`${apiBaseUrl}/floor`);

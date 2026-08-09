@@ -21,6 +21,23 @@ export const en = {
   },
   menu: {
     empty: 'No menu items available.',
+    containsAllergens: 'Contains',
+    allergen: {
+      Gluten: 'Gluten',
+      Crustaceans: 'Crustaceans',
+      Eggs: 'Eggs',
+      Fish: 'Fish',
+      Peanuts: 'Peanuts',
+      Soybeans: 'Soybeans',
+      Milk: 'Milk',
+      Nuts: 'Tree nuts',
+      Celery: 'Celery',
+      Mustard: 'Mustard',
+      Sesame: 'Sesame',
+      Sulphites: 'Sulphites',
+      Lupin: 'Lupin',
+      Molluscs: 'Molluscs',
+    },
   },
   modifiers: {
     title: 'Customise',

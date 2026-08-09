@@ -1,4 +1,5 @@
 using Brasa.Api.Contracts;
+using Brasa.Modules.Catalog.Domain;
 using Brasa.Modules.Catalog.Persistence;
 using Brasa.Shared.Primitives;
 using Brasa.Shared.Time;
@@ -27,6 +28,10 @@ public static class CatalogEndpoints
         group.MapDelete("/menu/items/{itemId:guid}", DeleteMenuItemAsync)
             .WithName("DeleteMenuItem")
             .WithSummary("Soft-deletes a menu item. Past orders keep their own snapshot of its name and price.");
+
+        group.MapPut("/menu/items/{itemId:guid}/details", UpdateMenuItemDetailsAsync)
+            .WithName("UpdateMenuItemDetails")
+            .WithSummary("Sets a menu item's description and declared allergens (CAT-02).");
 
         return group;
     }
@@ -78,5 +83,41 @@ public static class CatalogEndpoints
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.NoContent();
+    }
+
+    private static async Task<IResult> UpdateMenuItemDetailsAsync(
+        Guid itemId,
+        UpdateMenuItemDetailsRequest request,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        var allergens = new List<Allergen>();
+        foreach (var name in request.Allergens ?? [])
+        {
+            if (!Enum.TryParse<Allergen>(name, ignoreCase: true, out var allergen))
+            {
+                return Error.Validation(
+                    "catalog.invalid_allergen", $"\"{name}\" is not a recognised allergen.").ToProblem();
+            }
+
+            allergens.Add(allergen);
+        }
+
+        item.SetDescription(request.Description);
+        item.SetAllergens(allergens);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(item.ToDto());
     }
 }

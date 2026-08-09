@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end; I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done
+**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done
 
 ---
 
@@ -63,7 +63,9 @@ Condensed:
   API-04 — see [error-codes.md](../architecture/error-codes.md)), tenancy +
   **real RLS** (DAT-01…06),
   `Catalog` (categories/items, seeded, soft delete — CAT-18, modifier groups
-  — CAT-03/04), `Ordering` (open against a real table/add-line-with-modifiers
+  — CAT-03/04, description + declared allergens — CAT-02, a fixed EU-wide
+  taxonomy, not a rate awaiting an accountant's confirmation like `VatRate`),
+  `Ordering` (open against a real table/add-line-with-modifiers
   — ORD-05/per-line kitchen notes — ORD-06/transfer to a different table —
   ORD-12/transfer a single line to a different order — ORD-13/merge two
   orders — ORD-14, new `OrderStatus.Merged`, no migration needed/split
@@ -76,7 +78,7 @@ Condensed:
   (React 19 + Vite + TS, table-picker → order incl. a modifier picker →
   receipt, WEB-01/05, pt-PT default / en toggle behind a mobile-portable
   cookie seam — WEB-13, ADR 0011), a Playwright E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 34
+  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 37
   tests green on a clean run — the seeded floor plan was doubled to 16
   tables after back-to-back full runs started exhausting the original 8, a
   QA-02 scaling limitation, not a product bug; see

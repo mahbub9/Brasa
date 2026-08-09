@@ -25,7 +25,9 @@ export interface ModifierGroupDto {
 export interface MenuItemDto {
   id: string;
   name: string;
+  description: string | null;
   price: MoneyDto;
+  allergens: string[];
   modifierGroups: ModifierGroupDto[];
 }
 

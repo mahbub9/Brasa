@@ -30,7 +30,14 @@ export function MenuGrid({ categories, onSelectItem, disabled }: MenuGridProps) 
                 onClick={() => onSelectItem(item)}
               >
                 <span className="menu-item-name">{item.name}</span>
+                {item.description && <span className="menu-item-description">{item.description}</span>}
                 <span className="menu-item-price">{formatMoney(item.price)}</span>
+                {item.allergens.length > 0 && (
+                  <span className="menu-item-allergens">
+                    {t('menu.containsAllergens')}:{' '}
+                    {item.allergens.map((allergen) => t(`menu.allergen.${allergen}`)).join(', ')}
+                  </span>
+                )}
               </button>
             ))}
           </div>

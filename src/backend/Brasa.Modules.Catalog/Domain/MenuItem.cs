@@ -49,6 +49,16 @@ public sealed class MenuItem : Entity, ISoftDeletable
     /// <summary>Display name, e.g. "Bacalhau à Brás".</summary>
     public string Name { get; private set; }
 
+    /// <summary>Free-text description shown under the name, e.g. ingredients or preparation. Optional (CAT-02).</summary>
+    public string? Description { get; private set; }
+
+    /// <summary>
+    /// Allergens present, from the fixed EU-regulated set (CAT-02). Empty
+    /// when none declared yet — that is a data-entry gap, not "contains
+    /// nothing," so a menu screen must not render it as a safety claim.
+    /// </summary>
+    public IReadOnlyList<Allergen> Allergens { get; private set; } = [];
+
     /// <summary>
     /// Current selling price, <b>VAT-inclusive</b> — Portuguese consumer pricing
     /// law requires the price shown to a guest to be the final amount they pay.
@@ -99,6 +109,22 @@ public sealed class MenuItem : Entity, ISoftDeletable
         }
 
         Price = newPrice;
+    }
+
+    /// <summary>Sets or clears the description (CAT-02). Null/whitespace clears it.</summary>
+    public void SetDescription(string? description)
+    {
+        Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+    }
+
+    /// <summary>
+    /// Replaces the full declared allergen set (CAT-02) — not additive, so a
+    /// correction (an allergen wrongly declared) is one call, not a
+    /// remove-then-add.
+    /// </summary>
+    public void SetAllergens(IEnumerable<Allergen> allergens)
+    {
+        Allergens = allergens.Distinct().ToList();
     }
 
     /// <summary>Modifier groups a guest can (or must) choose from when ordering this item. CAT-03.</summary>

@@ -25,10 +25,12 @@ export interface ModifierGroupDto {
 export interface MenuItemDto {
   id: string;
   name: string;
+  description: string | null;
   price: MoneyDto;
   vatRatePercent: number;
   isAlcoholic: boolean;
   isAvailable: boolean;
+  allergens: string[];
   modifierGroups: ModifierGroupDto[];
 }
 
