@@ -17,6 +17,7 @@ using Brasa.Shared.Persistence;
 using Brasa.Shared.Tenancy;
 using Brasa.Shared.Time;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
@@ -79,6 +80,22 @@ builder.Services.AddMockFiscalProvider(builder.Environment);
 builder.Services.AddProblemDetails();
 builder.Services.AddOpenApi();
 
+// API-11, docs/architecture/api-contract.md §9: "Compression on all
+// responses" — assume a phone on cellular in a basement dining room. Safe to
+// enable over HTTPS here: BREACH relies on a compressed response mixing a
+// secret with attacker-influenced content (classically a CSRF token
+// reflected next to a query parameter in server-rendered HTML), and this API
+// has neither — bearer-token auth with no cookies (ADR 0008), and every
+// response is generated server-side from the database, never echoing
+// caller-supplied content back into the same body as a secret.
+builder.Services.AddResponseCompression(options =>
+{
+    options.EnableForHttps = true;
+    options.Providers.Add<BrotliCompressionProvider>();
+    options.Providers.Add<GzipCompressionProvider>();
+    options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Append("application/problem+json");
+});
+
 // "ready" is tagged separately from the untagged liveness checks (there are
 // none) so /health stays a pure "is the process up" probe and /health/ready
 // is the one that actually depends on PostgreSQL — see the mapping below.
@@ -122,6 +139,10 @@ if (!app.Environment.IsProduction())
     await DevCatalogSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
     await DevFloorSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
 }
+
+// Must be one of the first middlewares in the pipeline — anything that
+// writes to the response before this runs bypasses compression entirely.
+app.UseResponseCompression();
 
 // Runs before request logging so a parsed X-Brasa-Client header (API-06)
 // enriches the request-completion log line itself, not just lines written
