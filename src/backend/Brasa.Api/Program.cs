@@ -253,6 +253,17 @@ app.MapHealthChecks("/health/ready", new HealthCheckOptions
     Predicate = check => check.Tags.Contains("ready"),
 });
 
+// API-18 — deep-link verification documents (api-contract.md §12), served
+// so universal/app links work with no app-specific backend logic once a
+// native app exists (MOB-01+, not started). Honestly empty today — no
+// bundle id, Team id or package name exists to put in either file, and
+// inventing placeholder ones would make a real security-verification
+// document lie. An empty "apps"/"details" array or an empty top-level
+// array is the documented, structurally valid way both platforms spell
+// "nothing is linked yet" — not a stub that happens to 404.
+app.MapGet("/.well-known/apple-app-site-association", () => Results.Json(new { applinks = new { apps = Array.Empty<string>(), details = Array.Empty<object>() } }));
+app.MapGet("/.well-known/assetlinks.json", () => Results.Json(Array.Empty<object>()));
+
 var apiVersionSet = app.NewApiVersionSet()
     .HasApiVersion(new ApiVersion(1, 0))
     .ReportApiVersions()
@@ -262,10 +273,10 @@ var v1 = app.MapGroup("/api/v1")
     .WithApiVersionSet(apiVersionSet)
     .MapToApiVersion(1, 0);
 
-v1.MapGet("/ping", () => Results.Ok(new
+v1.MapGet("/ping", (IClock clock) => Results.Ok(new
 {
     service = "brasa-api",
-    utc = DateTimeOffset.UtcNow.ToString("O", CultureInfo.InvariantCulture),
+    utc = clock.UtcNow.ToString("O", CultureInfo.InvariantCulture),
 }))
 .WithName("Ping")
 .WithSummary("Cheap reachability check used by the POS to decide whether the cloud is available.");

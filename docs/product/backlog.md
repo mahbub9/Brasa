@@ -38,7 +38,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **FND** | Foundation & shared kernel | 10 | 12 | I0 |
 | **OPS** | Infrastructure, CI, observability | 7 | 16 | I0 → ongoing |
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
-| **API** | API platform & mobile readiness | 12 | 18 | I0 (rest: I3) |
+| **API** | API platform & mobile readiness | 13 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 8 | 19 | I0 (rest: I1) |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **90** | **292** | |
+| | **Total** | **91** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 90 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 91 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -152,7 +152,12 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > reach the one-line HTTP completion summary, since that middleware is
 > registered earlier in the pipeline on purpose (so a CORS- or
 > rate-limit-rejected request still gets logged), and reaching it would mean
-> reordering the pipeline, not just adding a middleware
+> reordering the pipeline, not just adding a middleware. The two deep-link
+> verification documents (API-18) now exist too — honestly empty rather
+> than fabricated, since no bundle id or package name exists to put in
+> either until a native app does — and the `/ping` endpoint's own
+> `DateTimeOffset.UtcNow` call (a hard-rule-2 violation found while adding
+> them) now goes through `IClock` like everything else
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -217,7 +222,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | API-15 | TypeScript SDK generation into `web/sdk` | ⬜ |
 | API-16 | SignalR hub, JSON protocol | ⬜ |
 | API-17 | REST equivalent for every realtime message (enforced by test) | ⬜ |
-| API-18 | `/.well-known/` app-link documents for iOS and Android | ⬜ |
+| API-18 | `/.well-known/` app-link documents for iOS and Android | ✅ `GET /.well-known/apple-app-site-association` (`{"applinks":{"apps":[],"details":[]}}`) and `GET /.well-known/assetlinks.json` (`[]`) — structurally valid, honestly empty rather than fabricated: no bundle id, Team id or Android package name exists to put in either file until a native app does (MOB-01+, not started), and inventing placeholder ones would make a real verification document lie. `Content-Type: application/json`, unversioned (not under `/api/v1`), no auth. **Verified live** |
 
 ## IDN — Identity & access
 
