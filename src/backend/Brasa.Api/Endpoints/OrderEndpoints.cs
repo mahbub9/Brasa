@@ -65,6 +65,10 @@ public static class OrderEndpoints
             .WithName("PreviewOrderSplit")
             .WithSummary("Computes an even split of the current total, without changing order state.");
 
+        group.MapPost("/orders/{orderId:guid}/split/by-item", PreviewSplitByItemAsync)
+            .WithName("PreviewOrderSplitByItem")
+            .WithSummary("Previews a bill split by item (ORD-16), without changing order state.");
+
         group.MapGet("/orders/{orderId:guid}/pre-bill", GetPreBillAsync)
             .WithName("GetOrderPreBill")
             .WithSummary("Pre-bill preview for the table — a documento não fiscal, not an invoice. Safe to call repeatedly.");
@@ -518,6 +522,54 @@ public static class OrderEndpoints
         return splitResult.IsFailure
             ? splitResult.Error.ToProblem()
             : Results.Ok(splitResult.Value.Select(m => m.ToDto()).ToArray());
+    }
+
+    /// <summary>
+    /// Previews a bill split by item (ORD-16) — never mutates order state,
+    /// the same as <c>PreviewSplitAsync</c>, but takes a structured body so
+    /// it's a <c>POST</c> rather than a <c>GET</c>. Validation and the
+    /// exact per-group totals live in <c>Order.SplitByItem</c>; this only
+    /// re-shapes the request/result pair into a friendlier response that
+    /// names each allocated line.
+    /// </summary>
+    private static async Task<IResult> PreviewSplitByItemAsync(
+        Guid orderId,
+        SplitByItemRequest request,
+        OrderingDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
+        if (order is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        IReadOnlyList<IReadOnlyList<LineAllocation>> domainGroups =
+            [.. request.Groups.Select(g => (IReadOnlyList<LineAllocation>)
+                [.. g.Lines.Select(l => new LineAllocation(l.LineId, l.Quantity))])];
+
+        var splitResult = order.SplitByItem(domainGroups);
+        if (splitResult.IsFailure)
+        {
+            return splitResult.Error.ToProblem();
+        }
+
+        // SplitByItem already validated every LineId against this order, so
+        // the lookup below can't miss.
+        var linesById = order.Lines.ToDictionary(l => l.Id);
+        var groupDtos = request.Groups.Select((group, index) =>
+        {
+            var lineDtos = group.Lines.Select(allocation =>
+            {
+                var line = linesById[allocation.LineId];
+                var portion = (line.UnitPrice + line.ModifiersTotal) * allocation.Quantity;
+                return new SplitByItemLineDto(line.Id, line.ItemName, allocation.Quantity, portion.ToDto());
+            }).ToArray();
+
+            return new SplitByItemGroupDto(lineDtos, splitResult.Value[index].ToDto());
+        }).ToArray();
+
+        return Results.Ok(new SplitByItemResponse(groupDtos));
     }
 
     private static async Task<IResult> GetPreBillAsync(

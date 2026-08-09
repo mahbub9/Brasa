@@ -38,6 +38,7 @@ export interface MenuCategoryDto {
 export interface OrderLineDto {
   id: string;
   itemName: string;
+  quantity: number;
   notes: string | null;
 }
 
@@ -78,6 +79,22 @@ export interface PreBillDto {
   total: MoneyDto;
   generatedAtUtc: string;
   documentKind: string;
+}
+
+export interface SplitByItemLineDto {
+  lineId: string;
+  itemName: string;
+  quantity: number;
+  total: MoneyDto;
+}
+
+export interface SplitByItemGroupDto {
+  lines: SplitByItemLineDto[];
+  total: MoneyDto;
+}
+
+export interface SplitByItemResponse {
+  groups: SplitByItemGroupDto[];
 }
 
 export interface TableDto {

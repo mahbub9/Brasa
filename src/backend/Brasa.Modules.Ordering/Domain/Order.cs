@@ -158,6 +158,70 @@ public sealed class Order : Entity
     }
 
     /// <summary>
+    /// Computes a bill split where each guest pays for specific items,
+    /// rather than an equal share (ORD-16) — e.g. "Ana had the fish, Rui had
+    /// the steak." <paramref name="groups"/> is one entry per guest's share;
+    /// every line's <see cref="OrderLine.Quantity"/> must be allocated
+    /// across the groups exactly once, with none left over and none
+    /// double-counted. Unlike <see cref="SplitEvenly"/>, this never needs
+    /// <see cref="Money.Allocate(int)"/>'s remainder distribution — each
+    /// allocation's portion is an exact multiple of the line's own per-unit
+    /// price, so the shares are exact by construction.
+    /// </summary>
+    public Result<IReadOnlyList<Money>> SplitByItem(IReadOnlyList<IReadOnlyList<LineAllocation>> groups)
+    {
+        if (groups.Count == 0)
+        {
+            return Result.Failure<IReadOnlyList<Money>>(
+                Error.Validation("order.invalid_split", "At least one group is required."));
+        }
+
+        var remainingQuantity = _lines.ToDictionary(l => l.Id, l => l.Quantity);
+        var totals = new List<Money>(groups.Count);
+
+        foreach (var group in groups)
+        {
+            if (group.Count == 0)
+            {
+                return Result.Failure<IReadOnlyList<Money>>(
+                    Error.Validation("order.invalid_split", "Each group must include at least one line."));
+            }
+
+            var portions = new List<Money>(group.Count);
+            foreach (var allocation in group)
+            {
+                if (!remainingQuantity.TryGetValue(allocation.LineId, out var remaining))
+                {
+                    return Result.Failure<IReadOnlyList<Money>>(Error.NotFound(
+                        "order.line_not_found", $"Line {allocation.LineId} was not found on this order."));
+                }
+
+                if (allocation.Quantity < 1 || allocation.Quantity > remaining)
+                {
+                    return Result.Failure<IReadOnlyList<Money>>(Error.Validation(
+                        "order.invalid_split",
+                        $"Line {allocation.LineId} was allocated {allocation.Quantity}, " +
+                        $"more than its {remaining} remaining unallocated quantity."));
+                }
+
+                var line = _lines.First(l => l.Id == allocation.LineId);
+                remainingQuantity[allocation.LineId] = remaining - allocation.Quantity;
+                portions.Add((line.UnitPrice + line.ModifiersTotal) * allocation.Quantity);
+            }
+
+            totals.Add(Money.Sum(portions));
+        }
+
+        if (remainingQuantity.Values.Any(q => q > 0))
+        {
+            return Result.Failure<IReadOnlyList<Money>>(Error.Validation(
+                "order.invalid_split", "Every line's quantity must be fully allocated across the groups."));
+        }
+
+        return Result.Success<IReadOnlyList<Money>>(totals);
+    }
+
+    /// <summary>
     /// Removes a line from this order so it can be attached to a different
     /// one (ORD-13) — a dish moving to the table a guest is joining, or a
     /// large party splitting across two tables mid-service. The line itself

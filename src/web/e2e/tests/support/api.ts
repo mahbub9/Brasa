@@ -1,5 +1,14 @@
 import type { APIRequestContext } from '@playwright/test';
-import type { MenuCategoryDto, MenuItemDto, OrderDto, OrderSummaryDto, PreBillDto, RoomDto, TableDto } from './types';
+import type {
+  MenuCategoryDto,
+  MenuItemDto,
+  OrderDto,
+  OrderSummaryDto,
+  PreBillDto,
+  RoomDto,
+  SplitByItemResponse,
+  TableDto,
+} from './types';
 
 // Deterministic test-data builders (QA-03) — set up state via the API
 // directly instead of clicking through the UI, so specs that aren't
@@ -273,6 +282,30 @@ export async function transferLine(
     throw new Error(
       `POST /orders/${orderId}/lines/${lineId}/transfer failed: ${response.status()} ${await response.text()}`,
     );
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-16). */
+export function previewSplitByItemResponse(
+  request: APIRequestContext,
+  orderId: string,
+  groups: { lines: { lineId: string; quantity: number }[] }[],
+) {
+  return request.post(`${apiBaseUrl}/orders/${orderId}/split/by-item`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { groups },
+  });
+}
+
+export async function previewSplitByItem(
+  request: APIRequestContext,
+  orderId: string,
+  groups: { lines: { lineId: string; quantity: number }[] }[],
+): Promise<SplitByItemResponse> {
+  const response = await previewSplitByItemResponse(request, orderId, groups);
+  if (!response.ok()) {
+    throw new Error(`POST /orders/${orderId}/split/by-item failed: ${response.status()} ${await response.text()}`);
   }
   return response.json();
 }

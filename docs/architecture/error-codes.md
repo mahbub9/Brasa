@@ -30,13 +30,13 @@ as any change to an error code, the same rule as everything else in
 | `order.already_closed` | Conflict | 409 | `Close()` was called on an order that is already `Closed`. |
 | `order.empty` | Validation | 400 | `Close()` or `EnsureCanGeneratePreBill()` was called on an order with zero lines. |
 | `order.invalid_cover_count` | Validation | 400 | `POST /orders`'s `coverCount` is less than 1. |
-| `order.invalid_quantity` | Validation | 400 | An order line's `quantity` is less than 1. |
-| `order.invalid_split` | Validation | 400 | `SplitEvenly`'s `parts` is less than 1. |
 | `order.invalid_merge_target` | Validation | 400 | `POST /orders/{id}/merge`'s `secondaryOrderId` is the same as the primary order. |
+| `order.invalid_quantity` | Validation | 400 | An order line's `quantity` is less than 1. |
+| `order.invalid_split` | Validation | 400 | `SplitEvenly`'s `parts` is less than 1, or `SplitByItem()`'s groups are empty, a group has no lines, or a line's quantity isn't allocated exactly once across the groups. |
 | `order.invalid_status_filter` | Validation | 400 | `GET /orders`'s `status` query parameter isn't a recognised `OrderStatus` value. |
 | `order.invalid_take` | Validation | 400 | `GET /orders`'s `take` query parameter is outside 1–200. |
 | `order.invalid_transfer_target` | Validation | 400 | `POST /orders/{id}/lines/{lineId}/transfer`'s `destinationOrderId` is the same as the source order. |
-| `order.line_not_found` | NotFound | 404 | `SetLineNotes()` or `DetachLine()`'s `lineId` doesn't belong to the order. |
+| `order.line_not_found` | NotFound | 404 | `SetLineNotes()`, `DetachLine()` or `SplitByItem()`'s `lineId` doesn't belong to the order. |
 | `order.not_empty` | Validation | 400 | `MarkMerged()` was called on an order that still has lines. |
 | `order.not_found` | NotFound | 404 | The order id in the request doesn't exist. |
 | `order.not_open` | Conflict | 409 | `AddLine()`, `EnsureCanGeneratePreBill()`, `SetLineNotes()`, `TransferToTable()`, `DetachLine()`, `ReceiveLine()` or `MarkMerged()` was called on an order that isn't `Open`. |

@@ -35,6 +35,30 @@ public sealed record MergeOrdersRequest(Guid SecondaryOrderId);
 /// </summary>
 public sealed record MergeOrdersResponse(OrderDto PrimaryOrder, OrderDto SecondaryOrder);
 
+/// <summary>One line's quantity assigned to a guest's share (ORD-16). <c>LineId</c> must belong to the order.</summary>
+public sealed record SplitByItemAllocationRequest(Guid LineId, int Quantity);
+
+/// <summary>One guest's share — the lines (and how much of each) they're paying for.</summary>
+public sealed record SplitByItemGroupRequest(IReadOnlyList<SplitByItemAllocationRequest> Lines);
+
+/// <summary>
+/// Request body to preview a bill split by item (ORD-16). Every line's
+/// quantity must be allocated across <c>Groups</c> exactly once — none left
+/// over, none double-counted. Doesn't change order state, same as the even
+/// split (<c>GET /orders/{id}/split?parts=N</c>) — but this needs a
+/// structured body, so unlike that one it can't stay a simple <c>GET</c>.
+/// </summary>
+public sealed record SplitByItemRequest(IReadOnlyList<SplitByItemGroupRequest> Groups);
+
+/// <summary>One allocated portion of a line within a group's share, as returned to clients.</summary>
+public sealed record SplitByItemLineDto(Guid LineId, string ItemName, int Quantity, MoneyDto Total);
+
+/// <summary>One guest's computed share.</summary>
+public sealed record SplitByItemGroupDto(IReadOnlyList<SplitByItemLineDto> Lines, MoneyDto Total);
+
+/// <summary>Response body for a by-item split preview.</summary>
+public sealed record SplitByItemResponse(IReadOnlyList<SplitByItemGroupDto> Groups);
+
 /// <summary>A modifier selected on an order line, as returned to clients.</summary>
 public sealed record OrderLineModifierDto(Guid Id, string Name, MoneyDto PriceDelta);
 
