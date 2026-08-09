@@ -8,6 +8,7 @@ interface OrderSummaryProps {
   onSplitPartsChange: (parts: number) => void;
   splitAmounts: MoneyDto[] | null;
   onPreviewSplit: () => void;
+  onPreBill: () => void;
   onClose: () => void;
   busy: boolean;
 }
@@ -18,6 +19,7 @@ export function OrderSummary({
   onSplitPartsChange,
   splitAmounts,
   onPreviewSplit,
+  onPreBill,
   onClose,
   busy,
 }: OrderSummaryProps) {
@@ -87,6 +89,16 @@ export function OrderSummary({
           </ul>
         )}
       </div>
+
+      <button
+        type="button"
+        className="pre-bill-trigger"
+        data-testid="pre-bill-button"
+        onClick={onPreBill}
+        disabled={busy || order.lines.length === 0}
+      >
+        {t('order.preBill')}
+      </button>
 
       <button
         type="button"

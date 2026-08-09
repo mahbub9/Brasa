@@ -45,6 +45,10 @@ public static class OrderEndpoints
             .WithName("PreviewOrderSplit")
             .WithSummary("Computes an even split of the current total, without changing order state.");
 
+        group.MapGet("/orders/{orderId:guid}/pre-bill", GetPreBillAsync)
+            .WithName("GetOrderPreBill")
+            .WithSummary("Pre-bill preview for the table — a documento não fiscal, not an invoice. Safe to call repeatedly.");
+
         group.MapPost("/orders/{orderId:guid}/close", CloseOrderAsync)
             .WithName("CloseOrder")
             .WithSummary("Closes the order and issues its fiscal document.");
@@ -183,6 +187,35 @@ public static class OrderEndpoints
         return splitResult.IsFailure
             ? splitResult.Error.ToProblem()
             : Results.Ok(splitResult.Value.Select(m => m.ToDto()).ToArray());
+    }
+
+    private static async Task<IResult> GetPreBillAsync(
+        Guid orderId,
+        OrderingDbContext db,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
+        if (order is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        var guardResult = order.EnsureCanGeneratePreBill();
+        if (guardResult.IsFailure)
+        {
+            return guardResult.Error.ToProblem();
+        }
+
+        // FiscalDocumentLine is reused purely as a gross-inclusive net/VAT
+        // calculator (Brasa.Modules.Fiscal) — IFiscalProvider is never
+        // called, so nothing is issued or numbered. A pre-bill is a
+        // documento não fiscal; see EnsureCanGeneratePreBill and PreBillDto.
+        var fiscalLines = order.Lines
+            .Select(l => new FiscalDocumentLine(l.ItemName, l.Quantity, l.UnitPrice + l.ModifiersTotal, l.VatRateFraction))
+            .ToArray();
+
+        return Results.Ok(order.ToPreBillDto(fiscalLines, clock.UtcNow));
     }
 
     private static async Task<IResult> CloseOrderAsync(

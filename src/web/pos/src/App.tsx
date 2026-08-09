@@ -1,13 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from './api/client';
-import type { CloseOrderResponse, MenuCategoryDto, MenuItemDto, MoneyDto, OrderDto, RoomDto } from './api/types';
+import type {
+  CloseOrderResponse,
+  MenuCategoryDto,
+  MenuItemDto,
+  MoneyDto,
+  OrderDto,
+  PreBillDto,
+  RoomDto,
+} from './api/types';
 import { ErrorBanner } from './components/ErrorBanner';
 import i18n from './i18n/i18n';
 import { LanguageToggle } from './components/LanguageToggle';
 import { MenuGrid } from './components/MenuGrid';
 import { ModifierPicker } from './components/ModifierPicker';
 import { OrderSummary } from './components/OrderSummary';
+import { PreBill } from './components/PreBill';
 import { Receipt } from './components/Receipt';
 import { TablePicker } from './components/TablePicker';
 import './App.css';
@@ -26,6 +35,7 @@ export default function App() {
   const [closeResult, setCloseResult] = useState<CloseOrderResponse | null>(null);
   const [splitParts, setSplitParts] = useState(2);
   const [splitAmounts, setSplitAmounts] = useState<MoneyDto[] | null>(null);
+  const [preBill, setPreBill] = useState<PreBillDto | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerItem, setPickerItem] = useState<MenuItemDto | null>(null);
@@ -106,6 +116,19 @@ export default function App() {
     }
   }
 
+  async function handlePreBill() {
+    if (!order) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setPreBill(await api.getPreBill(order.id));
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleCloseOrder() {
     if (!order) return;
     setBusy(true);
@@ -124,6 +147,7 @@ export default function App() {
     setCloseResult(null);
     setSplitAmounts(null);
     setSplitParts(2);
+    setPreBill(null);
     loadFloor();
   }
 
@@ -149,6 +173,7 @@ export default function App() {
               onSplitPartsChange={setSplitParts}
               splitAmounts={splitAmounts}
               onPreviewSplit={handlePreviewSplit}
+              onPreBill={handlePreBill}
               onClose={handleCloseOrder}
               busy={busy}
             />
@@ -171,6 +196,8 @@ export default function App() {
           onCancel={() => setPickerItem(null)}
         />
       )}
+
+      {preBill && <PreBill preBill={preBill} onClose={() => setPreBill(null)} />}
     </div>
   );
 }

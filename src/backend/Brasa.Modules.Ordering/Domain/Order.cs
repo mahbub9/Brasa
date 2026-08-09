@@ -157,6 +157,30 @@ public sealed class Order : Entity
         return Result.Success(Total.Allocate(parts));
     }
 
+    /// <summary>
+    /// Guards generating a pre-bill preview for the table — a <em>documento não
+    /// fiscal</em>, never an invoice (ORD-18). See
+    /// <c>docs/fiscal/README.md</c>: issuing it as a fiscal document would
+    /// fiscalise every table that merely asks to see the bill, so this only
+    /// checks order state and never touches the Fiscal module.
+    /// </summary>
+    public Result EnsureCanGeneratePreBill()
+    {
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure(
+                Error.Conflict("order.not_open", "Cannot generate a pre-bill for an order that is not open."));
+        }
+
+        if (_lines.Count == 0)
+        {
+            return Result.Failure(
+                Error.Validation("order.empty", "Cannot generate a pre-bill for an order with no lines."));
+        }
+
+        return Result.Success();
+    }
+
     /// <summary>Closes the order. Requires at least one line and that it is not already closed.</summary>
     /// <param name="closedAtUtc">The current instant, from <see cref="Shared.Time.IClock"/>.</param>
     public Result Close(DateTimeOffset closedAtUtc)

@@ -28,12 +28,12 @@ as any change to an error code, the same rule as everything else in
 | `floor.table_not_found` | NotFound | 404 | The table id in the request doesn't exist. |
 | `floor.table_not_occupied` | Conflict | 409 | `RequestBill`/`MarkDirty` was called on a table that isn't `Occupied` (`RequestBill` has no endpoint yet — domain-only). |
 | `order.already_closed` | Conflict | 409 | `Close()` was called on an order that is already `Closed`. |
-| `order.empty` | Validation | 400 | `Close()` was called on an order with zero lines. |
+| `order.empty` | Validation | 400 | `Close()` or `EnsureCanGeneratePreBill()` was called on an order with zero lines. |
 | `order.invalid_cover_count` | Validation | 400 | `POST /orders`'s `coverCount` is less than 1. |
 | `order.invalid_quantity` | Validation | 400 | An order line's `quantity` is less than 1. |
 | `order.invalid_split` | Validation | 400 | `SplitEvenly`'s `parts` is less than 1. |
 | `order.not_found` | NotFound | 404 | The order id in the request doesn't exist. |
-| `order.not_open` | Conflict | 409 | `AddLine()` was called on an order that isn't `Open`. |
+| `order.not_open` | Conflict | 409 | `AddLine()` or `EnsureCanGeneratePreBill()` was called on an order that isn't `Open`. |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |
 
 ## Retired codes

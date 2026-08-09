@@ -38,8 +38,17 @@ export const pt = {
     split: 'Dividir',
     splitWays: 'vezes',
     previewSplit: 'Pré-visualizar divisão',
+    preBill: 'Ver conta',
     close: 'Fechar e emitir recibo',
     closing: 'A fechar…',
+  },
+  preBill: {
+    title: 'Conta',
+    notice: 'Documento não fiscal — não serve de fatura',
+    net: 'Líquido',
+    vat: 'IVA',
+    generated: 'Gerado às',
+    close: 'Fechar',
   },
   receipt: {
     title: 'Recibo emitido',

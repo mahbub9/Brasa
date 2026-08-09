@@ -36,8 +36,17 @@ export const en = {
     split: 'Split',
     splitWays: 'ways',
     previewSplit: 'Preview split',
+    preBill: 'View bill',
     close: 'Close & issue receipt',
     closing: 'Closing…',
+  },
+  preBill: {
+    title: 'Bill',
+    notice: 'Not a fiscal document — not a receipt or invoice',
+    net: 'Net',
+    vat: 'VAT',
+    generated: 'Generated at',
+    close: 'Close',
   },
   receipt: {
     title: 'Receipt issued',

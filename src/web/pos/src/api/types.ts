@@ -112,6 +112,31 @@ export interface CloseOrderResponse {
   document: FiscalDocumentDto;
 }
 
+/** One VAT band's subtotal on a pre-bill, e.g. the 13% and 23% lines shown separately. */
+export interface VatBreakdownDto {
+  vatRateFraction: number;
+  netTotal: MoneyDto;
+  vatAmount: MoneyDto;
+  grossTotal: MoneyDto;
+}
+
+/**
+ * A pre-bill preview — a *documento não fiscal*, never an invoice. No
+ * document number, no ATCUD, no QR: nothing is issued when this is fetched,
+ * so it is safe to request repeatedly (a "reprint"). See ADR notes in
+ * OrderDtos.cs (ORD-18/19).
+ */
+export interface PreBillDto {
+  orderId: string;
+  tableLabel: string;
+  coverCount: number;
+  lines: OrderLineDto[];
+  vatBreakdown: VatBreakdownDto[];
+  total: MoneyDto;
+  generatedAtUtc: string;
+  documentKind: 'documento_nao_fiscal';
+}
+
 /** RFC 9457 problem response shape used for every API failure. */
 export interface ProblemDetails {
   title?: string;

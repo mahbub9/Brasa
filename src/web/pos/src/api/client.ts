@@ -4,6 +4,7 @@ import type {
   MenuCategoryDto,
   OpenOrderRequest,
   OrderDto,
+  PreBillDto,
   ProblemDetails,
   RoomDto,
   TableDto,
@@ -77,6 +78,8 @@ export const api = {
 
   previewSplit: (orderId: string, parts: number) =>
     request<{ amount: number; currency: string }[]>(`/orders/${orderId}/split?parts=${parts}`),
+
+  getPreBill: (orderId: string) => request<PreBillDto>(`/orders/${orderId}/pre-bill`),
 
   closeOrder: (orderId: string) => post<CloseOrderResponse>(`/orders/${orderId}/close`),
 };

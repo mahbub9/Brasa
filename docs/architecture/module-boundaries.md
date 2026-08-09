@@ -57,6 +57,15 @@ Deduplicate on `EventId`.
 An endpoint may call Ordering and then Fiscal. Ordering may not call Fiscal
 directly.
 
+**"Calling Fiscal" means `IFiscalProvider`, not any type that happens to live
+in that module.** `OrderEndpoints.GetPreBillAsync` (ORD-18/19) constructs
+`FiscalDocumentLine` — pure gross→net/VAT arithmetic, no side effects — to
+compute a pre-bill preview, but never calls `IFiscalProvider`. That is the
+whole point: a pre-bill is a *documento não fiscal*, and calling the provider
+would issue and number a real document for a table that only asked to see
+its total so far. Reusing the calculation avoids duplicating VAT-derivation
+logic; not calling the provider is what keeps the preview non-fiscal.
+
 **This means composing endpoints save more than one `DbContext`, and that is
 not one transaction.** `OrderEndpoints.OpenOrderAsync` saves Ordering, then
 Floor; `CloseOrderAsync` saves Ordering, then (best-effort) Floor. Order the

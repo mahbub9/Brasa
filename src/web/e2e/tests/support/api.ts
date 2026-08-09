@@ -1,5 +1,5 @@
 import type { APIRequestContext } from '@playwright/test';
-import type { MenuCategoryDto, MenuItemDto, OrderDto, RoomDto, TableDto } from './types';
+import type { MenuCategoryDto, MenuItemDto, OrderDto, PreBillDto, RoomDto, TableDto } from './types';
 
 // Deterministic test-data builders (QA-03) — set up state via the API
 // directly instead of clicking through the UI, so specs that aren't
@@ -132,6 +132,19 @@ export async function addLine(
   });
   if (!response.ok()) {
     throw new Error(`POST /orders/${orderId}/lines failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-18/19). */
+export function getPreBillResponse(request: APIRequestContext, orderId: string) {
+  return request.get(`${apiBaseUrl}/orders/${orderId}/pre-bill`);
+}
+
+export async function getPreBill(request: APIRequestContext, orderId: string): Promise<PreBillDto> {
+  const response = await getPreBillResponse(request, orderId);
+  if (!response.ok()) {
+    throw new Error(`GET /orders/${orderId}/pre-bill failed: ${response.status()} ${await response.text()}`);
   }
   return response.json();
 }

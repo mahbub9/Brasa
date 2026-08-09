@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end
+**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end; I2's pre-bill preview (ORD-18/19) pulled forward and done
 
 ---
 
@@ -63,8 +63,9 @@ Condensed:
   API-04 — see [error-codes.md](../architecture/error-codes.md)), tenancy +
   **real RLS** (DAT-01…06),
   `Catalog` (categories/items, seeded, soft delete — CAT-18, modifier groups
-  — CAT-03/04), `Ordering` (open against a real table/add-line-with-modifiers/
-  split/close), `Floor` (rooms, tables, full `Free ⇄ Occupied ⇄ Dirty ⇄ Free`
+  — CAT-03/04), `Ordering` (open against a real table/add-line-with-modifiers
+  — ORD-05/split/pre-bill preview — ORD-18/19, provably non-fiscal, see
+  §7/close), `Floor` (rooms, tables, full `Free ⇄ Occupied ⇄ Dirty ⇄ Free`
   lifecycle, `xmin` optimistic concurrency — FLR-01/02/04), `Fiscal` contract
   + `Fiscal.Mock`, API layer (versioning, ProblemDetails, idempotency, CORS,
   the full order flow composing all four modules), the `pos` web shell
@@ -97,8 +98,9 @@ modifiers (CAT-03/04) are both done and proven; price lists (CAT-05) and the
 `admin` back-office shell are not.
 
 Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/**11**/10 · API-01/03/05 ·
-CAT-01/02/03/04/07/18 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01/05/13 ·
-QA-01/03/05/**09**/**10**/**14** · FLR-01/02/04 · API-**04** · OPS-**09**.
+CAT-01/02/03/04/07/18 · ORD-01/02/03/04/**05**/15/**18**/**19** · FIS-01/02/03 ·
+WEB-01/05/13 · QA-01/03/05/**09**/**10**/**14** · FLR-01/02/04 · API-**04** ·
+OPS-**09**.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 
@@ -227,6 +229,14 @@ there is actually met.
   not denormalisation. A receipt must show what the item cost *when it was sold*.
 - **The pre-bill given to a table is a *documento não fiscal*.** Issuing it as an
   invoice would fiscalise every table that merely asks to see the bill.
+  `GET /orders/{id}/pre-bill` (ORD-18/19) enforces this by construction, not
+  just by convention: `PreBillDto` has no document number, ATCUD or QR field
+  at all, and the handler never calls `IFiscalProvider` — it reuses
+  `FiscalDocumentLine`'s gross→net/VAT math purely as a calculator. Because
+  nothing is persisted or numbered, requesting it any number of times against
+  an unchanged order reproduces identical figures (the "reprint" requirement,
+  ORD-19) for free — verified live in `pre-bill.spec.ts`, not just asserted by
+  the type shape.
 - **VAT rates are data with effective dates, not constants.** They are unconfirmed
   by an accountant and politically contested. Never hardcode them.
 - **Menu prices are VAT-inclusive (gross), not net.** `MenuItem.Price` and

@@ -43,6 +43,24 @@ export interface OrderDto {
   total: MoneyDto;
 }
 
+export interface VatBreakdownDto {
+  vatRateFraction: number;
+  netTotal: MoneyDto;
+  vatAmount: MoneyDto;
+  grossTotal: MoneyDto;
+}
+
+export interface PreBillDto {
+  orderId: string;
+  tableLabel: string;
+  coverCount: number;
+  lines: { itemName: string; lineTotal: MoneyDto }[];
+  vatBreakdown: VatBreakdownDto[];
+  total: MoneyDto;
+  generatedAtUtc: string;
+  documentKind: string;
+}
+
 export interface TableDto {
   id: string;
   label: string;

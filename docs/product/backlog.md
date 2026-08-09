@@ -43,7 +43,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 6 | 18 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
-| **ORD** | Ordering | 5 | 22 | I0 (rest: I2) |
+| **ORD** | Ordering | 8 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
@@ -55,22 +55,25 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 6 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **66** | **291** | |
+| | **Total** | **69** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 66 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 69 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
-> tables (FLR) and menu modifiers (CAT-03/04) — is done and proven against a
-> live API, there is now a real automated regression test for tenant
-> isolation (QA-09/10, DAT-11) instead of only the manual verification that
-> first caught ADR 0010, an accessibility scan (QA-14) that found and fixed
-> 5 real contrast failures on its first run, the error-code contract (hard
-> rule 11) is now mechanically enforced (API-04) rather than just stated,
-> and `/health/ready` (OPS-09) actually checks PostgreSQL instead of only
-> proving the process itself is alive (details:
+> tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
+> cover ORD-05 too) — is done and proven against a live API, there is now a
+> real automated regression test for tenant isolation (QA-09/10, DAT-11)
+> instead of only the manual verification that first caught ADR 0010, an
+> accessibility scan (QA-14) that found and fixed 5 real contrast failures
+> on its first run, the error-code contract (hard rule 11) is now
+> mechanically enforced (API-04) rather than just stated, `/health/ready`
+> (OPS-09) actually checks PostgreSQL instead of only proving the process
+> itself is alive, and the pre-bill a table sees before paying (ORD-18/19)
+> is provably a *documento não fiscal* — no document number, ATCUD or QR
+> anywhere on the wire, and never issued through `IFiscalProvider` (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -200,7 +203,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ORD-02 | Open a table, set cover count | ✅ opens against a real `Table` (FLR), not free text — see `Order.TableId` |
 | ORD-03 | Add / remove / edit order lines | 🚧 add only — remove/edit are I2 |
 | ORD-04 | Line snapshots — name, price, VAT rate at time of sale | ✅ |
-| ORD-05 | Apply modifiers to a line | ⬜ |
+| ORD-05 | Apply modifiers to a line | ✅ shipped alongside CAT-03/04 — `AddLine`'s `selectedModifierIds` resolved and validated at the API layer (`ResolveModifiers`), folded into `OrderLine.ModifiersTotal`/`LineTotal` |
 | ORD-06 | Free-text kitchen notes | ⬜ |
 | ORD-07 | Courses and course firing | ⬜ |
 | ORD-08 | Send to kitchen (partial and full) | ⬜ |
@@ -213,8 +216,8 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ORD-15 | Split bill evenly (`Money.Allocate`) | ✅ **verified live**: 22.60 EUR → 7.54/7.53/7.53, sums to the cent |
 | ORD-16 | Split bill by item | ⬜ |
 | ORD-17 | Split bill by cover | ⬜ |
-| ORD-18 | Pre-bill — *documento não fiscal*, correctly labelled | ⬜ |
-| ORD-19 | Reprint pre-bill (must match the original exactly) | ⬜ |
+| ORD-18 | Pre-bill — *documento não fiscal*, correctly labelled | ✅ `GET /orders/{id}/pre-bill` — reuses `FiscalDocumentLine`'s gross→net/VAT math purely as a calculator, never calls `IFiscalProvider`; `PreBillDto` has no document number/ATCUD/QR field at all, plus a `documentKind` discriminator, so it can't be mistaken for an invoice on the wire |
+| ORD-19 | Reprint pre-bill (must match the original exactly) | ✅ pre-bill is never persisted or numbered, so requesting it any number of times against an unchanged order reproduces identical figures — verified live (`pre-bill.spec.ts`), not just by construction |
 | ORD-20 | Takeaway and counter-sale flow | ⬜ |
 | ORD-21 | Order ownership + concurrent-terminal conflict protocol | ⬜ |
 | ORD-22 | Order history and search | ⬜ |

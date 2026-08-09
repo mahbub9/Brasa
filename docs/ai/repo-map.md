@@ -74,8 +74,8 @@ Depended on by every module; depends on no module. Deliberately small.
 | `ErrorMapping.cs` | ✅ | The only place `ErrorType` → HTTP status is decided |
 | `Endpoints/CatalogEndpoints.cs` | ✅ | `GET /menu`, `DELETE /menu/items/{id}` (CAT-18, soft delete) |
 | `Endpoints/FloorEndpoints.cs` | ✅ | `GET /floor`, `POST /tables/{id}/clear` |
-| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders` (against a real `tableId`; also resolves + validates `selectedModifierIds` — `ResolveModifiers`), `GET /orders/{id}`, `POST /orders/{id}/lines`, `GET /orders/{id}/split`, `POST /orders/{id}/close`. Composes Catalog + Ordering + Floor + Fiscal — see the module-boundaries note below |
-| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`/`ModifierGroupDto`/`ModifierDto`, `RoomDto`/`TableDto`, `OrderDto`/`OrderLineDto`/`OrderLineModifierDto`, `FiscalDocumentDto` + mappings |
+| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders` (against a real `tableId`; also resolves + validates `selectedModifierIds` — `ResolveModifiers`), `GET /orders/{id}`, `POST /orders/{id}/lines`, `GET /orders/{id}/split`, `GET /orders/{id}/pre-bill` (ORD-18/19 — never calls `IFiscalProvider`), `POST /orders/{id}/close`. Composes Catalog + Ordering + Floor + Fiscal — see the module-boundaries note below |
+| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`/`ModifierGroupDto`/`ModifierDto`, `RoomDto`/`TableDto`, `OrderDto`/`OrderLineDto`/`OrderLineModifierDto`, `FiscalDocumentDto`, `PreBillDto`/`VatBreakdownDto` (ORD-18/19 — deliberately shaped nothing like `FiscalDocumentDto`) + mappings |
 | `Seed/DevCatalogSeeder.cs` | ✅ | Seeds a Portuguese demo menu spanning both VAT bands, plus two items with modifier groups (Frango na Brasa's required "Tamanho", Água's required "Tipo"). Guarded the same way as the mock fiscal provider |
 | `Seed/DevFloorSeeder.cs` | ✅ | Seeds 2 rooms / 8 tables. Same guard |
 | `appsettings.json` | ✅ | **Two** connection strings — `Postgres` (runtime, `brasa_app`) and `PostgresMigrations` (`brasa`, superuser) |
@@ -130,6 +130,7 @@ browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
 | `src/api/types.ts` | ✅ | Hand-written mirror of `Brasa.Api/Contracts/*.cs` — kept in sync manually until WEB-03 |
 | `src/components/TablePicker.tsx` | ✅ | WEB-05 — rooms/tables as a static grid (not `Table.PositionX/Y` — that's the future drag-and-drop editor, FLR-03), colour-coded by state, tap Free to open / tap Dirty to clear |
 | `src/components/ModifierPicker.tsx` | ✅ | CAT-03/04 — shown when a tapped menu item has modifier groups; single-select renders as radio-like buttons, multi-select as toggles capped at `maxSelect`. Validity mirrors the server's own min/max check exactly |
+| `src/components/PreBill.tsx` | ✅ | ORD-18/19 — "Ver conta" preview modal. Shaped nothing like `Receipt.tsx`: no document number, ATCUD or QR anywhere in its markup, a bold non-fiscal notice instead |
 | `src/components/*.tsx` | ✅ | `MenuGrid`, `OrderSummary`, `Receipt`, `ErrorBanner`, `LanguageToggle` |
 | `src/lib/money.ts` | ✅ | `Intl.NumberFormat('pt-PT', …)` — never formats `Money` by hand, and deliberately never follows the language toggle (see [ADR 0011](../architecture/decisions/0011-i18n.md)) |
 | `src/i18n/i18n.ts` | ✅ | i18next config — pt default, en toggle (WEB-13) |

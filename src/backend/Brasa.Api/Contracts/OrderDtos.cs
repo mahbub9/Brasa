@@ -1,5 +1,6 @@
 using Brasa.Modules.Fiscal;
 using Brasa.Modules.Ordering.Domain;
+using Brasa.Shared.Primitives;
 
 namespace Brasa.Api.Contracts;
 
@@ -49,6 +50,30 @@ public sealed record FiscalDocumentDto(
 /// <summary>Response body when closing an order — the final order state plus the document that settled it.</summary>
 public sealed record CloseOrderResponse(OrderDto Order, FiscalDocumentDto Document);
 
+/// <summary>One VAT band's subtotal on a pre-bill, e.g. the 13% and 23% lines shown separately.</summary>
+public sealed record VatBreakdownDto(decimal VatRateFraction, MoneyDto NetTotal, MoneyDto VatAmount, MoneyDto GrossTotal);
+
+/// <summary>
+/// A pre-bill preview handed to a table before payment — a <em>documento não
+/// fiscal</em> (ORD-18/19). Deliberately shaped nothing like
+/// <see cref="FiscalDocumentDto"/>: no document number, no ATCUD, no QR
+/// payload, because none is issued. <see cref="DocumentKind"/> is a fixed
+/// discriminator a client can render as a label so staff and guests never
+/// mistake this for an invoice. Computing it never calls
+/// <c>IFiscalProvider</c> and never advances a fiscal sequence, so requesting
+/// it any number of times (a "reprint") reproduces the same figures — the
+/// only field that can differ between two calls is <see cref="GeneratedAtUtc"/>.
+/// </summary>
+public sealed record PreBillDto(
+    Guid OrderId,
+    string TableLabel,
+    int CoverCount,
+    IReadOnlyList<OrderLineDto> Lines,
+    IReadOnlyList<VatBreakdownDto> VatBreakdown,
+    MoneyDto Total,
+    DateTimeOffset GeneratedAtUtc,
+    string DocumentKind);
+
 /// <summary>Maps Ordering domain entities and fiscal documents to wire DTOs.</summary>
 public static class OrderDtoMappings
 {
@@ -80,4 +105,34 @@ public static class OrderDtoMappings
         document.GrossTotal.ToDto(),
         document.QrPayload,
         document.IssuedAtUtc);
+
+    /// <summary>
+    /// Builds a pre-bill preview from an order's current lines. <paramref name="fiscalLines"/>
+    /// reuses <see cref="FiscalDocumentLine"/>'s gross-inclusive net/VAT derivation
+    /// purely as a calculator — no call to <c>IFiscalProvider</c> is involved, so
+    /// nothing is issued or numbered. See <see cref="PreBillDto"/>.
+    /// </summary>
+    public static PreBillDto ToPreBillDto(
+        this Order order, IReadOnlyList<FiscalDocumentLine> fiscalLines, DateTimeOffset generatedAtUtc)
+    {
+        var vatBreakdown = fiscalLines
+            .GroupBy(l => l.VatRateFraction)
+            .OrderBy(g => g.Key)
+            .Select(g => new VatBreakdownDto(
+                g.Key,
+                Money.Sum(g.Select(l => l.NetTotal)).ToDto(),
+                Money.Sum(g.Select(l => l.VatAmount)).ToDto(),
+                Money.Sum(g.Select(l => l.GrossTotal)).ToDto()))
+            .ToArray();
+
+        return new PreBillDto(
+            order.Id,
+            order.TableLabel,
+            order.CoverCount,
+            [.. order.Lines.Select(l => l.ToDto())],
+            vatBreakdown,
+            order.Total.ToDto(),
+            generatedAtUtc,
+            "documento_nao_fiscal");
+    }
 }
