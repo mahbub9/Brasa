@@ -36,7 +36,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | Epic | Area | Done | Total | Phase |
 |---|---|---:|---:|---|
 | **FND** | Foundation & shared kernel | 10 | 12 | I0 |
-| **OPS** | Infrastructure, CI, observability | 7 | 16 | I0 → ongoing |
+| **OPS** | Infrastructure, CI, observability | 8 | 16 | I0 → ongoing |
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
 | **API** | API platform & mobile readiness | 13 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **94** | **292** | |
+| | **Total** | **95** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 94 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 95 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -216,7 +216,35 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > having the test call `CatalogDbContextFactory` directly instead of
 > duplicating its configuration by hand — the same code path `dotnet ef`
 > itself uses, so there is no second configuration left to drift out of
-> sync, whatever the exact trigger was.
+> sync, whatever the exact trigger was. Seq itself turned out to be
+> silently broken along the way — a newer `datalust/seq:latest` requires
+> an explicit first-run admin password or an opt-out, and
+> `infra/docker-compose.yml` set neither, so the container crash-looped on
+> every restart (fixed with `SEQ_FIRSTRUN_NOAUTHENTICATION`, fine for a
+> localhost-only dev instance). With Seq actually healthy, real
+> distributed tracing and metrics now exist too (OPS-08): ASP.NET Core,
+> outbound `HttpClient` and Npgsql spans, plus ASP.NET Core/HTTP/.NET
+> runtime metrics, OTLP-exported to Seq (which ingests OTLP natively — no
+> separate collector needed). Config-bound and empty by default, the same
+> seam-ahead-of-the-trigger shape as `ApiDeprecationOptions`: no endpoint
+> configured means the instrumentation still runs but nothing is
+> exported, since there's no real OTLP collector for a production
+> deployment yet (OPS-11), only the local dev Seq instance. Building this
+> caught a real, non-obvious gotcha: `AddOtlpExporter` posts to the
+> configured `Endpoint` exactly as given — it does **not** append a
+> per-signal path itself (that auto-append only happens for the separate,
+> unified `UseOtlpExporter()` helper reading `OTEL_EXPORTER_OTLP_ENDPOINT`,
+> not the per-signal `TracerProviderBuilder`/`MeterProviderBuilder`
+> extension used here) — so the first attempt 404'd against Seq silently:
+> no exception anywhere in the app, since export failures are an
+> internal SDK concern by design, not a request-path error. Found by
+> temporarily subscribing a raw `ActivityListener` to inspect the
+> exporter's own outbound HTTP spans directly, confirming a 404 no
+> ordinary log line would have surfaced. Fixed by appending `/v1/traces`
+> and `/v1/metrics` explicitly. **Verified live**, not just "no exceptions
+> thrown": a real request's HTTP span and its child Npgsql query span both
+> land in Seq with correct parent/child linkage (`ParentId`) and
+> `service.name=brasa-api`, and a periodic metrics export lands too.
 
 ---
 
@@ -559,7 +587,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | OPS-05 | `.gitattributes` line-ending normalisation | ✅ |
 | OPS-06 | Issue and PR templates | ✅ |
 | OPS-07 | Structured logging with tenant / site / terminal enrichment | 🚧 `TenantLoggingMiddleware` pushes `TenantId`/`SiteId`/`TerminalId`/`UserId` onto Serilog's `LogContext` for the rest of the request — every EF Core command, every application log line, carries it, verified live against the console/Seq sink (a real `GET /menu` request's `CommandExecuted` line shows `"TenantId":"…"`; a hidden field is simply absent, not a literal "null"). **Known gap, not silently claimed working:** doesn't yet reach `UseSerilogRequestLogging`'s own one-line HTTP completion summary — that middleware is registered early on purpose (so a request short-circuited by CORS or the rate limiter still gets logged), and tenant resolution runs later; closing that gap means reordering the pipeline, a bigger change than this middleware itself, tracked separately. `Site`/`Terminal`/`User` ids are always absent today — nothing populates them before auth (IDN-03…08) exists |
-| OPS-08 | OpenTelemetry traces and metrics | ⬜ |
+| OPS-08 | OpenTelemetry traces and metrics | ✅ ASP.NET Core, outbound `HttpClient` and Npgsql tracing (the latter via `AddSource("Npgsql")` — Npgsql emits its own spans natively since v7) plus ASP.NET Core/HTTP/.NET runtime metrics, OTLP-exported to Seq (native OTLP ingestion, no separate collector). Config-bound (`Otel:OtlpEndpoint`), empty in the base `appsettings.json` — no real OTLP collector exists for a production deployment yet (OPS-11) — set only in `appsettings.Development.json`, pointed at the local Seq instance. **Verified live**: a real request's HTTP span and its child Npgsql query span both land in Seq with correct `ParentId` linkage and `service.name=brasa-api`, and a periodic metrics export lands too |
 | OPS-09 | Health and readiness probes including the database | ✅ `GET /health` (liveness, no dependencies) / `GET /health/ready` (PostgreSQL reachability, `DatabaseHealthCheck`). Verified live: healthy with DB up, `503` with the container stopped, recovers once it's back |
 | OPS-10 | Hangfire setup and dashboard | ⬜ |
 | OPS-11 | Production deployment (Hetzner + Caddy) | ⬜ |

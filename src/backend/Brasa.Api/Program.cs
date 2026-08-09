@@ -25,6 +25,10 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using OpenTelemetry.Exporter;
+using OpenTelemetry.Metrics;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using Serilog;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,6 +50,57 @@ builder.Host.UseSerilog((context, services, configuration) => configuration
     .ReadFrom.Configuration(context.Configuration)
     .ReadFrom.Services(services)
     .Enrich.FromLogContext());
+
+// OPS-08 — traces and metrics, OTLP-exported to Seq (which ingests OTLP
+// natively — see docs/product/status.md). No endpoint configured (the base
+// appsettings.json default) means the instrumentation still runs but the
+// exporter is skipped entirely, the same "config-bound, empty by default"
+// seam-ahead-of-the-trigger shape as ApiDeprecationOptions: there is no real
+// OTLP collector for a production deployment yet (OPS-11), only the local
+// dev Seq instance (appsettings.Development.json).
+var otlpEndpoint = builder.Configuration["Otel:OtlpEndpoint"];
+
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService("brasa-api"))
+    .WithTracing(tracing =>
+    {
+        tracing.AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            // Npgsql emits its own spans on an ActivitySource named "Npgsql"
+            // (built into Npgsql itself since v7) — subscribing to it by name
+            // is what actually turns emission on, independent of the exact
+            // API surface Npgsql.OpenTelemetry's own package exposes.
+            .AddSource("Npgsql");
+
+        if (otlpEndpoint is not null)
+        {
+            tracing.AddOtlpExporter(otlp =>
+            {
+                // AddOtlpExporter posts to Endpoint exactly as given — unlike
+                // the OTEL_EXPORTER_OTLP_ENDPOINT env var (read by the
+                // unified UseOtlpExporter() helper this isn't using), it does
+                // NOT append a per-signal path itself. Seq's OTLP ingestion
+                // needs the full signal-specific path or every export 404s.
+                otlp.Endpoint = new Uri($"{otlpEndpoint}/v1/traces");
+                otlp.Protocol = OtlpExportProtocol.HttpProtobuf;
+            });
+        }
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics.AddAspNetCoreInstrumentation()
+            .AddHttpClientInstrumentation()
+            .AddRuntimeInstrumentation();
+
+        if (otlpEndpoint is not null)
+        {
+            metrics.AddOtlpExporter(otlp =>
+            {
+                otlp.Endpoint = new Uri($"{otlpEndpoint}/v1/metrics");
+                otlp.Protocol = OtlpExportProtocol.HttpProtobuf;
+            });
+        }
+    });
 
 // Two roles, two connection strings — see infra/initdb/01-app-role.sql.
 // "Postgres" (brasa_app) is unprivileged and is what actually serves requests,

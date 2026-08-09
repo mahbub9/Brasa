@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-10 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built), course assignment per item (CAT-14) and kitchen station routing per item (CAT-15, independent tags on the same greenfield shape) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), line and order discounts (ORD-11, percentage or fixed, composing, no manager-authorisation gate yet), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), per-tenant-and-client rate limiting (API-12, a sixth `ErrorType.RateLimited` → 429), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1; every request now logs with `TenantId` attached (OPS-07, still 🚧 — doesn't yet reach the HTTP completion-summary line, a known pipeline-ordering gap not a silent one); the two deep-link verification documents exist too (API-18, honestly empty — no bundle id/package name exists to put in either until a native app does)
+**Last verified:** 2026-08-10 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built), course assignment per item (CAT-14) and kitchen station routing per item (CAT-15, independent tags on the same greenfield shape) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), line and order discounts (ORD-11, percentage or fixed, composing, no manager-authorisation gate yet), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), per-tenant-and-client rate limiting (API-12, a sixth `ErrorType.RateLimited` → 429), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1; every request now logs with `TenantId` attached (OPS-07, still 🚧 — doesn't yet reach the HTTP completion-summary line, a known pipeline-ordering gap not a silent one); the two deep-link verification documents exist too (API-18, honestly empty — no bundle id/package name exists to put in either until a native app does); real distributed traces and metrics now exist too (OPS-08, OTLP-exported to Seq), after finding Seq itself had been silently crash-looping (fixed, see §7)
 
 ---
 
@@ -558,6 +558,32 @@ there is actually met.
   turns out to be for the next new column. If a second module (Ordering,
   Floor) ever gets a similar Testcontainers test, build its context via
   its own design-time factory from the start.
+- **`Seq:latest` needs `SEQ_FIRSTRUN_NOAUTHENTICATION` or it crash-loops.**
+  A newer Seq release started requiring an explicit first-run admin
+  password (or this opt-out) and refuses to start without one.
+  `docker compose ps` / `docker ps` shows it as `Up` for a few seconds
+  after every restart, which reads as healthy at a glance — it isn't;
+  check `docker logs brasa-seq` or actually query `http://localhost:5341/api`
+  if logs/traces seem to be going nowhere. Fixed in `infra/docker-compose.yml`;
+  if this container is ever recreated from a different compose file (or the
+  env var gets dropped), it will silently start failing this way again.
+- **OpenTelemetry's `AddOtlpExporter` does not append a per-signal OTLP
+  path to `Endpoint` — you must.** `otlp.Endpoint = new Uri("http://host:5341/ingest/otlp")`
+  posts to exactly that URL and 404s against Seq (which expects
+  `/ingest/otlp/v1/traces`, `/ingest/otlp/v1/metrics`, etc.). The
+  auto-append-per-signal-path behaviour only exists on the separate,
+  newer unified `UseOtlpExporter()` helper (which reads
+  `OTEL_EXPORTER_OTLP_ENDPOINT`), not on the per-signal
+  `TracerProviderBuilder`/`MeterProviderBuilder.AddOtlpExporter(...)`
+  extension `Program.cs` actually uses. A failed export throws **no
+  exception anywhere in the app** — it's an OpenTelemetry SDK-internal
+  concern by design — so this is invisible without either checking the
+  destination's own ingestion logs or temporarily subscribing a raw
+  `System.Diagnostics.ActivityListener` to inspect the exporter's own
+  outbound `System.Net.Http.HttpRequestOut` spans directly (which is how
+  this was actually found — `dotnet ef`-style "no error" is not the same
+  as "it worked"). Fixed by appending `/v1/traces`/`/v1/metrics`
+  explicitly in `Program.cs`.
 
 ## 8. Environment
 
