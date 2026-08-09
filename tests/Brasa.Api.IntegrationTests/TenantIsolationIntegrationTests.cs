@@ -61,27 +61,32 @@ public sealed class TenantIsolationIntegrationTests : IAsyncLifetime
             await command.ExecuteNonQueryAsync();
         }
 
-        await using (var db = new CatalogDbContext(
-            // MigrationsHistoryTable must match CatalogDbContextFactory (design-time)
-            // and Program.cs (runtime) exactly — the history table's name/schema is
-            // itself part of the relational model EF diffs against the last
-            // migration's snapshot. Omitting it here silently used EF's default
-            // location instead, which was invisible until CAT-14 added a migration:
-            // MigrateAsync then threw PendingModelChangesWarning as an error,
-            // because the model this context builds (default history table) no
-            // longer matched what the snapshot was generated against (custom
-            // history table) — a real test/production configuration drift, not a
-            // flaky assertion.
-            new DbContextOptionsBuilder<CatalogDbContext>()
-                .UseNpgsql(superuserConnectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "catalog"))
-                .Options,
-            new TenantContext(),
-            new TenantContextAccessor(),
-            new SystemClock()))
+        // Built via CatalogDbContextFactory — the same design-time factory
+        // `dotnet ef` itself uses — rather than a hand-rolled
+        // DbContextOptionsBuilder that has to be kept in sync with it by
+        // hand. A hand-rolled copy here once caused a real bug: even after
+        // matching every setting we could see (MigrationsHistoryTable
+        // included), the live model this test built still disagreed with
+        // the committed migration snapshot in some way neither
+        // `dotnet ef migrations has-pending-model-changes` (which always
+        // goes through the factory) nor a source diff surfaced — and
+        // MigrateAsync throws PendingModelChangesWarning as a hard error the
+        // moment a genuinely new migration exists to validate against
+        // (found via CAT-14, recurred with CAT-15). Routing through the
+        // actual factory removes the category of bug entirely: there is no
+        // second configuration left to drift out of sync.
+        Environment.SetEnvironmentVariable("BRASA_MIGRATIONS_CONNECTION", superuserConnectionString);
+        try
         {
+            await using var db = new CatalogDbContextFactory().CreateDbContext([]);
+
             // The real migration, including the EnableFor RLS policy and the
             // GRANTs to brasa_app it carries — not a hand-rolled schema.
             await db.Database.MigrateAsync();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable("BRASA_MIGRATIONS_CONNECTION", null);
         }
 
         var appBuilder = new NpgsqlConnectionStringBuilder(superuserConnectionString)

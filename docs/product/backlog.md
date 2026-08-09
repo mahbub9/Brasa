@@ -41,7 +41,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **API** | API platform & mobile readiness | 13 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
-| **CAT** | Catalog & menu | 9 | 19 | I0 (rest: I1) |
+| **CAT** | Catalog & menu | 10 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
 | **ORD** | Ordering | 17 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **93** | **292** | |
+| | **Total** | **94** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 93 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 94 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -200,7 +200,23 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > snapshot — invisible until a new migration actually needed the pending-
 > changes check EF Core 8+ runs before applying one. Fixed by matching the
 > test's setup to how the app is actually configured, not by suppressing
-> the check.
+> the check. A menu item can now also declare which kitchen station
+> prepares it (CAT-15) — `PUT /menu/items/{id}/station`,
+> `Grill`/`Bar`/`ColdKitchen`/`Fryer`/`Pastry`, independent of both
+> `MenuCategory` and `Course`: a starter and a main can both come off the
+> grill. Same greenfield, ships-ahead-of-its-consumer shape as CAT-14 —
+> station *routing* (KIT-06) needs printers and a KDS that don't exist yet.
+> The `TenantIsolationIntegrationTests` fix above turned out to be
+> necessary but not sufficient: adding *this* migration hit the identical
+> `PendingModelChangesWarning` again despite the matching
+> `MigrationsHistoryTable` override, meaning the test's hand-rolled
+> `DbContextOptionsBuilder` still disagreed with the design-time factory in
+> some way neither a source diff nor `dotnet ef migrations
+> has-pending-model-changes` (clean) surfaced. Fixed properly this time by
+> having the test call `CatalogDbContextFactory` directly instead of
+> duplicating its configuration by hand — the same code path `dotnet ef`
+> itself uses, so there is no second configuration left to drift out of
+> sync, whatever the exact trigger was.
 
 ---
 
@@ -302,7 +318,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | CAT-12 | *Couvert* handling — charged only when consumed | ⬜ |
 | CAT-13 | Item availability / 86-ing (out of stock) | ✅ `MarkAvailable`/`MarkUnavailable` existed since I0 and `AddLine` already enforced `IsAvailable`, but no endpoint ever called either — `IsAvailable` could never actually become `false`. `PUT /menu/items/{id}/availability` closes that: ships ahead of any UI that will call it (no admin app, no in-order 86 control), same as CAT-02/CAT-17/CAT-18. **Verified live**: 86'ing an item hides it from `GET /menu` and the previously-dead `catalog.item_unavailable` guard on `AddLine` finally fires for real; un-86'ing restores both; unknown item `404`s |
 | CAT-14 | Course assignment per item | ✅ `PUT /menu/items/{id}/course` — `Course?` (`Starter`/`Main`/`Dessert`/`Drink`), null when not yet assigned (a data-entry gap, same convention as an empty `Allergens` list). Independent of `MenuCategory`: a menu can be organised for browsing by ingredient/style while every item still belongs to exactly one course. No admin UI yet, and course *firing* (ORD-07) isn't built either — ships ahead of both, the tag it will read from once it is. **Verified live**: set/persist/clear, an unrecognised course name and an unknown item both rejected (`catalog.invalid_course`/`catalog.item_not_found`) |
-| CAT-15 | Kitchen station routing per item | ⬜ |
+| CAT-15 | Kitchen station routing per item | ✅ `PUT /menu/items/{id}/station` — `KitchenStation?` (`Grill`/`Bar`/`ColdKitchen`/`Fryer`/`Pastry`), null when not yet assigned. Independent of both `MenuCategory` and `Course` (CAT-14): a starter and a main can both come off the grill. No admin UI yet, and station *routing* (KIT-06) isn't built either — ships ahead of both, the tag it will read from once it is. **Verified live**: set/persist/clear, an unrecognised station name and an unknown item both rejected (`catalog.invalid_station`/`catalog.item_not_found`) |
 | CAT-16 | Menu versioning with effective dates | ⬜ |
 | CAT-17 | Bulk import (CSV / Excel) | 🚧 `POST /menu/items/import` — CSV only, Excel not built. Hand-written RFC 4180 parser (`CsvParser`, 8 unit tests — quoting, escaped quotes, embedded newlines, CRLF/LF, blank lines), no new dependency. Rows import independently — an unknown category or an unparsable price is reported per-row (1-indexed against the data rows) rather than failing the whole file. Create-only, not upsert: importing the same file twice creates duplicates. **Verified live**: 2 valid + 2 invalid rows in one file → `created: 2`, two row-level errors with the exact bad value named; empty CSV and a header missing a required column both `400` |
 | CAT-18 | Soft delete preserving historical order references | ✅ `MenuItem` only (what `OrderLine.MenuItemId` can reference) — `DELETE /menu/items/{id}`, no admin UI yet. Verified live: deleted item vanishes from `/menu` and can't be re-ordered, but a past order's line keeps its name/price. See `ISoftDeletable` in `docs/architecture/multi-tenancy.md` |

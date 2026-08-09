@@ -56,6 +56,10 @@ public static class CatalogEndpoints
             .WithName("UpdateMenuItemCourse")
             .WithSummary("Sets or clears which course a menu item is served at (CAT-14).");
 
+        group.MapPut("/menu/items/{itemId:guid}/station", UpdateMenuItemStationAsync)
+            .WithName("UpdateMenuItemStation")
+            .WithSummary("Sets or clears which kitchen station prepares a menu item (CAT-15).");
+
         group.MapPut("/menu/categories/{categoryId:guid}/visibility", UpdateMenuCategoryVisibilityAsync)
             .WithName("UpdateMenuCategoryVisibility")
             .WithSummary("Hides a whole category (and every item under it) from GET /menu, or shows it again (CAT-01).");
@@ -304,6 +308,48 @@ public static class CatalogEndpoints
         {
             return Error.Validation(
                 "catalog.invalid_course", $"\"{request.Course}\" is not a recognised course.").ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(item.ToDto());
+    }
+
+    /// <summary>
+    /// Sets or clears which kitchen station prepares a menu item (CAT-15) —
+    /// same greenfield shape as CAT-14. Ships ahead of its consumer:
+    /// station *routing* (KIT-06) needs printers and a KDS that don't exist
+    /// yet, so this is only a menu-display/reporting tag today.
+    /// </summary>
+    private static async Task<IResult> UpdateMenuItemStationAsync(
+        Guid itemId,
+        UpdateMenuItemStationRequest request,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        if (request.Station is null)
+        {
+            item.SetStation(null);
+        }
+        else if (Enum.TryParse<KitchenStation>(request.Station, ignoreCase: true, out var station))
+        {
+            item.SetStation(station);
+        }
+        else
+        {
+            return Error.Validation(
+                "catalog.invalid_station", $"\"{request.Station}\" is not a recognised kitchen station.").ToProblem();
         }
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

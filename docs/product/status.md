@@ -293,6 +293,27 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > persists across a fresh `GET`, clears; an unrecognised course name and an
 > unknown item both rejected (`catalog.invalid_course`/`catalog.item_not_found`).
 
+> **Update (menu item kitchen station, CAT-15):** `PUT /menu/items/{id}/station`
+> sets or clears which kitchen station prepares an item (`Grill`/`Bar`/
+> `ColdKitchen`/`Fryer`/`Pastry`) — independent of both `MenuCategory` and
+> `Course` (CAT-14): a starter and a main can both come off the grill.
+> Same greenfield, ships-ahead-of-its-consumer shape as CAT-14 — station
+> *routing* (KIT-06) needs printers and a KDS that don't exist yet.
+> Building it exposed that CAT-14's `TenantIsolationIntegrationTests` fix
+> (matching `MigrationsHistoryTable`) was necessary but not sufficient:
+> adding this migration hit the identical `PendingModelChangesWarning`
+> again, even though the design-time `dotnet ef migrations
+> has-pending-model-changes` still reported clean and a source diff showed
+> nothing left to fix by hand. Root-caused properly this time by having the
+> test call `CatalogDbContextFactory` directly — the same design-time
+> factory `dotnet ef` itself uses — instead of a hand-rolled
+> `DbContextOptionsBuilder` that had to be kept in sync with it by eye.
+> That removes the category of bug entirely: there's no second
+> configuration left to drift, whatever the exact EF/Npgsql trigger was.
+> **Verified live**: set, persists across a fresh `GET`, clears; an
+> unrecognised station name and an unknown item both rejected
+> (`catalog.invalid_station`/`catalog.item_not_found`).
+
 > **Update (menu item details, CAT-02):** `PUT /menu/items/{id}/details`
 > sets a menu item's description and declared allergens. Allergens are
 > modelled as a closed `Allergen` enum over the 14 categories EU food-

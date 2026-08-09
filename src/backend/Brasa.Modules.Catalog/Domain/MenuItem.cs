@@ -85,6 +85,13 @@ public sealed class MenuItem : Entity, ISoftDeletable
     /// </summary>
     public Course? Course { get; private set; }
 
+    /// <summary>
+    /// Which kitchen station prepares this item (CAT-15). Null is a
+    /// data-entry gap, same convention as <see cref="Course"/> — not a claim
+    /// that the item is prepared nowhere.
+    /// </summary>
+    public KitchenStation? Station { get; private set; }
+
     /// <inheritdoc/>
     /// <remarks>
     /// Distinct from <see cref="IsAvailable"/>: 86'ing is "out of stock today,
@@ -120,6 +127,9 @@ public sealed class MenuItem : Entity, ISoftDeletable
 
     /// <summary>Sets or clears which course this item is served at (CAT-14).</summary>
     public void SetCourse(Course? course) => Course = course;
+
+    /// <summary>Sets or clears which kitchen station prepares this item (CAT-15).</summary>
+    public void SetStation(KitchenStation? station) => Station = station;
 
     /// <summary>Sets or clears the description (CAT-02). Null/whitespace clears it.</summary>
     public void SetDescription(string? description)

@@ -160,6 +160,26 @@ export async function updateMenuItemCourse(
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-15). */
+export function updateMenuItemStationResponse(request: APIRequestContext, itemId: string, station: string | null) {
+  return request.put(`${apiBaseUrl}/menu/items/${itemId}/station`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { station },
+  });
+}
+
+export async function updateMenuItemStation(
+  request: APIRequestContext,
+  itemId: string,
+  station: string | null,
+): Promise<MenuItemDto> {
+  const response = await updateMenuItemStationResponse(request, itemId, station);
+  if (!response.ok()) {
+    throw new Error(`PUT /menu/items/${itemId}/station failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Fetches the live seeded floor plan. */
 export async function getFloor(request: APIRequestContext): Promise<RoomDto[]> {
   const response = await request.get(`${apiBaseUrl}/floor`);

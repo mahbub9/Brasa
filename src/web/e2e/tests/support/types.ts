@@ -30,6 +30,7 @@ export interface MenuItemDto {
   vatRatePercent: number;
   isAlcoholic: boolean;
   course: string | null;
+  station: string | null;
   allergens: string[];
   modifierGroups: ModifierGroupDto[];
 }

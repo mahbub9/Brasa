@@ -260,6 +260,41 @@
         }
       }
     },
+    "/api/v1/menu/items/{itemId}/station": {
+      "put": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "Sets or clears which kitchen station prepares a menu item (CAT-15).",
+        "operationId": "UpdateMenuItemStation",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMenuItemStationRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/menu/categories/{categoryId}/visibility": {
       "put": {
         "tags": [
@@ -1223,6 +1258,20 @@
               "string"
             ],
             "format": "double"
+          }
+        }
+      },
+      "UpdateMenuItemStationRequest": {
+        "required": [
+          "station"
+        ],
+        "type": "object",
+        "properties": {
+          "station": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       }
