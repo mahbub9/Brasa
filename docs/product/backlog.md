@@ -552,7 +552,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| OPS-01 | Docker Compose — PostgreSQL 18 (ICU pt-PT) + Seq | ✅ |
+| OPS-01 | Docker Compose — PostgreSQL 18 (ICU pt-PT) + Seq | ✅ Seq was actually crash-looping (`datalust/seq:latest` started requiring an explicit first-run admin password or an opt-out, neither was set) — found live, not in source, since the container reported `Up` briefly before each restart rather than failing outright. Fixed with `SEQ_FIRSTRUN_NOAUTHENTICATION`, appropriate here since Seq binds to localhost only, the same trust level as Postgres's own `devonly`/`brasa` dev credentials. **Verified live**: container stays up, `GET /api` 200s, and a real API request's Serilog output actually lands in Seq (confirmed via its own `/api/events`) |
 | OPS-02 | CI — build gate, tests, vulnerability scan | ✅ |
 | OPS-03 | CI — documentation link checking | ✅ |
 | OPS-04 | Docs site published to GitHub Pages | ✅ |

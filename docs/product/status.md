@@ -730,7 +730,7 @@ or native Kotlin/Swift remains open.
 |---|---|---|
 | Docker | ✅ | 29.6.2, Compose v5.3.1 |
 | PostgreSQL | ✅ | 18.4 container, ICU locale provider, `pt-PT` |
-| Seq (log viewer) | ✅ | `http://localhost:5341` — every log line during a request now carries `TenantId` (OPS-07, `TenantLoggingMiddleware`), verified by reading a real request's events straight from the console/Seq sink |
+| Seq (log viewer) | ✅ | `http://localhost:5341` — every log line during a request now carries `TenantId` (OPS-07, `TenantLoggingMiddleware`), verified by reading a real request's events straight from the console/Seq sink. Was actually crash-looping until this session: `datalust/seq:latest` now requires an explicit first-run admin password or `SEQ_FIRSTRUN_NOAUTHENTICATION`, and `infra/docker-compose.yml` set neither — the container reported `Up` for a few seconds after every restart before crashing again, easy to miss without actually querying it. Fixed with the no-auth opt-out (fine here: localhost-only, same trust level as Postgres's own dev credentials); re-verified the container stays up and a real request's log line actually lands in Seq, not just that the process didn't exit |
 | CI (GitHub Actions) | ✅ | Build gate, tests, vulnerability scan, docs link check. `e2e` job added this session — written and locally-equivalent to what passed on this machine, but not yet exercised by an actual CI run |
 
 ## Blockers

@@ -51,6 +51,13 @@ services:
     restart: unless-stopped
     environment:
       ACCEPT_EULA: "Y"
+      # A newer Seq release started requiring an explicit first-run admin
+      # password (or this opt-out) and refuses to start without one — this
+      # container was silently crash-looping until this was added. No auth
+      # is fine here: this binds to localhost only, on a solo developer's
+      # own machine, the same trust level as Postgres's devonly/brasa
+      # credentials above.
+      SEQ_FIRSTRUN_NOAUTHENTICATION: "true"
     ports:
       - "5341:80"
     volumes:
