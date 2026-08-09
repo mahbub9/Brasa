@@ -68,7 +68,12 @@ export default function App() {
     setBusy(true);
     setError(null);
     try {
-      setOrder(await api.openTakeawayOrder({ label: label.trim() === '' ? null : label.trim() }));
+      // Send a language-appropriate default ourselves rather than `null` —
+      // the API has no notion of the caller's UI language (see ADR 0011's
+      // "Server-sent error text" gap), so its own "Levantamento" default
+      // would leak through untranslated in English mode.
+      const trimmed = label.trim();
+      setOrder(await api.openTakeawayOrder({ label: trimmed === '' ? t('floor.takeawayDefaultLabel') : trimmed }));
     } catch (err) {
       setError(describeError(err));
     } finally {

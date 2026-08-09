@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RoomDto, TableDto } from '../api/types';
+import { formatTableLabel } from '../lib/tableLabel';
 
 interface TablePickerProps {
   rooms: RoomDto[];
@@ -79,7 +80,7 @@ export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTake
                   disabled={busy || table.state === 'Occupied' || table.state === 'BillRequested'}
                   onClick={() => handleTableClick(table)}
                 >
-                  <span className="floor-table-label">{table.label}</span>
+                  <span className="floor-table-label">{formatTableLabel(table.label, t)}</span>
                   <span className="floor-table-seats">{t('floor.seats', { count: table.seats })}</span>
                   <span className="floor-table-state">{t(`floor.state.${table.state}`)}</span>
                 </button>

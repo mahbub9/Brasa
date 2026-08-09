@@ -14,6 +14,11 @@ export const pt = {
     empty: 'Sem mesas configuradas.',
     newTakeaway: 'Nova venda ao balcão',
     takeawayLabelPlaceholder: 'Nome ou nº do talão (opcional)',
+    takeawayDefaultLabel: 'Levantamento',
+    // The visible display form of a seeded table label ("Mesa 1") — see
+    // src/lib/tableLabel.ts. Table.Label itself is unchanged; only the
+    // on-screen rendering goes through this.
+    tableLabel: 'Mesa {{number}}',
     state: {
       Free: 'Livre',
       Occupied: 'Ocupada',

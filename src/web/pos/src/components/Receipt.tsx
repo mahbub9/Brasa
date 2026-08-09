@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { CloseOrderResponse } from '../api/types';
 import { formatMoney } from '../lib/money';
+import { formatTableLabel } from '../lib/tableLabel';
 
 interface ReceiptProps {
   result: CloseOrderResponse;
@@ -14,7 +15,7 @@ export function Receipt({ result, onNewTable }: ReceiptProps) {
   return (
     <div className="receipt">
       <h1>{t('receipt.title')}</h1>
-      <p className="receipt-table">{order.tableLabel}</p>
+      <p className="receipt-table">{formatTableLabel(order.tableLabel, t)}</p>
 
       <dl className="receipt-fields">
         <dt>{t('receipt.document')}</dt>

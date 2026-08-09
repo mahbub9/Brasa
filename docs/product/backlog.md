@@ -391,7 +391,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | WEB-10 | `admin` — menu and floor-plan editors | ⬜ |
 | WEB-11 | `admin` — staff, roles and reporting screens | ⬜ |
 | WEB-12 | `order` shell — QR self-ordering PWA | ⬜ Post-I8 |
-| WEB-13 | i18n — pt default / en toggle, cookie-persisted, mobile storage seam | ✅ i18next, `src/i18n/`. See [ADR 0011](../architecture/decisions/0011-i18n.md) |
+| WEB-13 | i18n — pt default / en toggle, cookie-persisted, mobile storage seam | ✅ i18next, `src/i18n/`. See [ADR 0011](../architecture/decisions/0011-i18n.md). Extended after real-world feedback (Brasa's actual floor/kitchen staff are not all Portuguese speakers): seeded table labels ("Mesa 1") now render as "Table 1" in English via `src/lib/tableLabel.ts`, and a blank takeaway ticket defaults to "Takeaway" instead of leaking the API's own Portuguese default ("Levantamento") — both are generic operational words, not identity-bearing content like a dish name, so they don't fall under the menu-item exception. **Verified live**: `language-toggle.spec.ts` |
 
 ## PAY — Payments & cash sessions
 

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MoneyDto, OrderDto, OrderLineDto } from '../api/types';
 import { formatMoney } from '../lib/money';
+import { formatTableLabel } from '../lib/tableLabel';
 
 interface OrderSummaryProps {
   order: OrderDto;
@@ -35,7 +36,7 @@ export function OrderSummary({
   return (
     <aside className="order-summary">
       <div className="order-summary-heading">
-        <h2>{order.tableLabel}</h2>
+        <h2>{formatTableLabel(order.tableLabel, t)}</h2>
         <button type="button" className="transfer-table-trigger" data-testid="transfer-table-button" onClick={onTransferTable} disabled={busy}>
           {t('order.transferTable')}
         </button>

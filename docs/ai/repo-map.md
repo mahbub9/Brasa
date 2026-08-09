@@ -141,6 +141,7 @@ browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
 | `src/components/TransferTablePicker.tsx` | ✅ | ORD-12 — "Transferir mesa" modal listing only currently-`Free` tables; the floor snapshot is re-fetched right before it opens, but the API is still the final word on a race |
 | `src/components/*.tsx` | ✅ | `MenuGrid` (renders `Description`/`Allergens` when declared, CAT-02, full contrast — never dimmed, same reasoning as QA-14), `OrderSummary` (incl. its own `OrderLineNotes` sub-component, ORD-06 — add/edit/clear a line's kitchen note inline; and a "Pedir conta" button, FLR-04 — hidden for takeaway orders, `!order.isTakeaway`, since there's no physical table to flag), `Receipt`, `ErrorBanner`, `LanguageToggle` |
 | `src/lib/money.ts` | ✅ | `Intl.NumberFormat('pt-PT', …)` — never formats `Money` by hand, and deliberately never follows the language toggle (see [ADR 0011](../architecture/decisions/0011-i18n.md)) |
+| `src/lib/tableLabel.ts` | ✅ | The opposite call from `money.ts` on the same axis: renders seeded `"Mesa N"` labels as `"Table N"` in English — display-only, `Table.Label` itself untouched. Unlike money/timestamps, a table label isn't a fiscal-correctness concern, and unlike a menu item's name it isn't identity-bearing content either — floor/kitchen staff who don't read Portuguese still need it. Anything not matching the seeded shape passes through unchanged. See ADR 0011 |
 | `src/i18n/i18n.ts` | ✅ | i18next config — pt default, en toggle (WEB-13) |
 | `src/i18n/languageStorage.ts` | ✅ | `LanguageStore` interface + `cookieLanguageStore`; the seam a mobile client swaps for `AsyncStorage` |
 | `src/i18n/resources/{pt,en}.ts` | ✅ | UI copy, incl. `floor.*`. Menu item names and money are **not** here — see the ADR |
@@ -173,7 +174,7 @@ thing it doesn't start. Verified locally from both a warm state and a hard
 cold start, and **several consecutive full runs** under real 2-worker
 parallelism — that repetition is what caught the `Table.Occupy()`
 concurrency bug (see the trap in [README.md](README.md)) and then proved the
-fix; 67/67 passing on a clean run. At twenty-plus tests, back-to-back full
+fix; 69/69 passing on a clean run. At twenty-plus tests, back-to-back full
 runs with no pause between them had started occasionally exhausting the
 original 8-table pool (QA-02's known limitation showing up in practice, not
 a product bug); mitigated by doubling `DevFloorSeeder` to 16 tables — see
@@ -206,9 +207,9 @@ for the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 | `tests/accessibility.spec.ts` | ✅ | QA-14 — axe-core against the table picker, ordering screen, modifier picker and receipt (WCAG 2.0/2.1 A+AA). Found 5 real `color-contrast` failures on its first run, all from dimming text via CSS `opacity` — see [status.md](../product/status.md#accessibility-first-scan-five-real-fixes) |
 | `tests/admin-shell.spec.ts` | ✅ | WEB-09 — loads `admin` (port 5174) and checks "Visão geral" shows real, non-zero counts from `GET /menu`/`GET /floor` (not a static mock), and that Menu/Floor/Staff are labelled "Brevemente" rather than silently missing |
 | `tests/admin-language-toggle.spec.ts` | ✅ | WEB-09 — mirrors `pos`'s own `language-toggle.spec.ts`: pt default, switching to `en` translates every nav label and overview card to genuine English (not just some token string), and persists in the same `brasa.lang` cookie `pos` uses |
-| `tests/support/ui.ts` | ✅ | `openAnyFreeTable` — retries against a different table on a 409, the UI-side counterpart to `openOrderOnAnyFreeTable` below. See the concurrency trap in [README.md](README.md) |
+| `tests/support/ui.ts` | ✅ | `openAnyFreeTable`/`transferToAnyFreeTable` — retry against a different table on a 409, the UI-side counterpart to `openOrderOnAnyFreeTable` below. Both return the *raw* seeded label (read from `data-testid`, e.g. `"Mesa 6"`), not the displayed text — `src/lib/tableLabel.ts` can render that as `"Table 6"` in English, and every caller uses the return value to build another `data-testid`, not to assert rendered copy. See the concurrency trap in [README.md](README.md) |
 | `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |
-| `tests/language-toggle.spec.ts` | ✅ | WEB-13 — default language, the pt→en toggle, cookie attributes (`Path`, `SameSite`, not `httpOnly`) surviving a reload, and money staying `pt-PT` in English mode |
+| `tests/language-toggle.spec.ts` | ✅ | WEB-13 — default language, the pt→en toggle, cookie attributes (`Path`, `SameSite`, not `httpOnly`) surviving a reload, money staying `pt-PT` in English mode, a seeded table label reading "Table N" (not "Mesa N") on the picker, order heading and receipt alike, and a blank takeaway ticket defaulting to "Takeaway" rather than the API's own "Levantamento" |
 | `tests/support/api.ts` | ✅ | QA-03 test-data builders. Looks menu items and tables up **by name/state**, never by id (ids are UUIDv7, not stable across a fresh database). `closeOrderAndClearTable` returns a table to the free pool — only 8 are seeded and the dev database persists across runs. `openOrderOnAnyFreeTable` retries on a 409 — see the concurrency trap in [README.md](README.md) |
 
 ## `tests/`

@@ -12,6 +12,8 @@ export const en = {
     empty: 'No tables configured.',
     newTakeaway: 'New counter sale',
     takeawayLabelPlaceholder: 'Name or ticket number (optional)',
+    takeawayDefaultLabel: 'Takeaway',
+    tableLabel: 'Table {{number}}',
     state: {
       Free: 'Free',
       Occupied: 'Occupied',

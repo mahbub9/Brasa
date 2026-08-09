@@ -94,7 +94,7 @@ Condensed:
   editors yet, but its own full pt/en toggle sharing `pos`'s `brasa.lang`
   cookie, genuinely English in English mode since not every staff member is
   a Portuguese speaker), a Playwright E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 67
+  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 69
   tests green on a clean run — the seeded floor plan was doubled to 16
   tables after back-to-back full runs started exhausting the original 8, a
   QA-02 scaling limitation, not a product bug; see
@@ -319,6 +319,14 @@ there is actually met.
   even in English mode.** Not a missed i18n string — a total or a fiscal
   timestamp must not change format because staff switched their own
   interface language. See ADR 0011.
+- **Table labels ("Mesa 1") are the one seeded-data string that *does*
+  translate, unlike menu item names.** Real staff here include people who
+  don't read Portuguese, and "Mesa" is a generic word, not an identity-
+  bearing name the way a dish's is — `src/lib/tableLabel.ts` renders it as
+  "Table 1" in English (display-only; `Table.Label` itself is untouched).
+  Don't assume every seeded string follows the menu-item precedent of
+  staying untranslated — check whether it's actually content, or just a
+  generic label wearing a Portuguese word. See ADR 0011.
 - **`OpenOrderAsync`/`CloseOrderAsync` save two `DbContext`s sequentially, not
   in one transaction — and each saves them in the OPPOSITE order on purpose.**
   `OpenOrderAsync` saves Floor first: that's the row with the new `xmin`

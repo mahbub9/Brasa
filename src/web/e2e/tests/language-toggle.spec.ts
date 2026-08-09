@@ -80,4 +80,51 @@ test.describe('language toggle', () => {
     await page.getByRole('button', { name: 'Open another table' }).click();
     await page.getByTestId(`table-${tableLabel}`).click();
   });
+
+  test('table labels read "Table N" in English, not the seeded "Mesa N"', async ({ page }) => {
+    // DevFloorSeeder stores literal "Mesa 1".."Mesa 16" — real seed data, but
+    // "Mesa" is a generic word ("table"), not identity-bearing content like a
+    // dish name, so it goes through src/lib/tableLabel.ts rather than being
+    // left untranslated the way menu item names are. Staff who don't read
+    // Portuguese still need to recognise which table is which.
+    await page.goto('/');
+    await page.getByTestId('lang-en').click();
+    await expect(page.getByRole('heading', { name: 'Choose a table' })).toBeVisible();
+
+    // openAnyFreeTable returns the raw seeded label ("Mesa N") — every other
+    // caller needs it to build a data-testid. What's actually rendered is
+    // read fresh from the DOM here instead.
+    const rawLabel = await openAnyFreeTable(page, 2);
+    const heading = page.locator('.order-summary-heading h2');
+    const displayedLabel = await heading.textContent();
+    expect(displayedLabel).toMatch(/^Table \d+$/);
+
+    await page.getByRole('button', { name: 'Imperial' }).click();
+    await page.getByTestId('close-order-button').click();
+    await expect(page.getByRole('heading', { name: 'Receipt issued' })).toBeVisible();
+    // The receipt shows the same translated label, not the raw seeded one.
+    await expect(page.locator('.receipt-table')).toHaveText(displayedLabel ?? '');
+
+    await page.getByRole('button', { name: 'Open another table' }).click();
+    await page.getByTestId(`table-${rawLabel}`).click();
+  });
+
+  test('a takeaway ticket left blank defaults to "Takeaway" in English, not "Levantamento"', async ({ page }) => {
+    // The API's own default ("Levantamento") is server-side and
+    // language-agnostic (see ADR 0011's "Server-sent error text" gap) — pos
+    // supplies its own translated default instead of sending null, so the
+    // English UI never leaks an untranslated Portuguese default. See
+    // App.tsx's handleOpenTakeaway.
+    await page.goto('/');
+    await page.getByTestId('lang-en').click();
+    await expect(page.getByRole('heading', { name: 'Choose a table' })).toBeVisible();
+
+    await page.getByTestId('new-takeaway-button').click();
+    await page.getByTestId('confirm-open-takeaway').click();
+    await expect(page.getByRole('heading', { name: 'Takeaway' })).toBeVisible();
+
+    await page.getByRole('button', { name: 'Imperial' }).click();
+    await page.getByTestId('close-order-button').click();
+    await expect(page.getByRole('heading', { name: 'Receipt issued' })).toBeVisible();
+  });
 });

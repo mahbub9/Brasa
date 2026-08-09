@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { PreBillDto } from '../api/types';
 import { formatMoney } from '../lib/money';
+import { formatTableLabel } from '../lib/tableLabel';
 
 interface PreBillProps {
   preBill: PreBillDto;
@@ -21,7 +22,7 @@ export function PreBill({ preBill, onClose }: PreBillProps) {
     <div className="pre-bill-backdrop" role="dialog" aria-modal="true" aria-label={t('preBill.title')}>
       <div className="pre-bill" data-testid="pre-bill">
         <h2>{t('preBill.title')}</h2>
-        <p className="pre-bill-table">{preBill.tableLabel}</p>
+        <p className="pre-bill-table">{formatTableLabel(preBill.tableLabel, t)}</p>
         <p className="pre-bill-notice" data-testid="pre-bill-notice">
           {t('preBill.notice')}
         </p>

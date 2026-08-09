@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { RoomDto } from '../api/types';
+import { formatTableLabel } from '../lib/tableLabel';
 
 interface TransferTablePickerProps {
   rooms: RoomDto[];
@@ -42,7 +43,7 @@ export function TransferTablePicker({ rooms, busy, onSelect, onCancel }: Transfe
                     disabled={busy}
                     onClick={() => onSelect(table.id)}
                   >
-                    {table.label}
+                    {formatTableLabel(table.label, t)}
                   </button>
                 ))}
               </div>
