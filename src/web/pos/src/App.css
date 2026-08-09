@@ -21,7 +21,9 @@
 
 .app-tagline {
   font-size: 0.85rem;
-  opacity: 0.85;
+  /* Not dimmed via opacity — that blends toward the red background and
+     drops below WCAG AA's 4.5:1 (QA-14 caught this at 4.12:1). */
+  color: #fff;
 }
 
 .language-toggle {
@@ -35,10 +37,10 @@
   border: 1px solid rgba(255, 255, 255, 0.5);
   border-radius: 6px;
   background: none;
+  /* Full-opacity white, not dimmed — same QA-14 contrast fix as .app-tagline. */
   color: #fff;
   font-size: 0.8rem;
   font-weight: 600;
-  opacity: 0.7;
 }
 
 .language-toggle button.active {
@@ -140,7 +142,9 @@ main {
 }
 .floor-table-Free .floor-table-state {
   background: #ebfbee;
-  color: #2f9e44;
+  /* 5.9:1 on this background — the original #2f9e44 only cleared 3.2:1
+     (QA-14/axe). */
+  color: #1c6e2f;
 }
 
 .floor-table-Occupied .floor-table-state {
@@ -150,7 +154,8 @@ main {
 
 .floor-table-BillRequested .floor-table-state {
   background: #fff4e6;
-  color: #e8590c;
+  /* 4.6:1 — the original #e8590c only cleared 3.3:1 (QA-14/axe). */
+  color: #c4460a;
 }
 
 .floor-table-Dirty button {

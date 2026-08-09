@@ -68,7 +68,7 @@
 | `Brasa.Shared.Tests` | ✅ | 17 passing, incl. exhaustive allocation check |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 5 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused. The automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 10 tests, all green across 4+ consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), API-level split-math sweep (QA-03), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 12 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), accessibility scans (QA-14), API-level split-math sweep (QA-03), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -181,6 +181,31 @@ Re-verified: the full E2E suite green across 4 consecutive runs under real
 this is the second bug this session where deliberately running something for
 real, repeatedly, under realistic conditions caught what a single passing
 run could not (the first was RLS, ADR 0010).
+
+## Accessibility — first scan, five real fixes
+
+`accessibility.spec.ts` (QA-14) runs axe-core against the table picker, the
+ordering screen, the modifier picker modal, and the receipt — WCAG 2.0/2.1 A
+and AA rules. First run failed both tests with five genuine
+`color-contrast` violations, all from the same mistake: dimming text via CSS
+`opacity` against a colored background, which blends toward that background
+and quietly drops the effective contrast ratio below what the raw foreground
+color alone would suggest.
+
+Fixed by picking colors that clear 4.5:1 outright instead of relying on
+opacity for visual hierarchy: `--muted` (used broadly — menu prices, empty
+states, hints) went from 4.01:1 to 6.2:1; the header tagline and inactive
+language-toggle button went from opacity-dimmed white (4.12:1 / 3.27:1) to
+full-opacity white (5.1:1); the Free and "bill requested" floor-table state
+badges went from 3.21:1 / 3.30:1 to 5.9:1 / 4.6:1. None of these were visibly
+"broken" — a sighted reviewer skimming the UI would not have flagged any of
+them — which is exactly why this needs a tool, not a glance, and why it's
+now a permanent part of the suite rather than a one-off audit.
+
+Scope: `pos` only. There is no guest-facing UI yet to check (`order`/QR
+self-ordering is post-I8) — see the `QR` epic in
+[backlog.md](backlog.md#qr--qr-self-ordering) for when that arrives and
+needs the same treatment.
 
 ## Mobile readiness
 

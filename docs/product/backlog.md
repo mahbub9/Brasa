@@ -52,21 +52,22 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
-| **QA** | Automated testing | 5 | 14 | I0–I1 → ongoing |
+| **QA** | Automated testing | 6 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **63** | **291** | |
+| | **Total** | **64** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 63 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 64 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04) — is done and proven against a
-> live API, and there is now a real automated regression test for tenant
-> isolation (QA-09/10, DAT-11), not just the manual verification that first
-> caught ADR 0010 (details:
+> live API, there is now a real automated regression test for tenant
+> isolation (QA-09/10, DAT-11) instead of only the manual verification that
+> first caught ADR 0010, and an accessibility scan (QA-14) that found and
+> fixed 5 real contrast failures on its first run (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -398,7 +399,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | QA-11 | Idempotency replay test harness | ⬜ |
 | QA-12 | Fiscal golden-file infrastructure | ⬜ |
 | QA-13 | Load test — 50 sites × 5 terminals at service rates | ⬜ |
-| QA-14 | Accessibility checks on POS and guest UIs | ⬜ |
+| QA-14 | Accessibility checks on POS and guest UIs | ✅ `pos` only (no guest UI yet — `order`/QR is post-I8) — `accessibility.spec.ts`, axe-core against WCAG 2.0/2.1 A+AA. Found and fixed 5 real color-contrast failures on first run, not suppressed |
 
 ## OPS — Infrastructure, CI, observability
 

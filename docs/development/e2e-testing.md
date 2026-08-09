@@ -1,7 +1,7 @@
 # End-to-end testing
 
-> **Status: I0 harness built.** `src/web/e2e` — Playwright + TypeScript,
-> against the real `pos` UI and the real API (QA-01/02/03/05 — see
+> **Status: I0/I1 harness built.** `src/web/e2e` — Playwright + TypeScript,
+> against the real `pos` UI and the real API (QA-01/02/03/05/09/10/14 — see
 > [../product/backlog.md](../product/backlog.md)). QA-04 (clock control) and
 > QA-06 (offline chaos) are **not** built yet — see §"What's actually built"
 > below for why, honestly, rather than pretending they're covered.
@@ -46,6 +46,13 @@ a service actually survives a Saturday night.**
 - **`tests/modifiers.spec.ts`** (CAT-03/04) — the modifier picker itself:
   a required group blocks "Add" until satisfied, Cancel adds nothing, and
   selected price deltas total correctly on the rung-up line.
+- **`tests/accessibility.spec.ts`** (QA-14) — `@axe-core/playwright` against
+  the table picker, ordering screen, modifier picker modal, and receipt,
+  scoped to WCAG 2.0/2.1 A + AA (axe's defaults minus the opinionated
+  "best-practice" tag). Found and fixed five real `color-contrast` failures
+  on its first run — see
+  [status.md](../product/status.md#accessibility-first-scan-five-real-fixes).
+  Covers `pos` only; there's no guest-facing UI yet to check.
 - **`tests/support/api.ts`** (QA-03) — typed builders (`openOrder`,
   `addLine`, `getMenu`, `findMenuItem`, `defaultRequiredModifierIds`) for
   setting up order state via the API directly, for specs that aren't

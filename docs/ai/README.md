@@ -69,8 +69,9 @@ Condensed:
   (React 19 + Vite + TS, table-picker → order incl. a modifier picker →
   receipt, WEB-01/05, pt-PT default / en toggle behind a mobile-portable
   cookie seam — WEB-13, ADR 0011), a Playwright E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05, 10 tests green across 4+ consecutive full
-  runs under real parallelism), `Brasa.Api.IntegrationTests` (DAT-11,
+  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 12
+  tests green across several consecutive full runs under real parallelism),
+  `Brasa.Api.IntegrationTests` (DAT-11,
   QA-09/10 — real Testcontainers Postgres proving tenant isolation by
   automated test, not just manual psql anymore), Docker Compose
   (PostgreSQL 18 + Seq), full docs tree, CI (including an `e2e` job —
@@ -93,7 +94,7 @@ modifiers (CAT-03/04) are both done and proven; price lists (CAT-05) and the
 
 Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/**11**/10 · API-01/03/05 ·
 CAT-01/02/03/04/07/18 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01/05/13 ·
-QA-01/03/05/**09**/**10** · FLR-01/02/04.
+QA-01/03/05/**09**/**10**/**14** · FLR-01/02/04.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 
@@ -272,6 +273,12 @@ there is actually met.
   `openOrderOnAnyFreeTable` / `openAnyFreeTable`, which retry on a 409
   instead of assuming the first "free" table they see is still free by the
   time the request lands. See `tests/support/api.ts` and `tests/support/ui.ts`.
+- **`pos` never dims text with CSS `opacity` for visual hierarchy.** It looks
+  fine to a sighted reviewer and quietly fails WCAG contrast anyway —
+  `opacity` blends the color toward whatever's behind it, so the *effective*
+  contrast is lower than the raw foreground color suggests. `accessibility.spec.ts`
+  (QA-14) caught five of these on its first run. Pick a genuinely-compliant
+  color instead; see [status.md](../product/status.md#accessibility-first-scan-five-real-fixes).
 - **`Money.Format(culture)` is not called `ToString`.** Deliberate — it forces
   callers to name the culture, and keeps `ToString()` unambiguously invariant.
 - **`Fiscal.Mock` must never run in Production.** It produces structurally valid

@@ -144,10 +144,10 @@ slice — see the `WEB` epic in [backlog.md](../product/backlog.md).
 Playwright + TypeScript, chromium only. `playwright.config.ts`'s `webServer`
 starts both the API (`dotnet run --no-build`) and the `pos` dev server
 itself — Docker (PostgreSQL) is the only thing it doesn't start. Verified
-locally from both a warm state and a hard cold start, and **four-plus
+locally from both a warm state and a hard cold start, and **several
 consecutive full runs** under real 2-worker parallelism — that repetition is
 what caught the `Table.Occupy()` concurrency bug (see the trap in
-[README.md](README.md)) and then proved the fix; 10/10 passing every time
+[README.md](README.md)) and then proved the fix; 12/12 passing every time
 since. See [../development/e2e-testing.md](../development/e2e-testing.md) for
 the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 
@@ -155,6 +155,7 @@ the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 |---|---|---|
 | `tests/walking-skeleton.spec.ts` | ✅ | QA-05 — drives the real `pos` UI: pick a free table off the floor plan → ring up (incl. the modifier picker) → split preview → close → receipt → clear the table. Runs in Portuguese, the app's default |
 | `tests/modifiers.spec.ts` | ✅ | CAT-03/04 — the modifier picker itself: required-group validation blocks "Add", Cancel adds nothing, price deltas sum correctly onto the line |
+| `tests/accessibility.spec.ts` | ✅ | QA-14 — axe-core against the table picker, ordering screen, modifier picker and receipt (WCAG 2.0/2.1 A+AA). Found 5 real `color-contrast` failures on its first run, all from dimming text via CSS `opacity` — see [status.md](../product/status.md#accessibility-first-scan-five-real-fixes) |
 | `tests/support/ui.ts` | ✅ | `openAnyFreeTable` — retries against a different table on a 409, the UI-side counterpart to `openOrderOnAnyFreeTable` below. See the concurrency trap in [README.md](README.md) |
 | `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |
 | `tests/language-toggle.spec.ts` | ✅ | WEB-13 — default language, the pt→en toggle, cookie attributes (`Path`, `SameSite`, not `httpOnly`) surviving a reload, and money staying `pt-PT` in English mode |

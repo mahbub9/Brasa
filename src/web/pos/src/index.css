@@ -5,7 +5,9 @@
   --paper: #fdfaf6;
   --panel: #ffffff;
   --border: #e6ddd2;
-  --muted: #8a7d6d;
+  /* 6.2:1 against --panel/--paper — WCAG AA needs 4.5:1 for normal text;
+     the original #8a7d6d only cleared 4.01:1 (QA-14 caught this via axe). */
+  --muted: #6b5f52;
   --danger: #b3261e;
   --danger-bg: #fdecea;
 
