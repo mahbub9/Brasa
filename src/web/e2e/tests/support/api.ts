@@ -229,6 +229,26 @@ export async function transferOrderToAnyFreeTable(
   throw new Error('unreachable');
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-14). */
+export function mergeOrdersResponse(request: APIRequestContext, primaryOrderId: string, secondaryOrderId: string) {
+  return request.post(`${apiBaseUrl}/orders/${primaryOrderId}/merge`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { secondaryOrderId },
+  });
+}
+
+export async function mergeOrders(
+  request: APIRequestContext,
+  primaryOrderId: string,
+  secondaryOrderId: string,
+): Promise<{ primaryOrder: OrderDto; secondaryOrder: OrderDto }> {
+  const response = await mergeOrdersResponse(request, primaryOrderId, secondaryOrderId);
+  if (!response.ok()) {
+    throw new Error(`POST /orders/${primaryOrderId}/merge failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (ORD-13). */
 export function transferLineResponse(
   request: APIRequestContext,

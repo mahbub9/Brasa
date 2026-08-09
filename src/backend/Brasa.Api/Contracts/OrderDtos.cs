@@ -26,6 +26,15 @@ public sealed record TransferLineRequest(Guid DestinationOrderId);
 /// <summary>Response body after transferring a line — both orders' new state, since both changed.</summary>
 public sealed record TransferLineResponse(OrderDto SourceOrder, OrderDto DestinationOrder);
 
+/// <summary>Request body to merge another open order's lines into this one (ORD-14).</summary>
+public sealed record MergeOrdersRequest(Guid SecondaryOrderId);
+
+/// <summary>
+/// Response body after a merge — the primary order now carries every line,
+/// and the secondary order is <c>Merged</c> (empty, no fiscal document).
+/// </summary>
+public sealed record MergeOrdersResponse(OrderDto PrimaryOrder, OrderDto SecondaryOrder);
+
 /// <summary>A modifier selected on an order line, as returned to clients.</summary>
 public sealed record OrderLineModifierDto(Guid Id, string Name, MoneyDto PriceDelta);
 

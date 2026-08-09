@@ -57,6 +57,10 @@ public static class OrderEndpoints
             .WithName("TransferOrderLine")
             .WithSummary("Moves a single line onto a different open order (ORD-13).");
 
+        group.MapPost("/orders/{orderId:guid}/merge", MergeOrdersAsync)
+            .WithName("MergeOrders")
+            .WithSummary("Merges another open order's lines into this one and frees its table (ORD-14).");
+
         group.MapGet("/orders/{orderId:guid}/split", PreviewSplitAsync)
             .WithName("PreviewOrderSplit")
             .WithSummary("Computes an even split of the current total, without changing order state.");
@@ -412,6 +416,90 @@ public static class OrderEndpoints
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Results.Ok(new TransferLineResponse(sourceOrder.ToDto(), destinationOrder.ToDto()));
+    }
+
+    /// <summary>
+    /// Merges a secondary open order's lines into the primary one and frees
+    /// the secondary's table (ORD-14) — two parties combining onto one
+    /// table. Both orders' status is checked before anything moves, exactly
+    /// like <c>TransferLineAsync</c>; the secondary ends up <c>Merged</c>
+    /// (empty, no fiscal document ever issued for it) and its table goes
+    /// straight back to <c>Free</c> via <c>Release()</c>, the same as
+    /// <c>TransferOrderAsync</c>'s old table — nothing was billed there, so
+    /// it never passes through <c>Dirty</c>.
+    /// </summary>
+    private static async Task<IResult> MergeOrdersAsync(
+        Guid orderId,
+        MergeOrdersRequest request,
+        OrderingDbContext orderingDb,
+        FloorDbContext floorDb,
+        CancellationToken cancellationToken)
+    {
+        if (request.SecondaryOrderId == orderId)
+        {
+            return Error.Validation(
+                "order.invalid_merge_target", "Secondary order must be different from the primary order.")
+                .ToProblem();
+        }
+
+        var primary = await FindOrderAsync(orderingDb, orderId, cancellationToken).ConfigureAwait(false);
+        if (primary is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        var secondary = await FindOrderAsync(orderingDb, request.SecondaryOrderId, cancellationToken).ConfigureAwait(false);
+        if (secondary is null)
+        {
+            return Error.NotFound(
+                "order.not_found", $"Order {request.SecondaryOrderId} was not found.").ToProblem();
+        }
+
+        if (primary.Status != OrderStatus.Open)
+        {
+            return Error.Conflict("order.not_open", "Cannot merge into an order that is not open.").ToProblem();
+        }
+
+        if (secondary.Status != OrderStatus.Open)
+        {
+            return Error.Conflict("order.not_open", "Cannot merge an order that is not open.").ToProblem();
+        }
+
+        foreach (var line in secondary.Lines.ToArray())
+        {
+            // Both orders' status was already confirmed Open above, so
+            // neither call can fail in practice — see ReceiveLine's remarks.
+            var detachResult = secondary.DetachLine(line.Id);
+            primary.ReceiveLine(detachResult.Value);
+        }
+
+        var markMergedResult = secondary.MarkMerged();
+        if (markMergedResult.IsFailure)
+        {
+            return markMergedResult.Error.ToProblem();
+        }
+
+        var secondaryTable = await floorDb.Tables
+            .FirstOrDefaultAsync(t => t.Id == secondary.TableId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (secondaryTable is not null && secondaryTable.Release().IsSuccess)
+        {
+            try
+            {
+                await floorDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Best-effort, same as CloseOrderAsync's MarkDirty: the
+                // merge itself already stands, so a lost race for this
+                // table's own concurrency token is not worth failing the
+                // whole request over. Staff can clear a stuck table by hand.
+            }
+        }
+
+        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Ok(new MergeOrdersResponse(primary.ToDto(), secondary.ToDto()));
     }
 
     private static async Task<IResult> PreviewSplitAsync(

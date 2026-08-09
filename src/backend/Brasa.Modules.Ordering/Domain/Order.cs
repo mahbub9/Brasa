@@ -208,6 +208,31 @@ public sealed class Order : Entity
     }
 
     /// <summary>
+    /// Marks this order merged into another one (ORD-14) — every line must
+    /// already have moved out via <see cref="DetachLine"/> first, so nothing
+    /// about this order is billed or fiscally issued; it simply stops being
+    /// a live order. Distinct from <see cref="Close"/>: a merged order never
+    /// gets a fiscal document, a closed one always does.
+    /// </summary>
+    public Result MarkMerged()
+    {
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure(
+                Error.Conflict("order.not_open", "Cannot mark as merged an order that is not open."));
+        }
+
+        if (_lines.Count != 0)
+        {
+            return Result.Failure(
+                Error.Validation("order.not_empty", "Cannot mark an order merged while it still has lines."));
+        }
+
+        Status = OrderStatus.Merged;
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Moves this order onto a different table (ORD-12) — a party changing
     /// seats mid-service, not a new order. The caller (API layer) is
     /// responsible for freeing the old <c>Floor.Table</c> and occupying the
