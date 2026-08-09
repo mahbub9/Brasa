@@ -46,15 +46,30 @@ public static class DevFloorSeeder
 
         db.Rooms.AddRange(salao, esplanada);
 
+        // 16 tables, not 8 — the original count. E2E has grown past twenty
+        // tests sharing this seeded floor plan (src/web/e2e), and back-to-back
+        // full runs started occasionally exhausting an 8-table pool under
+        // real 2-worker parallelism (a QA-02 scaling limitation, not a
+        // product bug — see docs/development/e2e-testing.md). Doubling the
+        // pool is a cheap mitigation; a disposable-per-run database is the
+        // real fix, tracked separately.
         db.Tables.AddRange(
             new Table(salao.Id, "Mesa 1", seats: 2, positionX: 0, positionY: 0, TableShape.Round),
             new Table(salao.Id, "Mesa 2", seats: 2, positionX: 1, positionY: 0, TableShape.Round),
             new Table(salao.Id, "Mesa 3", seats: 4, positionX: 2, positionY: 0, TableShape.Square),
             new Table(salao.Id, "Mesa 4", seats: 4, positionX: 0, positionY: 1, TableShape.Square),
             new Table(salao.Id, "Mesa 5", seats: 6, positionX: 1, positionY: 1, TableShape.Rectangle),
+            new Table(salao.Id, "Mesa 9", seats: 2, positionX: 2, positionY: 1, TableShape.Round),
+            new Table(salao.Id, "Mesa 10", seats: 4, positionX: 0, positionY: 2, TableShape.Square),
+            new Table(salao.Id, "Mesa 11", seats: 4, positionX: 1, positionY: 2, TableShape.Square),
+            new Table(salao.Id, "Mesa 12", seats: 6, positionX: 2, positionY: 2, TableShape.Rectangle),
             new Table(esplanada.Id, "Mesa 6", seats: 2, positionX: 0, positionY: 0, TableShape.Round),
             new Table(esplanada.Id, "Mesa 7", seats: 2, positionX: 1, positionY: 0, TableShape.Round),
-            new Table(esplanada.Id, "Mesa 8", seats: 4, positionX: 2, positionY: 0, TableShape.Rectangle));
+            new Table(esplanada.Id, "Mesa 8", seats: 4, positionX: 2, positionY: 0, TableShape.Rectangle),
+            new Table(esplanada.Id, "Mesa 13", seats: 2, positionX: 0, positionY: 1, TableShape.Round),
+            new Table(esplanada.Id, "Mesa 14", seats: 2, positionX: 1, positionY: 1, TableShape.Round),
+            new Table(esplanada.Id, "Mesa 15", seats: 4, positionX: 2, positionY: 1, TableShape.Rectangle),
+            new Table(esplanada.Id, "Mesa 16", seats: 6, positionX: 0, positionY: 2, TableShape.Rectangle));
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }

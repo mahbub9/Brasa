@@ -10,7 +10,7 @@ import {
 } from './support/api';
 
 // ORD-22 — GET /orders as order history/search. The dev database is NOT
-// reset between runs and only 8 tables exist (QA-02's known limitation —
+// reset between runs and only 16 tables exist (QA-02's known limitation —
 // see docs/development/e2e-testing.md), so a table id filter alone can
 // still return other runs' past orders against the same table. Every
 // assertion below looks for this test's own order *within* the filtered

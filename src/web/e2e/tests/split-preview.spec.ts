@@ -45,7 +45,7 @@ test.describe('split preview — Money.Allocate invariant', () => {
       const amounts = shares.map((s) => s.amount);
       expect(Math.max(...amounts) - Math.min(...amounts)).toBeLessThanOrEqual(0.01 + 1e-9);
 
-      // Only 8 tables exist in the seeded floor plan and the dev database
+      // Only 16 tables exist in the seeded floor plan and the dev database
       // isn't reset between runs — give this one back or repeated runs
       // eventually run out. See the comment in support/api.ts.
       await closeOrderAndClearTable(request, order.id, table.id);

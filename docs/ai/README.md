@@ -282,14 +282,20 @@ there is actually met.
   endpoint resolves, never a join. `TableLabel` is the part that gets
   snapshotted (for the receipt-history reason above); `TableId` deliberately
   isn't.
-- **The seeded floor plan has only 8 tables, and the dev database is not
-  reset between E2E runs.** Every spec that opens a table (`src/web/e2e`)
-  must close the order and clear the table before finishing, or repeated
-  runs exhaust the free-table pool — and because table state is real
-  contended state now (the `xmin` token above), specs pick a table via
+- **The seeded floor plan has 16 tables (doubled from 8 — see below), and the
+  dev database is not reset between E2E runs.** Every spec that opens a table
+  (`src/web/e2e`) must close the order and clear the table before finishing,
+  or repeated runs exhaust the free-table pool — and because table state is
+  real contended state now (the `xmin` token above), specs pick a table via
   `openOrderOnAnyFreeTable` / `openAnyFreeTable`, which retry on a 409
   instead of assuming the first "free" table they see is still free by the
   time the request lands. See `tests/support/api.ts` and `tests/support/ui.ts`.
+  Even at 16, back-to-back full runs with no pause can still occasionally
+  exhaust the pool once the suite is large enough — a QA-02 scaling
+  limitation (the dev database isn't disposable per run), not a product bug.
+  If a run fails with "No free table available", check `GET
+  /orders?status=Open` for a leftover order, close it, and `POST
+  /tables/{id}/clear` any table stuck `Dirty`.
 - **`pos` never dims text with CSS `opacity` for visual hierarchy.** It looks
   fine to a sighted reviewer and quietly fails WCAG contrast anyway —
   `opacity` blends the color toward whatever's behind it, so the *effective*

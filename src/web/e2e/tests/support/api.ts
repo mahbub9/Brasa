@@ -8,7 +8,7 @@ import type { MenuCategoryDto, MenuItemDto, OrderDto, OrderSummaryDto, PreBillDt
 // real UI end to end, because that is the one thing worth proving by hand.
 //
 // The dev database is NOT reset between runs (QA-02's known limitation —
-// see docs/development/e2e-testing.md), and there are only 8 seeded tables.
+// see docs/development/e2e-testing.md), and there are only 16 seeded tables.
 // Every helper here that occupies one is paired with a way to give it back
 // (closeOrderAndClearTable), and every spec that opens a table calls it —
 // otherwise repeated runs eventually exhaust the free-table pool.

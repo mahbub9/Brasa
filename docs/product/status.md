@@ -35,7 +35,7 @@
 | `Modules.Identity` | 📁 | I3 (auth) |
 | `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem`, seeded demo menu spanning both VAT bands, soft delete (CAT-18), modifier groups (CAT-03/04) |
 | `Modules.Ordering` | ✅ | `Order` aggregate — open against a real `Table` (`TableId`), add line with modifiers (price/VAT/modifier snapshot, ORD-05), per-line kitchen notes (ORD-06), even split, pre-bill preview (ORD-18/19), transfer to a different table (ORD-12), close, history/search (ORD-22) |
-| `Modules.Floor` | ✅ | `Room`, `Table` — full `Free ⇄ Occupied ⇄ Dirty ⇄ Free` lifecycle (`BillRequested` transition exists, unused by any endpoint yet), plus `Release()` — `Occupied`/`BillRequested` straight back to `Free`, skipping `Dirty`, used only for table transfers (ORD-12). `xmin`-based optimistic concurrency on `Table` so two concurrent occupy attempts can't both win. Seeded: 2 rooms, 8 tables |
+| `Modules.Floor` | ✅ | `Room`, `Table` — full `Free ⇄ Occupied ⇄ Dirty ⇄ Free` lifecycle (`BillRequested` transition exists, unused by any endpoint yet), plus `Release()` — `Occupied`/`BillRequested` straight back to `Free`, skipping `Dirty`, used only for table transfers (ORD-12). `xmin`-based optimistic concurrency on `Table` so two concurrent occupy attempts can't both win. Seeded: 2 rooms, 16 tables |
 | `Modules.Fiscal` | ✅ | `IFiscalProvider`, `FiscalDocument`, VAT correctly derived from gross (menu prices are VAT-inclusive) |
 | `Modules.Payments` | 📁 | I6 |
 | `Modules.Reporting` | 📁 | I8 |
@@ -199,10 +199,11 @@ real database, not just built:
   different. See the comments at each call site and
   `docs/architecture/module-boundaries.md` rule 5. Real cross-module
   atomicity is outbox-based work for I5+.
-- **The E2E suite's own repeatability.** Only 8 tables are seeded and the dev
-  database isn't reset between runs — every spec that opens one now closes
-  and clears it. Confirmed by running the full suite four-plus times in a
-  row with all tests green each time, not just once.
+- **The E2E suite's own repeatability.** 16 tables are seeded (doubled from 8
+  once the suite passed twenty tests and back-to-back full runs started
+  occasionally exhausting the smaller pool) and the dev database isn't reset
+  between runs — every spec that opens one now closes and clears it.
+  Confirmed by running the full suite repeatedly with all tests green.
 
 ### A real concurrency bug, found by running the suite enough times
 
