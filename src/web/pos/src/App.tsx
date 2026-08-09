@@ -148,6 +148,20 @@ export default function App() {
     }
   }
 
+  async function handleSetLineQuantity(lineId: string, quantity: number) {
+    if (!order) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setOrder(await api.setLineQuantity(order.id, lineId, { quantity }));
+      setSplitAmounts(null);
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handlePreBill() {
     if (!order) return;
     setBusy(true);
@@ -255,6 +269,7 @@ export default function App() {
               splitAmounts={splitAmounts}
               onPreviewSplit={handlePreviewSplit}
               onSetLineNotes={handleSetLineNotes}
+              onSetLineQuantity={handleSetLineQuantity}
               onPreBill={handlePreBill}
               onRequestBill={handleRequestBill}
               onTransferTable={handleOpenTransferPicker}

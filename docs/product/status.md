@@ -661,6 +661,32 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > rendered — a realistic multi-terminal race) and asserts the exact
 > rendered banner text in both Portuguese and English.
 
+> **Update (edit an order line's quantity, ORD-03):** the other half of
+> ORD-06's own long-standing caveat — "editing a line itself isn't built
+> yet" — is now closed for quantity, the one edit that actually comes up
+> in service (a guest asks for one more, or the waiter over-rang before
+> anything reached the kitchen). `PUT /orders/{id}/lines/{lineId}/quantity`
+> sets a new `Quantity`; `LineTotal` and any discount recompute for free
+> since both were already derived from `Quantity` rather than stored
+> separately — a percentage discount scales with the new gross, and a
+> fixed discount stays fixed but re-clamps via `DiscountAmount`'s existing
+> clamp if it would now exceed a smaller line. Deliberately not how a
+> wrong or unwanted line is undone, though: that stays `VoidLine` (ORD-10),
+> which requires a reason and freezes the line's own `Quantity` for audit —
+> `SetLineQuantity` rejects a voided line outright (`order.line_voided`)
+> rather than letting an edit quietly reopen what void just closed. This
+> is also why ORD-03's own "remove" half stays deliberately unbuilt as a
+> separate endpoint: void already is the sanctioned way to take a line off
+> the bill, with the audit trail a bare delete would lose. `pos` gets a
+> +/− stepper per line (disabled at 1 — dropping to zero is what void is
+> for), reusing the same inline-edit real estate `OrderLineNotes` already
+> established. **Verified live**: increasing/decreasing recomputes the
+> line and order totals to the cent; a percentage discount scales and a
+> fixed one re-clamps correctly across a quantity change; a quantity below
+> 1, an unknown line, a voided line and a closed order are all rejected
+> with the right code; and the stepper in a real browser increases/
+> decreases the line and disables "−" at 1.
+
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
 

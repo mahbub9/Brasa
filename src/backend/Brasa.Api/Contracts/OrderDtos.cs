@@ -27,6 +27,9 @@ public sealed record TransferOrderRequest(Guid NewTableId);
 /// <summary>Request body to set or clear a line's free-text kitchen note (ORD-06). Null/whitespace clears it.</summary>
 public sealed record SetLineNotesRequest(string? Notes);
 
+/// <summary>Request body to change a line's quantity (ORD-03). At least 1 — to remove a line entirely, void it instead.</summary>
+public sealed record SetLineQuantityRequest(int Quantity);
+
 /// <summary>
 /// Request body to set or clear a discount (ORD-11) — on one line
 /// (<c>PUT /orders/{id}/lines/{lineId}/discount</c>) or the whole order

@@ -408,6 +408,29 @@ main {
   color: var(--muted);
 }
 
+.order-line-qty-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.order-line-qty-stepper button {
+  width: 1.4rem;
+  height: 1.4rem;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: none;
+  font-size: 0.8rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.order-line-qty-stepper button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .order-line-modifiers {
   list-style: none;
   margin: 0.2rem 0 0;

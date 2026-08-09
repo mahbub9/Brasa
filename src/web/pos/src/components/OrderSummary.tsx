@@ -11,6 +11,7 @@ interface OrderSummaryProps {
   splitAmounts: MoneyDto[] | null;
   onPreviewSplit: () => void;
   onSetLineNotes: (lineId: string, notes: string | null) => void;
+  onSetLineQuantity: (lineId: string, quantity: number) => void;
   onPreBill: () => void;
   onRequestBill: () => void;
   onTransferTable: () => void;
@@ -25,6 +26,7 @@ export function OrderSummary({
   splitAmounts,
   onPreviewSplit,
   onSetLineNotes,
+  onSetLineQuantity,
   onPreBill,
   onRequestBill,
   onTransferTable,
@@ -50,7 +52,29 @@ export function OrderSummary({
           {order.lines.map((line) => (
             <li key={line.id}>
               <div className="order-line-row">
-                <span className="order-line-qty">{line.quantity}×</span>
+                <span className="order-line-qty-stepper">
+                  <button
+                    type="button"
+                    aria-label={t('order.quantityDecrease')}
+                    data-testid={`line-qty-decrease-${line.id}`}
+                    disabled={busy || line.quantity <= 1}
+                    onClick={() => onSetLineQuantity(line.id, line.quantity - 1)}
+                  >
+                    −
+                  </button>
+                  <span className="order-line-qty" data-testid={`line-qty-${line.id}`}>
+                    {line.quantity}×
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={t('order.quantityIncrease')}
+                    data-testid={`line-qty-increase-${line.id}`}
+                    disabled={busy}
+                    onClick={() => onSetLineQuantity(line.id, line.quantity + 1)}
+                  >
+                    +
+                  </button>
+                </span>
                 <span className="order-line-name">{line.itemName}</span>
                 <span className="order-line-total">{formatMoney(line.lineTotal)}</span>
               </div>
@@ -145,11 +169,7 @@ interface OrderLineNotesProps {
   onSave: (lineId: string, notes: string | null) => void;
 }
 
-/**
- * Free-text kitchen note per line (ORD-06), added after the line is already
- * rung up — editing a line itself isn't built yet (ORD-03: add only until
- * I2), so this is scoped narrowly to notes rather than general line editing.
- */
+/** Free-text kitchen note per line (ORD-06), added after the line is already rung up. */
 function OrderLineNotes({ line, busy, onSave }: OrderLineNotesProps) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);

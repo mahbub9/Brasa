@@ -611,6 +611,50 @@
         }
       }
     },
+    "/api/v1/orders/{orderId}/lines/{lineId}/quantity": {
+      "put": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Changes how many of a line's item were ordered (ORD-03).",
+        "operationId": "SetOrderLineQuantity",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetLineQuantityRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/orders/{orderId}/lines/{lineId}/discount": {
       "put": {
         "tags": [
@@ -1153,6 +1197,22 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "SetLineQuantityRequest": {
+        "required": [
+          "quantity"
+        ],
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

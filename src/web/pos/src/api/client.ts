@@ -9,6 +9,7 @@ import type {
   ProblemDetails,
   RoomDto,
   SetLineNotesRequest,
+  SetLineQuantityRequest,
   TableDto,
   TransferOrderRequest,
 } from './types';
@@ -94,6 +95,9 @@ export const api = {
 
   setLineNotes: (orderId: string, lineId: string, body: SetLineNotesRequest) =>
     put<OrderDto>(`/orders/${orderId}/lines/${lineId}/notes`, body),
+
+  setLineQuantity: (orderId: string, lineId: string, body: SetLineQuantityRequest) =>
+    put<OrderDto>(`/orders/${orderId}/lines/${lineId}/quantity`, body),
 
   transferOrder: (orderId: string, body: TransferOrderRequest) =>
     post<OrderDto>(`/orders/${orderId}/transfer`, body),

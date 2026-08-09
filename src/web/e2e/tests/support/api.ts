@@ -325,6 +325,29 @@ export async function setLineNotes(
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-03). */
+export function setLineQuantityResponse(request: APIRequestContext, orderId: string, lineId: string, quantity: number) {
+  return request.put(`${apiBaseUrl}/orders/${orderId}/lines/${lineId}/quantity`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { quantity },
+  });
+}
+
+export async function setLineQuantity(
+  request: APIRequestContext,
+  orderId: string,
+  lineId: string,
+  quantity: number,
+): Promise<OrderDto> {
+  const response = await setLineQuantityResponse(request, orderId, lineId, quantity);
+  if (!response.ok()) {
+    throw new Error(
+      `PUT /orders/${orderId}/lines/${lineId}/quantity failed: ${response.status()} ${await response.text()}`,
+    );
+  }
+  return response.json();
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (ORD-11). `type`/`value` both null clears the discount. */
 export function setLineDiscountResponse(
   request: APIRequestContext,

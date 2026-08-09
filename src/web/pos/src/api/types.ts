@@ -81,6 +81,10 @@ export interface SetLineNotesRequest {
   notes: string | null;
 }
 
+export interface SetLineQuantityRequest {
+  quantity: number;
+}
+
 export interface TransferOrderRequest {
   newTableId: string;
 }

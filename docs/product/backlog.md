@@ -416,10 +416,10 @@ The plan of record. Every feature and task, with a stable ID and a status.
 |---|---|---|
 | ORD-01 | Order aggregate — lifecycle and state machine | ✅ `Open`/`Closed`; richer states (courses, kitchen status) are I2 |
 | ORD-02 | Open a table, set cover count | ✅ opens against a real `Table` (FLR), not free text — see `Order.TableId` |
-| ORD-03 | Add / remove / edit order lines | 🚧 add only — remove/edit are I2 |
+| ORD-03 | Add / remove / edit order lines | 🚧 add ✅, edit (quantity) ✅ — `PUT /orders/{id}/lines/{lineId}/quantity`, recomputes `LineTotal` and any discount automatically since both are already derived from `Quantity`. Outright "remove" deliberately not built as a separate endpoint: void (ORD-10) already covers undoing a line, with the reason and audit trail a bare delete would lose, so `SetLineQuantity` rejects a voided line rather than editing around it. `pos` gets a +/− stepper per line. **Verified live**: `order-line-quantity.spec.ts` |
 | ORD-04 | Line snapshots — name, price, VAT rate at time of sale | ✅ |
 | ORD-05 | Apply modifiers to a line | ✅ shipped alongside CAT-03/04 — `AddLine`'s `selectedModifierIds` resolved and validated at the API layer (`ResolveModifiers`), folded into `OrderLine.ModifiersTotal`/`LineTotal` |
-| ORD-06 | Free-text kitchen notes | ✅ `PUT /orders/{id}/lines/{lineId}/notes` — per-line, set after the line is rung up (editing a line itself is still I2/ORD-03); staff/kitchen visibility only, never a Fiscal concern |
+| ORD-06 | Free-text kitchen notes | ✅ `PUT /orders/{id}/lines/{lineId}/notes` — per-line, set after the line is rung up; staff/kitchen visibility only, never a Fiscal concern |
 | ORD-07 | Courses and course firing | ⬜ |
 | ORD-08 | Send to kitchen (partial and full) | ⬜ |
 | ORD-09 | Order line status tracking | ⬜ |
@@ -656,7 +656,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | DOC-07 | Feature page template | ✅ |
 | DOC-08 | API contract for multi-platform clients | ✅ |
 | DOC-09 | Backlog and progress tracking (this page) | ✅ |
-| DOC-10 | Per-feature pages, written as features land | 🚧 2 pages exist (`docs/features/discounts.md`, `menu-item-classification.md`) against dozens of shipped backlog items — the "written as the feature is built" policy hasn't actually been followed until now; these two are a start on backfilling it, not the policy catching up on its own. Both indexed in `docs/features/README.md` and the VitePress sidebar; docs site build verified clean |
+| DOC-10 | Per-feature pages, written as features land | 🚧 3 pages exist (`docs/features/discounts.md`, `void-a-line.md`, `menu-item-classification.md`) against dozens of shipped backlog items — the "written as the feature is built" policy hasn't actually been followed until now; these three are a start on backfilling it, not the policy catching up on its own. All three indexed in `docs/features/README.md` and the VitePress sidebar; docs site build verified clean |
 
 ## MOB — Mobile apps
 

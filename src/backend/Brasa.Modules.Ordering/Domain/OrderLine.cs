@@ -86,6 +86,12 @@ public sealed class OrderLine : Entity
     /// <summary>How many were ordered.</summary>
     public int Quantity { get; private set; }
 
+    /// <summary>Changes <see cref="Quantity"/> (ORD-03). Only <see cref="Order.SetLineQuantity"/> calls this.</summary>
+    internal void SetQuantity(int quantity)
+    {
+        Quantity = quantity;
+    }
+
     /// <summary>Modifiers selected on this line, snapshotted at the time of sale. CAT-03/CAT-04.</summary>
     public IReadOnlyList<OrderLineModifier> Modifiers => _modifiers;
 

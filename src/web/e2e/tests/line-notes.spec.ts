@@ -11,8 +11,9 @@ import {
 import { openAnyFreeTable } from './support/ui';
 
 // ORD-06 — free-text kitchen notes on an order line, added after the line is
-// already rung up (editing a line itself isn't built yet — ORD-03). Covers
-// both the API contract directly and the inline editor in pos.
+// already rung up. Covers both the API contract directly and the inline
+// editor in pos. Quantity editing (ORD-03) is a separate, dedicated concern —
+// see order-line-quantity.spec.ts.
 
 test.describe('kitchen notes on an order line', () => {
   test('sets, overwrites and clears a note via the API', async ({ request }) => {

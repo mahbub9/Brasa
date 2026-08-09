@@ -457,10 +457,9 @@ public sealed class Order : Entity
 
     /// <summary>
     /// Sets or clears a line's free-text kitchen note (ORD-06) — added after
-    /// the line was already rung up, since editing a line itself isn't built
-    /// yet (ORD-03: add only until I2). Notes are staff/kitchen visibility
-    /// only; they never appear on a fiscal document, and a pre-bill showing
-    /// them is incidental, not a Fiscal-module concern.
+    /// the line was already rung up. Notes are staff/kitchen visibility only;
+    /// they never appear on a fiscal document, and a pre-bill showing them is
+    /// incidental, not a Fiscal-module concern.
     /// </summary>
     /// <param name="lineId">The line to annotate.</param>
     /// <param name="notes">
@@ -535,6 +534,50 @@ public sealed class Order : Entity
         }
 
         line.Void(reason.Trim(), voidedAtUtc);
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Changes how many of a line's item were ordered (ORD-03) — a guest
+    /// asks for one more, or the waiter over-rang by mistake before it ever
+    /// reached the kitchen. Recomputes <see cref="OrderLine.GrossBeforeDiscount"/>
+    /// and therefore <see cref="OrderLine.LineTotal"/> automatically; a
+    /// percentage discount scales with the new quantity, and a fixed discount
+    /// stays fixed but re-clamps if it would now exceed the smaller gross
+    /// (<see cref="OrderLine.DiscountAmount"/> already does this). This is
+    /// deliberately not how a wrong or unwanted order is undone — that stays
+    /// <see cref="VoidLine"/>, which requires a reason and preserves what was
+    /// actually rung up for audit; editing the quantity of a voided line
+    /// would defeat that, so it is rejected.
+    /// </summary>
+    /// <param name="lineId">The line to change.</param>
+    /// <param name="quantity">The new quantity. At least 1 — to remove a line entirely, void it instead.</param>
+    public Result SetLineQuantity(Guid lineId, int quantity)
+    {
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure(
+                Error.Conflict("order.not_open", "Cannot change a line's quantity on an order that is not open."));
+        }
+
+        var line = _lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null)
+        {
+            return Result.Failure(Error.NotFound("order.line_not_found", $"Line {lineId} was not found on this order."));
+        }
+
+        if (quantity < 1)
+        {
+            return Result.Failure(Error.Validation("order.invalid_quantity", "Quantity must be at least 1."));
+        }
+
+        if (line.IsVoided)
+        {
+            return Result.Failure(
+                Error.Conflict("order.line_voided", "Cannot change the quantity of a voided line."));
+        }
+
+        line.SetQuantity(quantity);
         return Result.Success();
     }
 
