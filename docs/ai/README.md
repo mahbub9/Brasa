@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-10 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), line and order discounts (ORD-11, percentage or fixed, composing, no manager-authorisation gate yet), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), per-tenant-and-client rate limiting (API-12, a sixth `ErrorType.RateLimited` → 429), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1; every request now logs with `TenantId` attached (OPS-07, still 🚧 — doesn't yet reach the HTTP completion-summary line, a known pipeline-ordering gap not a silent one); the two deep-link verification documents exist too (API-18, honestly empty — no bundle id/package name exists to put in either until a native app does)
+**Last verified:** 2026-08-10 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built), course assignment per item (CAT-14, `Starter`/`Main`/`Dessert`/`Drink`, independent of `MenuCategory`) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), line and order discounts (ORD-11, percentage or fixed, composing, no manager-authorisation gate yet), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), per-tenant-and-client rate limiting (API-12, a sixth `ErrorType.RateLimited` → 429), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1; every request now logs with `TenantId` attached (OPS-07, still 🚧 — doesn't yet reach the HTTP completion-summary line, a known pipeline-ordering gap not a silent one); the two deep-link verification documents exist too (API-18, honestly empty — no bundle id/package name exists to put in either until a native app does)
 
 ---
 
@@ -99,7 +99,7 @@ Condensed:
   `GET /menu/all` that deliberately doesn't filter the way the guest-facing
   `GET /menu` does; floor-plan editing, FLR-03, isn't built), a Playwright
   E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 77
+  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 79
   tests green on a clean run — the seeded floor plan was doubled to 16
   tables after back-to-back full runs started exhausting the original 8, a
   QA-02 scaling limitation, not a product bug; see
@@ -537,6 +537,22 @@ there is actually met.
   at the CORS layer before JS ever sees it. Only visible in the browser's
   network console, not in API logs. The list is read once at startup, not
   live-reloaded, so a config edit needs the API restarted, not just saved.
+- **A test that constructs a module's `DbContext` directly (`new XyzDbContext(...)`)
+  must pass the exact same `MigrationsHistoryTable(...)` override as
+  `Program.cs` and that module's design-time factory** (e.g. `catalog` →
+  `("__ef_migrations_history", "catalog")`). The migrations-history table's
+  name/schema is itself part of the relational model EF diffs against the
+  last migration's committed snapshot — a test that omits the override
+  silently builds a *different* model, which `dotnet ef migrations
+  has-pending-model-changes` (the design-time check) will never catch,
+  since it always goes through the factory. It stays invisible until
+  `MigrateAsync` actually has a new migration to validate, at which point
+  EF Core 8's pending-model-changes check throws `PendingModelChangesWarning`
+  as a hard error — found via `TenantIsolationIntegrationTests` when CAT-14
+  added a migration and this had apparently been latent since the test was
+  first written. If a second module (Ordering, Floor) ever gets a similar
+  Testcontainers test, give it the same override up front rather than
+  waiting to hit this again.
 
 ## 8. Environment
 

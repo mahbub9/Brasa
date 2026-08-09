@@ -225,6 +225,41 @@
         }
       }
     },
+    "/api/v1/menu/items/{itemId}/course": {
+      "put": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "Sets or clears which course a menu item is served at (CAT-14).",
+        "operationId": "UpdateMenuItemCourse",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMenuItemCourseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/menu/categories/{categoryId}/visibility": {
       "put": {
         "tags": [
@@ -1134,6 +1169,20 @@
         "properties": {
           "isAvailable": {
             "type": "boolean"
+          }
+        }
+      },
+      "UpdateMenuItemCourseRequest": {
+        "required": [
+          "course"
+        ],
+        "type": "object",
+        "properties": {
+          "course": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },

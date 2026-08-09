@@ -271,6 +271,28 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > sums to `order.Total` and `document.GrossTotal` still equals `order.Total`
 > to the cent once the order is actually closed with a discount applied.
 
+> **Update (menu item course, CAT-14):** `PUT /menu/items/{id}/course` sets
+> or clears which point in the meal a menu item is served at (`Starter`/
+> `Main`/`Dessert`/`Drink`). Deliberately independent of `MenuCategory`: a
+> category is how the menu is organised for *browsing* (a restaurant might
+> group by ingredient or style), a course is *when* it's fired to the
+> kitchen — the same dish's category doesn't tell you that. Null means not
+> yet assigned, a data-entry gap rather than a claim the item has no
+> course, the same convention `Allergens`' empty list already uses. No
+> admin/`pos` UI reads it yet, and course *firing* (ORD-07, the actual
+> kitchen-sequencing feature) isn't built either — this ships the tag
+> ahead of both consumers, the same shape as CAT-02's allergen set before
+> any filtering UI existed. Finding this while adding a fresh migration
+> also surfaced a real gap in `TenantIsolationIntegrationTests`: it built
+> `CatalogDbContext` without the `MigrationsHistoryTable` override
+> `Program.cs` and the design-time factory both apply, so its model
+> silently disagreed with every committed migration snapshot — invisible
+> until EF Core 8's pending-model-changes check actually had a new
+> migration to validate against. Fixed by matching the test's setup to
+> production, not by suppressing the check. **Verified live**: set,
+> persists across a fresh `GET`, clears; an unrecognised course name and an
+> unknown item both rejected (`catalog.invalid_course`/`catalog.item_not_found`).
+
 > **Update (menu item details, CAT-02):** `PUT /menu/items/{id}/details`
 > sets a menu item's description and declared allergens. Allergens are
 > modelled as a closed `Allergen` enum over the 14 categories EU food-

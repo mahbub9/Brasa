@@ -52,6 +52,10 @@ public static class CatalogEndpoints
             .WithName("UpdateMenuItemPrice")
             .WithSummary("Changes a menu item's price for future orders. Past order lines keep their own snapshot.");
 
+        group.MapPut("/menu/items/{itemId:guid}/course", UpdateMenuItemCourseAsync)
+            .WithName("UpdateMenuItemCourse")
+            .WithSummary("Sets or clears which course a menu item is served at (CAT-14).");
+
         group.MapPut("/menu/categories/{categoryId:guid}/visibility", UpdateMenuCategoryVisibilityAsync)
             .WithName("UpdateMenuCategoryVisibility")
             .WithSummary("Hides a whole category (and every item under it) from GET /menu, or shows it again (CAT-01).");
@@ -256,6 +260,50 @@ public static class CatalogEndpoints
         catch (ArgumentException)
         {
             return Error.Validation("catalog.invalid_price", "Price must not be negative.").ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(item.ToDto());
+    }
+
+    /// <summary>
+    /// Sets or clears which course a menu item is served at (CAT-14) — a
+    /// greenfield field with no prior gap to close, unlike CAT-13/19: the
+    /// domain method, the endpoint and this field's very existence all
+    /// arrive together. Ships ahead of its consumer the same way CAT-02's
+    /// allergen set did: course *firing* (ORD-07) isn't built, so this is
+    /// only a menu-display tag today, not yet a kitchen-sequencing signal.
+    /// </summary>
+    private static async Task<IResult> UpdateMenuItemCourseAsync(
+        Guid itemId,
+        UpdateMenuItemCourseRequest request,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        if (request.Course is null)
+        {
+            item.SetCourse(null);
+        }
+        else if (Enum.TryParse<Course>(request.Course, ignoreCase: true, out var course))
+        {
+            item.SetCourse(course);
+        }
+        else
+        {
+            return Error.Validation(
+                "catalog.invalid_course", $"\"{request.Course}\" is not a recognised course.").ToProblem();
         }
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

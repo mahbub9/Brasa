@@ -41,7 +41,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **API** | API platform & mobile readiness | 13 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
-| **CAT** | Catalog & menu | 8 | 19 | I0 (rest: I1) |
+| **CAT** | Catalog & menu | 9 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
 | **ORD** | Ordering | 17 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **92** | **292** | |
+| | **Total** | **93** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 92 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 93 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -185,7 +185,22 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > invoice) to cover the discounted case, not just the undiscounted one it
 > already covered. Known, documented gap: `SplitByItem`'s by-item preview
 > doesn't yet fold in a discount, unlike `SplitEvenly`/`SplitByCover`, which
-> inherit it automatically through `Total`.
+> inherit it automatically through `Total`. A menu item can now also declare
+> which course it's served at (CAT-14) — `PUT /menu/items/{id}/course`,
+> `Starter`/`Main`/`Dessert`/`Drink`, independent of `MenuCategory` (how the
+> menu is organised for browsing, not when a dish is fired to the kitchen).
+> A pure greenfield addition, unlike most of this session's Catalog work —
+> there was no dormant domain method waiting for a caller this time — and it
+> ships the same way CAT-02's allergen set did: ahead of both its consumers,
+> since neither an admin editor nor course *firing* (ORD-07) exists yet.
+> Finding it also surfaced a real, if narrow, test-infrastructure bug:
+> `TenantIsolationIntegrationTests` constructed `CatalogDbContext` without
+> the `MigrationsHistoryTable` override `Program.cs` and the design-time
+> factory both use, so its model silently disagreed with every migration's
+> snapshot — invisible until a new migration actually needed the pending-
+> changes check EF Core 8+ runs before applying one. Fixed by matching the
+> test's setup to how the app is actually configured, not by suppressing
+> the check.
 
 ---
 
@@ -286,7 +301,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | CAT-11 | *Prato do dia* — daily specials with schedules | ⬜ |
 | CAT-12 | *Couvert* handling — charged only when consumed | ⬜ |
 | CAT-13 | Item availability / 86-ing (out of stock) | ✅ `MarkAvailable`/`MarkUnavailable` existed since I0 and `AddLine` already enforced `IsAvailable`, but no endpoint ever called either — `IsAvailable` could never actually become `false`. `PUT /menu/items/{id}/availability` closes that: ships ahead of any UI that will call it (no admin app, no in-order 86 control), same as CAT-02/CAT-17/CAT-18. **Verified live**: 86'ing an item hides it from `GET /menu` and the previously-dead `catalog.item_unavailable` guard on `AddLine` finally fires for real; un-86'ing restores both; unknown item `404`s |
-| CAT-14 | Course assignment per item | ⬜ |
+| CAT-14 | Course assignment per item | ✅ `PUT /menu/items/{id}/course` — `Course?` (`Starter`/`Main`/`Dessert`/`Drink`), null when not yet assigned (a data-entry gap, same convention as an empty `Allergens` list). Independent of `MenuCategory`: a menu can be organised for browsing by ingredient/style while every item still belongs to exactly one course. No admin UI yet, and course *firing* (ORD-07) isn't built either — ships ahead of both, the tag it will read from once it is. **Verified live**: set/persist/clear, an unrecognised course name and an unknown item both rejected (`catalog.invalid_course`/`catalog.item_not_found`) |
 | CAT-15 | Kitchen station routing per item | ⬜ |
 | CAT-16 | Menu versioning with effective dates | ⬜ |
 | CAT-17 | Bulk import (CSV / Excel) | 🚧 `POST /menu/items/import` — CSV only, Excel not built. Hand-written RFC 4180 parser (`CsvParser`, 8 unit tests — quoting, escaped quotes, embedded newlines, CRLF/LF, blank lines), no new dependency. Rows import independently — an unknown category or an unparsable price is reported per-row (1-indexed against the data rows) rather than failing the whole file. Create-only, not upsert: importing the same file twice creates duplicates. **Verified live**: 2 valid + 2 invalid rows in one file → `created: 2`, two row-level errors with the exact bad value named; empty CSV and a header missing a required column both `400` |

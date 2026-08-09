@@ -14,7 +14,10 @@ public sealed record ModifierGroupDto(
     int MaxSelect,
     IReadOnlyList<ModifierDto> Modifiers);
 
-/// <summary>A menu item as returned to clients.</summary>
+/// <summary>
+/// A menu item as returned to clients. <c>Course</c> is null when not yet
+/// assigned (CAT-14) — a data-entry gap, not a claim the item has no course.
+/// </summary>
 public sealed record MenuItemDto(
     Guid Id,
     string Name,
@@ -23,6 +26,7 @@ public sealed record MenuItemDto(
     decimal VatRatePercent,
     bool IsAlcoholic,
     bool IsAvailable,
+    string? Course,
     IReadOnlyList<string> Allergens,
     IReadOnlyList<ModifierGroupDto> ModifierGroups);
 
@@ -48,6 +52,13 @@ public sealed record UpdateMenuItemDetailsRequest(string? Description, IReadOnly
 
 /// <summary>Request body to 86 a menu item or bring it back (CAT-13).</summary>
 public sealed record UpdateMenuItemAvailabilityRequest(bool IsAvailable);
+
+/// <summary>
+/// Request body to set or clear which course a menu item is served at
+/// (CAT-14). <c>Course</c> is a <see cref="Domain.Course"/> name, e.g.
+/// <c>"Starter"</c>; null clears it back to unassigned.
+/// </summary>
+public sealed record UpdateMenuItemCourseRequest(string? Course);
 
 /// <summary>
 /// Request body to change a menu item's price. A decimal in major units
@@ -99,6 +110,7 @@ public static class CatalogDtoMappings
         item.VatRate.Fraction,
         item.IsAlcoholic,
         item.IsAvailable,
+        item.Course?.ToString(),
         [.. item.Allergens.Select(a => a.ToString())],
         [.. item.ModifierGroups.OrderBy(g => g.DisplayOrder).Select(g => g.ToDto())]);
 

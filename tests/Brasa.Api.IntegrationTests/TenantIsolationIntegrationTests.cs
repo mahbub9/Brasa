@@ -62,7 +62,19 @@ public sealed class TenantIsolationIntegrationTests : IAsyncLifetime
         }
 
         await using (var db = new CatalogDbContext(
-            new DbContextOptionsBuilder<CatalogDbContext>().UseNpgsql(superuserConnectionString).Options,
+            // MigrationsHistoryTable must match CatalogDbContextFactory (design-time)
+            // and Program.cs (runtime) exactly — the history table's name/schema is
+            // itself part of the relational model EF diffs against the last
+            // migration's snapshot. Omitting it here silently used EF's default
+            // location instead, which was invisible until CAT-14 added a migration:
+            // MigrateAsync then threw PendingModelChangesWarning as an error,
+            // because the model this context builds (default history table) no
+            // longer matched what the snapshot was generated against (custom
+            // history table) — a real test/production configuration drift, not a
+            // flaky assertion.
+            new DbContextOptionsBuilder<CatalogDbContext>()
+                .UseNpgsql(superuserConnectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "catalog"))
+                .Options,
             new TenantContext(),
             new TenantContextAccessor(),
             new SystemClock()))
