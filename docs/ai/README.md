@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11)
+**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10) and client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11)
 
 ---
 
@@ -78,7 +78,7 @@ Condensed:
   (React 19 + Vite + TS, table-picker → order incl. a modifier picker →
   receipt, WEB-01/05, pt-PT default / en toggle behind a mobile-portable
   cookie seam — WEB-13, ADR 0011), a Playwright E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 43
+  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 47
   tests green on a clean run — the seeded floor plan was doubled to 16
   tables after back-to-back full runs started exhausting the original 8, a
   QA-02 scaling limitation, not a product bug; see
@@ -97,7 +97,12 @@ Condensed:
   too continuously for caching to pay off; live-verified 200→304, and the
   repeated-run E2E discipline caught a real bug where the helper's own JSON
   serialization used PascalCase instead of the app's configured camelCase,
-  see [status.md](../product/status.md)), Docker Compose
+  see [status.md](../product/status.md)), client version negotiation
+  (API-06/07 — best-effort `X-Brasa-Client` header parsing that enriches
+  every log line for the request via Serilog's `LogContext`, plus
+  `GET /client-requirements` looking up the caller's client id in a
+  config-bound policy; ships ahead of any client that sends the header or
+  calls the endpoint yet), Docker Compose
   (PostgreSQL 18 + Seq), full docs tree, CI (including an `e2e` job —
   written, not yet run in CI).
 - 📁 **Empty projects (structure only, zero logic):** `Modules.Identity`,
@@ -120,7 +125,7 @@ Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/**11**/10 · API-01/03/05 
 CAT-01/02/03/04/07/18 ·
 ORD-01/02/03/04/**05**/**06**/**12**/**13**/**14**/15/**16**/**17**/**18**/**19**/**20**/**22** ·
 FIS-01/02/03 · WEB-01/05/13 · QA-01/03/05/**09**/**10**/**11**/**14** · FLR-01/02/04 ·
-API-**04**/**10** · OPS-**09**.
+API-**04**/**06**/**07**/**10** · OPS-**09**.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 

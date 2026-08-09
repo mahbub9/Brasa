@@ -30,7 +30,7 @@
 | `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
 | `Brasa.Shared` — outbox contracts | ✅ | Types defined; **no dispatcher implementation yet** |
-| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete, `/items/{id}/details` — CAT-02, `ETag`/`If-None-Match` caching — API-10), `/floor`, `/orders` (+`GET` search/history — ORD-22, `/takeaway` — ORD-20, `/lines`, `/lines/{id}/notes` — ORD-06, `/lines/{id}/transfer` — ORD-13, `/merge` — ORD-14, `/split`, `/split/by-item` — ORD-16, `/split/by-cover` — ORD-17, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`, `ETag` exposed for browser reads) |
+| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete, `/items/{id}/details` — CAT-02, `ETag`/`If-None-Match` caching — API-10), `/floor`, `/orders` (+`GET` search/history — ORD-22, `/takeaway` — ORD-20, `/lines`, `/lines/{id}/notes` — ORD-06, `/lines/{id}/transfer` — ORD-13, `/merge` — ORD-14, `/split`, `/split/by-item` — ORD-16, `/split/by-cover` — ORD-17, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/client-requirements` (API-07), `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, `X-Brasa-Client` parsing (API-06), CORS for web clients (`Cors:AllowedOrigins`, `ETag` exposed for browser reads) |
 | EF Core + PostgreSQL + RLS | ✅ | **Verified live**, not just asserted: `brasa_app` (unprivileged runtime role) sees zero rows with no tenant set or the wrong tenant set, and cannot run DDL. Re-verified against the new `floor` schema too. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | `Modules.Identity` | 📁 | I3 (auth) |
 | `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem` (incl. optional `Description` and declared `Allergens` — CAT-02), seeded demo menu spanning both VAT bands, soft delete (CAT-18), modifier groups (CAT-03/04) |
@@ -68,7 +68,7 @@
 | `Brasa.Shared.Tests` | ✅ | 18 passing, incl. exhaustive allocation check and the error-code registry test (API-04) |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 5 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused. The automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 43 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). That same repeated-run discipline is what caught the API-10 JSON-casing regression below before it reached a commit. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), menu `ETag`/304 caching (API-10), idempotency replay — a retried close never double-issues a fiscal document (QA-11), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 47 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). That same repeated-run discipline is what caught the API-10 JSON-casing regression below before it reached a commit. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), menu `ETag`/304 caching (API-10), idempotency replay — a retried close never double-issues a fiscal document (QA-11), client version negotiation (API-06/07), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -295,6 +295,31 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > a genuine `409`, not a cache hit (proves the cache is keyed correctly, not
 > just returning the last response for anything); a missing key `400`s
 > (`request.idempotency_key_required`).
+
+> **Update (client version negotiation, API-06/07):**
+> `docs/architecture/api-contract.md` §3 exists because "a web client
+> updates on refresh, a mobile app does not" — old app versions persist for
+> months, so the backend has to assume it's always serving clients it can't
+> upgrade. `ClientVersionMiddleware` parses the `X-Brasa-Client` header
+> (`<client-id>/<version> (<platform>)`) on every request — best-effort,
+> since no client sends it yet, so a missing/malformed value never fails
+> the request, it just skips enrichment. When present, it's stashed on
+> `HttpContext.Items` for endpoints to read, and pushed into Serilog's
+> `LogContext` so `ClientId`/`ClientVersion`/`ClientPlatform` show up on
+> every log line for that request, including the request-completion
+> summary — verified directly in the console/Seq output, not just asserted
+> by the type shape. `GET /client-requirements` reads that parsed header
+> and looks up the caller's client id in a config-bound `ClientRequirements`
+> section (no admin UI to edit this yet, so configuration rather than a
+> database table), returning `{minimumSupported, recommended, sunsetAfter}`
+> so an app can decide for itself whether to show "update required".
+> Ships ahead of any client that actually sends the header or calls the
+> endpoint, the same way CAT-02/CAT-18 shipped ahead of the admin UI that
+> will eventually call them. Verified live, all four cases: known client id
+> → `200` with its policy; missing header → `400 client.header_required`;
+> malformed header → the same `400` (parse failure is indistinguishable
+> from absence, deliberately); well-formed header naming an unconfigured
+> client id → `404 client.unknown_client_id`.
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:

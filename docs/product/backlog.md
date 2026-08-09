@@ -38,7 +38,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **FND** | Foundation & shared kernel | 10 | 12 | I0 |
 | **OPS** | Infrastructure, CI, observability | 7 | 16 | I0 → ongoing |
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
-| **API** | API platform & mobile readiness | 5 | 18 | I0 (rest: I3) |
+| **API** | API platform & mobile readiness | 7 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 6 | 18 | I0 (rest: I1) |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **79** | **291** | |
+| | **Total** | **81** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 79 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 81 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -94,7 +94,11 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > the idempotency guarantee every mutation relies on (hard rule 7) now has
 > automated proof rather than just a doc comment: replaying the same
 > `Idempotency-Key` 3× never creates a second order or issues a second
-> fiscal document on a retried close (QA-11)
+> fiscal document on a retried close (QA-11), and the API can now tell
+> which client is calling and answer "what version do you need to be"
+> (API-06/07, `X-Brasa-Client` parsing + `GET /client-requirements`) —
+> ahead of any client that sends the header yet, same as CAT-02/CAT-18
+> shipped ahead of their UI
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -147,8 +151,8 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | API-03 | ProblemDetails mapping from `ErrorType` → HTTP status | ✅ |
 | API-04 | Stable error-code registry + test that codes never change meaning | ✅ [error-codes.md](../architecture/error-codes.md), enforced by `ErrorCodeRegistryTests` — scans every `Error.*(...)` call site, fails on a removed/renamed code, an undocumented new one, or a code whose `Type` (and therefore HTTP status) changed. Verified it actually catches drift, not just that it compiles |
 | API-05 | `Idempotency-Key` middleware + store | ✅ **verified live**: replayed request returns identical order id; DB confirms one row. In-memory store — durable store needed before scaling out |
-| API-06 | `X-Brasa-Client` header parsing (id / version / platform) | ⬜ |
-| API-07 | `GET /client-requirements` — min & recommended version, sunset | ⬜ |
+| API-06 | `X-Brasa-Client` header parsing (id / version / platform) | ✅ `ClientVersionMiddleware` — best-effort: no client sends this header yet, so a missing/malformed value never fails the request, it just skips enrichment. Parsed `ClientInfo` is stashed on `HttpContext.Items` for `GET /client-requirements` (API-07) and pushed into Serilog's `LogContext` (`ClientId`/`ClientVersion`/`ClientPlatform`) so every log line for the request carries it — **verified live** via the console/Seq output |
+| API-07 | `GET /client-requirements` — min & recommended version, sunset | ✅ Looks up the calling client's id (from `X-Brasa-Client`, API-06) in a config-bound `ClientRequirements` section — no admin UI to edit this yet, so it's configuration, not a database table. **Verified live**: known client id → `200` with its policy; missing/malformed header → `400 client.header_required`; well-formed header naming an unconfigured client id → `404 client.unknown_client_id` |
 | API-08 | RFC 8594 `Deprecation` / `Sunset` response headers | ⬜ |
 | API-09 | Cursor pagination helper, applied to every collection | ⬜ |
 | API-10 | `ETag` / `If-None-Match` on config and menu reads | ✅ `GET /menu` only — deliberately not `GET /floor`, whose state changes continuously through service. **Verified live**: 200 with a computed `ETag` on first pull, 304 with no body when it's echoed back as `If-None-Match`. Caught a real bug in review: the helper's own JSON serialization used `System.Text.Json`'s default (PascalCase) instead of ASP.NET Core's configured camelCase, silently breaking the `pos` client — fixed by resolving the app's configured `JsonSerializerOptions` from DI instead of using the type default |

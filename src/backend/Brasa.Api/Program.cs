@@ -1,5 +1,6 @@
 using System.Globalization;
 using Asp.Versioning;
+using Brasa.Api.ClientVersioning;
 using Brasa.Api.Endpoints;
 using Brasa.Api.HealthChecks;
 using Brasa.Api.Idempotency;
@@ -52,6 +53,13 @@ var migrationsConnectionString = builder.Configuration.GetConnectionString("Post
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddBrasaTenancy();
 builder.Services.AddMemoryCache();
+
+// API-07 — per-client-id version policy, keyed by the X-Brasa-Client
+// header's client-id (ClientVersionMiddleware). Config-bound rather than a
+// database table: there is no admin UI to edit this yet, and it changes
+// about as often as a deployment does.
+builder.Services.Configure<Dictionary<string, ClientRequirementEntry>>(
+    builder.Configuration.GetSection("ClientRequirements"));
 
 // ── Modules ──────────────────────────────────────────────────────────────────
 builder.Services.AddCatalogModule(connectionString);
@@ -114,6 +122,11 @@ if (!app.Environment.IsProduction())
     await DevFloorSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
 }
 
+// Runs before request logging so a parsed X-Brasa-Client header (API-06)
+// enriches the request-completion log line itself, not just lines written
+// after it.
+app.UseMiddleware<ClientVersionMiddleware>();
+
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();
 app.UseStatusCodePages();
@@ -171,6 +184,7 @@ v1.MapGet("/ping", () => Results.Ok(new
 v1.MapCatalogEndpoints();
 v1.MapFloorEndpoints();
 v1.MapOrderEndpoints();
+v1.MapClientEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);
 
