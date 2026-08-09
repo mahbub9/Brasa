@@ -226,6 +226,12 @@ app.UseCors(WebClientsCorsPolicy);
 // module's RLS session variable all depend on it.
 app.UseMiddleware<DevTenantMiddleware>();
 
+// OPS-07 — every log line for the rest of the request carries TenantId
+// (and Site/Terminal/User ids once auth populates them). Doesn't reach
+// UseSerilogRequestLogging's own completion line — see
+// TenantLoggingMiddleware's remarks for why.
+app.UseMiddleware<TenantLoggingMiddleware>();
+
 // API-12 — before IdempotencyMiddleware on purpose: a request this rejects
 // shouldn't also consume an idempotency cache slot.
 app.UseRateLimiter();

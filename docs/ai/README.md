@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), per-tenant-and-client rate limiting (API-12, a sixth `ErrorType.RateLimited` → 429), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1
+**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), per-tenant-and-client rate limiting (API-12, a sixth `ErrorType.RateLimited` → 429), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1; every request now logs with `TenantId` attached (OPS-07, still 🚧 — doesn't yet reach the HTTP completion-summary line, a known pipeline-ordering gap not a silent one)
 
 ---
 
@@ -463,6 +463,27 @@ there is actually met.
   concurrent-spec interference under `fullyParallel`. If you add a spec
   that mutates catalog state, expect this class of interaction with
   anything that reads `GET /menu` and assumes it's stable.
+- **"Sobremesas" is the seeded category with no name/item dependency
+  elsewhere — but that stops being true the moment a second spec claims it
+  too, and nothing warns you.** `menu-category-visibility.spec.ts` (CAT-01)
+  picked it specifically because nothing else references it; adding
+  `admin-menu-management.spec.ts` (WEB-10)'s own category-visibility UI
+  test against the same category, without checking that comment first,
+  reintroduced exactly the kind of collision CAT-01 had deliberately
+  avoided — two specs racing to hide/show the same category under real
+  parallel workers, each assuming exclusive ownership. Every *other*
+  seeded category has a real dependency (Bebidas has "Imperial", Pratos
+  Principais has "Frango na Brasa", both looked up by exact name in
+  several specs; Entradas is referenced by name in four more), so there
+  is no free fourth fixture — and no endpoint to create one. Fixed by
+  making both specs tolerate a shared resource instead of assuming
+  exclusivity: the id lookup goes through `GET /menu/all` (never
+  filtered, so it can't itself fail mid-race), the hide/show/verify round
+  trip retries as a whole (same shape as the `ETag` trap above), and
+  WEB-10's own second visibility test is read-only precisely so it needs
+  no exclusivity at all. Before adding a spec that mutates a seeded
+  fixture, grep for what else already uses it — "nothing else references
+  this" is a claim that can go stale.
 - **`Fiscal.Mock` must never run in Production.** It produces structurally valid
   but fiscally meaningless documents.
 - **The `RateLimiting` default in `appsettings.json` is tuned for production

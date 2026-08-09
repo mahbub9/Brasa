@@ -4,7 +4,6 @@ import {
   getMenu,
   getMenuAll,
   importMenuItemsResponse,
-  updateMenuCategoryVisibilityResponse,
   updateMenuItemAvailabilityResponse,
 } from './support/api';
 
@@ -45,42 +44,53 @@ test.describe('GET /menu/all', () => {
     await deleteMenuItem(request, item.id);
   });
 
-  test('includes a hidden category and reflects isVisible correctly', async ({ request }) => {
-    const hideResponse = await updateMenuCategoryVisibilityResponse(
-      request,
-      (await getMenuAll(request)).find((c) => c.name === 'Sobremesas')!.id,
-      false,
-    );
-    expect(hideResponse.status()).toBe(200);
+  test('every category\'s isVisible matches whether it actually appears in GET /menu', async ({ request }) => {
+    // Deliberately read-only — menu-category-visibility.spec.ts (CAT-01)
+    // already proves hide/show correctness by actually mutating Sobremesas,
+    // and now legitimately races with this suite's own admin UI test doing
+    // the same (see that spec's file comment). A snapshot consistency
+    // check needs no mutation of its own and holds regardless of what any
+    // concurrent spec is doing to any category at the moment it runs.
+    const [all, guestMenu] = await Promise.all([getMenuAll(request), getMenu(request)]);
+    const guestCategoryIds = new Set(guestMenu.map((c) => c.id));
 
-    const all = await getMenuAll(request);
-    const sobremesas = all.find((c) => c.name === 'Sobremesas');
-    expect(sobremesas).toBeDefined();
-    expect(sobremesas?.isVisible).toBe(false);
-    expect(sobremesas?.items.length).toBeGreaterThan(0);
-
-    // Restore — other specs (e.g. menu-category-visibility.spec.ts) assume
-    // Sobremesas starts visible.
-    await updateMenuCategoryVisibilityResponse(request, sobremesas!.id, true);
+    for (const category of all) {
+      expect(category.isVisible).toBe(guestCategoryIds.has(category.id));
+    }
   });
 });
 
 test.describe('admin menu editor (WEB-10)', () => {
   test('toggling a category\'s visibility from the UI is reflected immediately', async ({ page }) => {
+    // Sobremesas is also touched by menu-category-visibility.spec.ts under
+    // real parallel workers (see that file's comment on why it's the only
+    // safe shared category left) — this doesn't assume a specific starting
+    // state, only that clicking the toggle flips whatever it currently
+    // shows, retrying if a concurrent sibling's own toggle lands first.
     await page.goto(adminBaseUrl);
     await page.getByTestId('nav-menu').click();
     await page.waitForSelector('.menu-manager');
 
     const category = page.getByTestId('category-Sobremesas');
     await category.scrollIntoViewIfNeeded();
-    await expect(category).toContainText('Visível');
 
-    await page.getByTestId('toggle-category-Sobremesas').click();
-    await expect(category).toContainText('Oculta');
+    let toggled = false;
+    for (let attempt = 1; attempt <= 5 && !toggled; attempt += 1) {
+      const wasVisible = (await category.innerText()).includes('Visível');
+      await page.getByTestId('toggle-category-Sobremesas').click();
+      try {
+        await expect(category).toContainText(wasVisible ? 'Oculta' : 'Visível', { timeout: 3_000 });
+        toggled = true;
+      } catch {
+        // Fall through and retry with a freshly-read starting state.
+      }
+    }
 
-    // Restore for other specs.
-    await page.getByTestId('toggle-category-Sobremesas').click();
-    await expect(category).toContainText('Visível');
+    expect(toggled).toBe(true);
+
+    // Best-effort restore — not asserted; menu-category-visibility.spec.ts
+    // no longer assumes Sobremesas starts visible either.
+    await page.getByTestId('toggle-category-Sobremesas').click().catch(() => {});
   });
 
   test('86-ing and repricing an item from the UI persists to the API', async ({ page, request }) => {

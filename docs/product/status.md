@@ -653,7 +653,7 @@ or native Kotlin/Swift remains open.
 |---|---|---|
 | Docker | ✅ | 29.6.2, Compose v5.3.1 |
 | PostgreSQL | ✅ | 18.4 container, ICU locale provider, `pt-PT` |
-| Seq (log viewer) | ✅ | `http://localhost:5341` |
+| Seq (log viewer) | ✅ | `http://localhost:5341` — every log line during a request now carries `TenantId` (OPS-07, `TenantLoggingMiddleware`), verified by reading a real request's events straight from the console/Seq sink |
 | CI (GitHub Actions) | ✅ | Build gate, tests, vulnerability scan, docs link check. `e2e` job added this session — written and locally-equivalent to what passed on this machine, but not yet exercised by an actual CI run |
 
 ## Blockers

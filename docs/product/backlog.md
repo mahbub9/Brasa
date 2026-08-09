@@ -145,7 +145,14 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > own bug immediately — the first production-shaped default throttled the
 > E2E suite itself, since every client today shares one bucket with none
 > sending `X-Brasa-Client` yet — fixed with a generous dev-only override
-> rather than a production default weakened to match
+> rather than a production default weakened to match. Every log line during
+> a request now carries `TenantId` too (OPS-07, `TenantLoggingMiddleware`) —
+> verified live against a real request's EF Core command log, with an
+> honestly-documented gap rather than an overclaimed one: it doesn't yet
+> reach the one-line HTTP completion summary, since that middleware is
+> registered earlier in the pipeline on purpose (so a CORS- or
+> rate-limit-rejected request still gets logged), and reaching it would mean
+> reordering the pipeline, not just adding a middleware
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -491,7 +498,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | OPS-04 | Docs site published to GitHub Pages | ✅ |
 | OPS-05 | `.gitattributes` line-ending normalisation | ✅ |
 | OPS-06 | Issue and PR templates | ✅ |
-| OPS-07 | Structured logging with tenant / site / terminal enrichment | ⬜ |
+| OPS-07 | Structured logging with tenant / site / terminal enrichment | 🚧 `TenantLoggingMiddleware` pushes `TenantId`/`SiteId`/`TerminalId`/`UserId` onto Serilog's `LogContext` for the rest of the request — every EF Core command, every application log line, carries it, verified live against the console/Seq sink (a real `GET /menu` request's `CommandExecuted` line shows `"TenantId":"…"`; a hidden field is simply absent, not a literal "null"). **Known gap, not silently claimed working:** doesn't yet reach `UseSerilogRequestLogging`'s own one-line HTTP completion summary — that middleware is registered early on purpose (so a request short-circuited by CORS or the rate limiter still gets logged), and tenant resolution runs later; closing that gap means reordering the pipeline, a bigger change than this middleware itself, tracked separately. `Site`/`Terminal`/`User` ids are always absent today — nothing populates them before auth (IDN-03…08) exists |
 | OPS-08 | OpenTelemetry traces and metrics | ⬜ |
 | OPS-09 | Health and readiness probes including the database | ✅ `GET /health` (liveness, no dependencies) / `GET /health/ready` (PostgreSQL reachability, `DatabaseHealthCheck`). Verified live: healthy with DB up, `503` with the container stopped, recovers once it's back |
 | OPS-10 | Hangfire setup and dashboard | ⬜ |
