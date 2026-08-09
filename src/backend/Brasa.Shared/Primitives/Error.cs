@@ -38,6 +38,10 @@ public readonly record struct Error(string Code, string Description, ErrorType T
     public static Error Failure(string code, string description)
         => new(code, description, ErrorType.Failure);
 
+    /// <summary>The caller exceeded a rate limit — maps to HTTP 429.</summary>
+    public static Error RateLimited(string code, string description)
+        => new(code, description, ErrorType.RateLimited);
+
     /// <summary>True when this instance represents success.</summary>
     public bool IsNone => Code.Length == 0;
 }
@@ -59,4 +63,7 @@ public enum ErrorType
 
     /// <summary>Not permitted. HTTP 403.</summary>
     Forbidden = 4,
+
+    /// <summary>Too many requests. HTTP 429.</summary>
+    RateLimited = 5,
 }

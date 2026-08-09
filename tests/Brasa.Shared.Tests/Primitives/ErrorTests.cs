@@ -56,6 +56,12 @@ public sealed class ErrorTests
     }
 
     [Fact]
+    public void RateLimited_sets_the_RateLimited_type()
+    {
+        Error.RateLimited("request.rate_limited", "Too many requests.").Type.ShouldBe(ErrorType.RateLimited);
+    }
+
+    [Fact]
     public void Two_errors_with_the_same_values_are_equal_since_it_is_a_record_struct()
     {
         var a = Error.Validation("order.not_open", "Order is not open.");

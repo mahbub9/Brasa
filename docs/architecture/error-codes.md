@@ -50,6 +50,7 @@ as any change to an error code, the same rule as everything else in
 | `order.not_open` | Conflict | 409 | `AddLine()`, `EnsureCanGeneratePreBill()`, `SetLineNotes()`, `TransferToTable()`, `DetachLine()`, `ReceiveLine()` or `MarkMerged()` was called on an order that isn't `Open`. |
 | `order.notes_too_long` | Validation | 400 | `SetLineNotes()`'s `notes` is over 300 characters. |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |
+| `request.rate_limited` | RateLimited | 429 | The calling `(tenant, X-Brasa-Client client id)` pair exceeded `RateLimiting`'s configured requests-per-window (API-12). The response carries a `Retry-After` header. |
 
 ## Retired codes
 

@@ -19,6 +19,7 @@ public sealed class ErrorMappingTests
     [InlineData(ErrorType.Forbidden, StatusCodes.Status403Forbidden)]
     [InlineData(ErrorType.NotFound, StatusCodes.Status404NotFound)]
     [InlineData(ErrorType.Conflict, StatusCodes.Status409Conflict)]
+    [InlineData(ErrorType.RateLimited, StatusCodes.Status429TooManyRequests)]
     [InlineData(ErrorType.Failure, StatusCodes.Status500InternalServerError)]
     public void Every_ErrorType_maps_to_its_documented_HTTP_status(ErrorType type, int expectedStatus)
     {

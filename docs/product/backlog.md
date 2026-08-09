@@ -38,7 +38,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **FND** | Foundation & shared kernel | 10 | 12 | I0 |
 | **OPS** | Infrastructure, CI, observability | 7 | 16 | I0 → ongoing |
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
-| **API** | API platform & mobile readiness | 11 | 18 | I0 (rest: I3) |
+| **API** | API platform & mobile readiness | 12 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 8 | 19 | I0 (rest: I1) |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **89** | **292** | |
+| | **Total** | **90** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 89 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 90 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -138,7 +138,14 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > built yet. The API can now also announce its own eventual retirement
 > before it happens (API-08) — `Deprecation`/`Sunset` response headers,
 > RFC 8594, config-driven and a no-op until a real `/api/v2` gives them
-> something to say
+> something to say — and can now protect itself from a runaway client
+> (API-12): a fixed-window limit per `(tenant, X-Brasa-Client client id)`,
+> `429`s shaped like every other error, a new sixth `ErrorType.RateLimited`
+> alongside the five the registry already pinned. Building it caught its
+> own bug immediately — the first production-shaped default throttled the
+> E2E suite itself, since every client today shares one bucket with none
+> sending `X-Brasa-Client` yet — fixed with a generous dev-only override
+> rather than a production default weakened to match
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -197,7 +204,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | API-09 | Cursor pagination helper, applied to every collection | ✅ `CursorPagination` (opaque base64 bookmark token) applied to `GET /orders` (ORD-22) — the only genuinely unbounded collection today; `/menu` and `/floor` are both bounded by the restaurant's own size and don't need it yet. Additive, not a body-shape change: the response is still a bare array exactly as it shipped, an `X-Next-Cursor` response header carries the next page's bookmark (present only when the page came back full). **Verified live**: page 1 returns the header, page 2 fetched with it returns older, non-overlapping rows; a malformed `cursor` 400s (`order.invalid_cursor`) |
 | API-10 | `ETag` / `If-None-Match` on config and menu reads | ✅ `GET /menu` only — deliberately not `GET /floor`, whose state changes continuously through service. **Verified live**: 200 with a computed `ETag` on first pull, 304 with no body when it's echoed back as `If-None-Match`. Caught a real bug in review: the helper's own JSON serialization used `System.Text.Json`'s default (PascalCase) instead of ASP.NET Core's configured camelCase, silently breaking the `pos` client — fixed by resolving the app's configured `JsonSerializerOptions` from DI instead of using the type default |
 | API-11 | Response compression | ✅ Brotli + gzip, `EnableForHttps = true` — safe here since the API has no cookie-reflected secrets for BREACH to exploit (bearer-token auth, ADR 0008). `application/problem+json` added to the default MIME type list so error responses compress too, not just success bodies. **Verified live**: `br` when offered, falls back to `gzip`, uncompressed when the client sends no `Accept-Encoding`, and confirmed it doesn't interfere with `ETag`'s `304` path (API-10) |
-| API-12 | Rate limiting, keyed by client and tenant | ⬜ |
+| API-12 | Rate limiting, keyed by client and tenant | ✅ `ApiRateLimiting`/`RateLimitingOptions` — a fixed-window limiter per `(tenantId, X-Brasa-Client client id)` partition on `/api/**`, config-bound under `RateLimiting`. Health checks and the OpenAPI document are never metered (`GetNoLimiter`). Rejections return `429` shaped like every other failure (`request.rate_limited`, new `ErrorType.RateLimited`) with a `Retry-After` header, not the framework's bare default body. Coarser than the eventual goal — nothing upstream of auth (IDN-03…08) identifies a *terminal* yet, so every `pos-web` client in a tenant shares one bucket, called out directly in the code rather than left implicit. Caught a real self-inflicted bug before it shipped: the production-shaped default (300/60s) throttled the E2E suite itself, since every dev client shares that one bucket with none sending `X-Brasa-Client` yet — fixed with a generous `appsettings.Development.json` override, proving the actual 429/`Retry-After`/body behaviour against a tight override instead. **Verified**: `ApiRateLimitingTests` (4 tests, partitioning logic) plus a live check hitting the running API with `RateLimiting__PermitLimit=3` — 4th request in a window gets `429`, `Retry-After: 30`, a fresh `X-Brasa-Client` value gets its own untouched bucket, `/health` stays unmetered throughout |
 | API-13 | OpenAPI document generation, committed to the repo | ✅ [docs/openapi/v1.json](../openapi/v1.json), generated by `Microsoft.AspNetCore.OpenApi` (already wired for the dev-only Swagger-style UI) and committed so the API's shape is reviewable in a diff. Regenerated by hand for now — CI enforcement that it hasn't drifted is API-14, deliberately not built yet |
 | API-14 | CI breaking-change detection against previous OpenAPI | ⬜ |
 | API-15 | TypeScript SDK generation into `web/sdk` | ⬜ |

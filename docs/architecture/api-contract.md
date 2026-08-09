@@ -239,5 +239,8 @@ Ordered by cost of retrofitting, most expensive first.
 - APNs and FCM provider adapters — additive behind `IPushChannel`
 - The consumer identity realm's social/OTP providers — the surface split matters
   now, the providers do not
-- Per-platform rate limits — the `X-Brasa-Client` header makes them addable
-  without a contract change
+- Per-*platform* rate limits — API-12 built the `(tenant, client id)` shape
+  (`ApiRateLimiting`), keyed by the `X-Brasa-Client` header exactly as
+  anticipated here, but not yet split further by the header's `platform`
+  segment (`web`/`android`/`ios`) or by terminal — nothing upstream of
+  authentication identifies a terminal yet (IDN-03…08)

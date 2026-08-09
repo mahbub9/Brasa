@@ -10,7 +10,7 @@ namespace Brasa.Shared.Tests;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This scans every <c>Error.Validation/NotFound/Conflict/Forbidden/Failure(...)</c>
+/// This scans every <c>Error.Validation/NotFound/Conflict/Forbidden/Failure/RateLimited(...)</c>
 /// call site under <c>src/</c> via a plain text regex — no Roslyn, no
 /// compiled-assembly reflection, just reading <c>.cs</c> files as strings.
 /// That is deliberately simple: this test only has to notice a code
@@ -25,7 +25,7 @@ namespace Brasa.Shared.Tests;
 public class ErrorCodeRegistryTests
 {
     private static readonly Regex CallSitePattern = new(
-        "Error\\.(Validation|NotFound|Conflict|Forbidden|Failure)\\(\\s*\"([a-z0-9_.]+)\"",
+        "Error\\.(Validation|NotFound|Conflict|Forbidden|Failure|RateLimited)\\(\\s*\"([a-z0-9_.]+)\"",
         RegexOptions.Compiled);
 
     private static readonly Regex RegistryRowPattern = new(

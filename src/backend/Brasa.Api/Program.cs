@@ -1,9 +1,12 @@
 using System.Globalization;
+using System.Threading.RateLimiting;
 using Asp.Versioning;
+using Brasa.Api;
 using Brasa.Api.ClientVersioning;
 using Brasa.Api.Endpoints;
 using Brasa.Api.HealthChecks;
 using Brasa.Api.Idempotency;
+using Brasa.Api.RateLimiting;
 using Brasa.Api.Seed;
 using Brasa.Api.Tenancy;
 using Brasa.Fiscal.Mock;
@@ -14,11 +17,14 @@ using Brasa.Modules.Floor.Persistence;
 using Brasa.Modules.Ordering;
 using Brasa.Modules.Ordering.Persistence;
 using Brasa.Shared.Persistence;
+using Brasa.Shared.Primitives;
 using Brasa.Shared.Tenancy;
 using Brasa.Shared.Time;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Serilog;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,6 +72,47 @@ builder.Services.Configure<Dictionary<string, ClientRequirementEntry>>(
 // surface. Empty by default; set once a real /api/v2 exists and v1 is
 // scheduled for removal (docs/architecture/api-contract.md §3).
 builder.Services.Configure<ApiDeprecationOptions>(builder.Configuration.GetSection("Api:Deprecation"));
+
+// API-12 — per-(tenant, X-Brasa-Client client id) rate limiting on
+// /api/**. See ApiRateLimiting.ResolvePartitionKey for the partitioning
+// and RateLimitingOptions for the defaults.
+builder.Services.Configure<RateLimitingOptions>(builder.Configuration.GetSection("RateLimiting"));
+builder.Services.AddRateLimiter(limiterOptions =>
+{
+    limiterOptions.OnRejected = async (context, cancellationToken) =>
+    {
+        var retryAfterSeconds = context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter)
+            ? (int)retryAfter.TotalSeconds
+            : context.HttpContext.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value.WindowSeconds;
+        context.HttpContext.Response.Headers.RetryAfter = retryAfterSeconds.ToString(CultureInfo.InvariantCulture);
+
+        await Error.RateLimited(
+                "request.rate_limited",
+                "Too many requests — retry after the window resets.")
+            .ToProblem()
+            .ExecuteAsync(context.HttpContext)
+            .ConfigureAwait(false);
+    };
+
+    limiterOptions.GlobalLimiter = PartitionedRateLimiter.Create<HttpContext, string>(httpContext =>
+    {
+        var tenantContext = httpContext.RequestServices.GetRequiredService<ITenantContext>();
+        var partitionKey = ApiRateLimiting.ResolvePartitionKey(httpContext, tenantContext);
+
+        if (partitionKey == ApiRateLimiting.UnmeteredPartitionKey)
+        {
+            return RateLimitPartition.GetNoLimiter(partitionKey);
+        }
+
+        var rateLimiting = httpContext.RequestServices.GetRequiredService<IOptions<RateLimitingOptions>>().Value;
+        return RateLimitPartition.GetFixedWindowLimiter(partitionKey, _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = rateLimiting.PermitLimit,
+            Window = TimeSpan.FromSeconds(rateLimiting.WindowSeconds),
+            QueueLimit = 0,
+        });
+    });
+});
 
 // ── Modules ──────────────────────────────────────────────────────────────────
 builder.Services.AddCatalogModule(connectionString);
@@ -175,9 +222,14 @@ app.UseRouting();
 app.UseCors(WebClientsCorsPolicy);
 
 // Tenant resolution must run before anything that reads ITenantContext —
-// the idempotency cache key and every module's RLS session variable both
-// depend on it.
+// the idempotency cache key, the rate limiter's partition key, and every
+// module's RLS session variable all depend on it.
 app.UseMiddleware<DevTenantMiddleware>();
+
+// API-12 — before IdempotencyMiddleware on purpose: a request this rejects
+// shouldn't also consume an idempotency cache slot.
+app.UseRateLimiter();
+
 app.UseMiddleware<IdempotencyMiddleware>();
 
 // Liveness: is the process itself able to respond, regardless of PostgreSQL.
