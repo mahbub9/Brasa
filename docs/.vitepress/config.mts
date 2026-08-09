@@ -139,6 +139,14 @@ export default defineConfig({
           { text: 'Plan & roadmap', link: '/product/plan' },
         ],
       },
+      {
+        text: 'Feature docs',
+        collapsed: true,
+        items: [
+          { text: 'Discounts', link: '/features/discounts' },
+          { text: 'Menu item classification', link: '/features/menu-item-classification' },
+        ],
+      },
     ],
 
     socialLinks: [{ icon: 'github', link: 'https://github.com/mahbub9/Brasa' }],

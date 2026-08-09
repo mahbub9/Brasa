@@ -245,6 +245,14 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > thrown": a real request's HTTP span and its child Npgsql query span both
 > land in Seq with correct parent/child linkage (`ParentId`) and
 > `service.name=brasa-api`, and a periodic metrics export lands too.
+> Documentation debt got some real attention too (DOC-10): the per-feature
+> page index had said "no feature pages yet" since before this session
+> started, despite dozens of backlog items having shipped — the "written
+> as the feature is built" policy was never actually being followed.
+> Two pages now exist (discounts, menu item course/station), covering
+> what was just built with full context rather than attempting to
+> backfill everything at once; both indexed in the sidebar, docs site
+> build verified clean.
 
 ---
 
@@ -610,7 +618,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | DOC-07 | Feature page template | ✅ |
 | DOC-08 | API contract for multi-platform clients | ✅ |
 | DOC-09 | Backlog and progress tracking (this page) | ✅ |
-| DOC-10 | Per-feature pages, written as features land | 🚧 |
+| DOC-10 | Per-feature pages, written as features land | 🚧 2 pages exist (`docs/features/discounts.md`, `menu-item-classification.md`) against dozens of shipped backlog items — the "written as the feature is built" policy hasn't actually been followed until now; these two are a start on backfilling it, not the policy catching up on its own. Both indexed in `docs/features/README.md` and the VitePress sidebar; docs site build verified clean |
 
 ## MOB — Mobile apps
 

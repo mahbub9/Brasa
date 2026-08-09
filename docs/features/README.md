@@ -25,8 +25,12 @@ are the sections most often skipped and most often needed later.
 
 ## Index
 
-*No feature pages yet — no features are built. Pages appear here as epics land.*
+Most shipped features don't have a page yet — this index is being backfilled
+against [status.md](../product/status.md)'s much larger inventory, not
+written fresh alongside every commit despite the policy above. Treat a
+missing page as a documentation gap, not evidence the feature isn't built.
 
 | Page | Covers | Module |
 |---|---|---|
-| — | — | — |
+| [Discounts](discounts.md) | ORD-11 | Ordering |
+| [Menu item classification: course and station](menu-item-classification.md) | CAT-14, CAT-15 | Catalog |
