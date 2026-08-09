@@ -112,7 +112,9 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > Staff can now flag a table as having asked for the bill, too — `BillRequested`
 > (FLR-04) already had its domain transition, CSS and i18n strings sitting
 > unused; only the endpoint connecting a "Pedir conta" button to them was
-> missing
+> missing. Same story for 86-ing (CAT-13): `MarkAvailable`/`MarkUnavailable`
+> and the `AddLine` guard that respects them both existed since I0, but
+> nothing could ever actually set `IsAvailable` to `false` until now
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -216,7 +218,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | CAT-10 | Combos / menus (*menu do dia*) | ⬜ |
 | CAT-11 | *Prato do dia* — daily specials with schedules | ⬜ |
 | CAT-12 | *Couvert* handling — charged only when consumed | ⬜ |
-| CAT-13 | Item availability / 86-ing (out of stock) | ✅ `MarkAvailable`/`MarkUnavailable` |
+| CAT-13 | Item availability / 86-ing (out of stock) | ✅ `MarkAvailable`/`MarkUnavailable` existed since I0 and `AddLine` already enforced `IsAvailable`, but no endpoint ever called either — `IsAvailable` could never actually become `false`. `PUT /menu/items/{id}/availability` closes that: ships ahead of any UI that will call it (no admin app, no in-order 86 control), same as CAT-02/CAT-17/CAT-18. **Verified live**: 86'ing an item hides it from `GET /menu` and the previously-dead `catalog.item_unavailable` guard on `AddLine` finally fires for real; un-86'ing restores both; unknown item `404`s |
 | CAT-14 | Course assignment per item | ⬜ |
 | CAT-15 | Kitchen station routing per item | ⬜ |
 | CAT-16 | Menu versioning with effective dates | ⬜ |

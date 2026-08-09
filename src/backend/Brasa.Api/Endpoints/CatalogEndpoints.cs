@@ -39,6 +39,10 @@ public static class CatalogEndpoints
             .WithName("ImportMenuItems")
             .WithSummary("Bulk-creates menu items from a CSV file (CAT-17).");
 
+        group.MapPut("/menu/items/{itemId:guid}/availability", UpdateMenuItemAvailabilityAsync)
+            .WithName("UpdateMenuItemAvailability")
+            .WithSummary("86's a menu item, or brings it back (CAT-13).");
+
         return group;
     }
 
@@ -124,6 +128,48 @@ public static class CatalogEndpoints
 
         item.SetDescription(request.Description);
         item.SetAllergens(allergens);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(item.ToDto());
+    }
+
+    /// <summary>
+    /// 86's a menu item, or brings it back (CAT-13). <c>MarkAvailable</c>/
+    /// <c>MarkUnavailable</c> have existed on the domain since I0 and are
+    /// already enforced on the ordering side (<c>AddLine</c> rejects an
+    /// unavailable item with <c>catalog.item_unavailable</c>) — but nothing
+    /// ever called either one, so <see cref="MenuItem.IsAvailable"/> could
+    /// never actually become <c>false</c>. Ships ahead of any UI that will
+    /// call it — neither the admin back-office (WEB-09) nor an in-order
+    /// 86 control in <c>pos</c> exists yet — the same way CAT-02/CAT-17/
+    /// CAT-18 shipped ahead of theirs.
+    /// </summary>
+    private static async Task<IResult> UpdateMenuItemAvailabilityAsync(
+        Guid itemId,
+        UpdateMenuItemAvailabilityRequest request,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        if (request.IsAvailable)
+        {
+            item.MarkAvailable();
+        }
+        else
+        {
+            item.MarkUnavailable();
+        }
+
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.Ok(item.ToDto());

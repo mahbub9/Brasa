@@ -37,6 +37,9 @@ public sealed record MenuCategoryDto(Guid Id, string Name, int DisplayOrder, IRe
 /// </summary>
 public sealed record UpdateMenuItemDetailsRequest(string? Description, IReadOnlyList<string>? Allergens);
 
+/// <summary>Request body to 86 a menu item or bring it back (CAT-13).</summary>
+public sealed record UpdateMenuItemAvailabilityRequest(bool IsAvailable);
+
 /// <summary>
 /// Bulk menu import request (CAT-17). <c>Csv</c> is the raw file content,
 /// header row required: <c>CategoryName,Name,Description,Price,VatRate,IsAlcoholic</c>.

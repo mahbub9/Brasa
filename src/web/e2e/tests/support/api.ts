@@ -93,6 +93,14 @@ export function updateMenuItemDetailsResponse(
   });
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-13). */
+export function updateMenuItemAvailabilityResponse(request: APIRequestContext, itemId: string, isAvailable: boolean) {
+  return request.put(`${apiBaseUrl}/menu/items/${itemId}/availability`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { isAvailable },
+  });
+}
+
 export async function updateMenuItemDetails(
   request: APIRequestContext,
   itemId: string,
