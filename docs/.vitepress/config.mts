@@ -144,6 +144,7 @@ export default defineConfig({
         collapsed: true,
         items: [
           { text: 'Discounts', link: '/features/discounts' },
+          { text: 'Void a line', link: '/features/void-a-line' },
           { text: 'Menu item classification', link: '/features/menu-item-classification' },
         ],
       },

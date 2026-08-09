@@ -33,4 +33,5 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | Page | Covers | Module |
 |---|---|---|
 | [Discounts](discounts.md) | ORD-11 | Ordering |
+| [Void a line](void-a-line.md) | ORD-10 | Ordering |
 | [Menu item classification: course and station](menu-item-classification.md) | CAT-14, CAT-15 | Catalog |

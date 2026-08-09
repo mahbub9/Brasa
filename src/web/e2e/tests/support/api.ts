@@ -355,6 +355,22 @@ export async function setLineDiscount(
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-10). */
+export function voidLineResponse(request: APIRequestContext, orderId: string, lineId: string, reason: string | null) {
+  return request.post(`${apiBaseUrl}/orders/${orderId}/lines/${lineId}/void`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { reason },
+  });
+}
+
+export async function voidLine(request: APIRequestContext, orderId: string, lineId: string, reason: string): Promise<OrderDto> {
+  const response = await voidLineResponse(request, orderId, lineId, reason);
+  if (!response.ok()) {
+    throw new Error(`POST /orders/${orderId}/lines/${lineId}/void failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (ORD-11). `type`/`value` both null clears the discount. */
 export function setOrderDiscountResponse(
   request: APIRequestContext,
@@ -510,6 +526,13 @@ export async function getPreBill(request: APIRequestContext, orderId: string): P
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (e.g. ORD-10's fully-voided-order case). */
+export function closeOrderResponse(request: APIRequestContext, orderId: string) {
+  return request.post(`${apiBaseUrl}/orders/${orderId}/close`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+  });
+}
+
 /**
  * Closes an order and clears its table, returning the table to Free. Call
  * this at the end of any test that opened a table via the API — see the
@@ -517,9 +540,7 @@ export async function getPreBill(request: APIRequestContext, orderId: string): P
  */
 /** Closes an order with no table to release — takeaway orders (ORD-20) only. Dine-in orders must use closeOrderAndClearTable. */
 export async function closeOrder(request: APIRequestContext, orderId: string): Promise<CloseOrderResponse> {
-  const response = await request.post(`${apiBaseUrl}/orders/${orderId}/close`, {
-    headers: { 'Idempotency-Key': idempotencyKey() },
-  });
+  const response = await closeOrderResponse(request, orderId);
   if (!response.ok()) {
     throw new Error(`POST /orders/${orderId}/close failed: ${response.status()} ${await response.text()}`);
   }

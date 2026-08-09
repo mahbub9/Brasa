@@ -73,6 +73,8 @@ export interface OrderLineDto {
   discountAmount: MoneyDto;
   lineTotal: MoneyDto;
   notes: string | null;
+  isVoided: boolean;
+  voidReason: string | null;
 }
 
 export interface OrderDto {
@@ -112,7 +114,7 @@ export interface PreBillDto {
   orderId: string;
   tableLabel: string;
   coverCount: number;
-  lines: { itemName: string; lineTotal: MoneyDto }[];
+  lines: { id: string; itemName: string; lineTotal: MoneyDto; isVoided: boolean }[];
   vatBreakdown: VatBreakdownDto[];
   total: MoneyDto;
   generatedAtUtc: string;

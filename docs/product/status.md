@@ -271,6 +271,41 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > sums to `order.Total` and `document.GrossTotal` still equals `order.Total`
 > to the cent once the order is actually closed with a discount applied.
 
+> **Update (void a line, ORD-10):** `POST /orders/{id}/lines/{lineId}/void`
+> cancels a line after it's already been rung up — a dish that came out
+> wrong, say — with a required `reason`; missing or blank is rejected
+> outright. The line is never deleted: `ItemName`/`UnitPrice`/`Quantity`
+> stay exactly as they were, so an audit trail of what was ordered and
+> then cancelled remains visible, and only `LineTotal` drops to zero
+> (discount or not). No manager-authorisation gate exists yet — this
+> row's own title names one, but IDN-11 is the real gate, once staff
+> accounts and roles exist; ships ahead of that trigger the same way
+> ORD-11's discounts did. Reuses `BuildFiscalLines` (ORD-11) almost
+> unchanged: a voided line is simply skipped when building the fiscal
+> document's lines, rather than rendered as a 100%-discount — it was
+> never actually delivered, so it never happened from the invoice's point
+> of view, while the pre-bill (built from the order's own lines directly,
+> not from `BuildFiscalLines`'s output) still lists it with `isVoided: true`
+> for staff. Found a real edge case, not one invented for symmetry: voiding
+> every line on an order still satisfies `Order.Close()`'s own "at least
+> one line" guard (it counts lines, not non-voided ones), but the close
+> then correctly fails anyway — `BuildFiscalLines` omits every voided line,
+> so the fiscal provider receives zero lines and its own pre-existing
+> `fiscal.no_lines` guard rejects it, and because `CloseOrderAsync` never
+> persists `Close()`'s transition until the fiscal document actually
+> issues, the order is left genuinely `Open`, not silently
+> closed-with-nothing-issued. (An earlier draft of this behaviour's own
+> doc comment guessed wrong — assumed a zero-value document would be
+> issued — before the E2E suite caught the actual `fiscal.no_lines`
+> outcome; fixed to describe what happens, not what seemed plausible.)
+> **Verified live**: void zeroes the line and drops the order total by
+> exactly that amount while leaving the line's own snapshot data
+> untouched; a missing/blank reason, an unknown line, a double-void and a
+> void-on-a-closed-order are all rejected with the right code; the
+> pre-bill/fiscal-document reconciliation invariant holds with a voided
+> line in the mix; and closing a fully-voided order 400s with
+> `fiscal.no_lines` while leaving the order genuinely still open.
+
 > **Update (menu item course, CAT-14):** `PUT /menu/items/{id}/course` sets
 > or clears which point in the meal a menu item is served at (`Starter`/
 > `Main`/`Dessert`/`Drink`). Deliberately independent of `MenuCategory`: a

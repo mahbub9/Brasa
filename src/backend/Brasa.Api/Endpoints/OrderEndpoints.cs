@@ -57,6 +57,10 @@ public static class OrderEndpoints
             .WithName("SetOrderLineDiscount")
             .WithSummary("Sets or clears a percentage/fixed discount on one line (ORD-11).");
 
+        group.MapPost("/orders/{orderId:guid}/lines/{lineId:guid}/void", VoidLineAsync)
+            .WithName("VoidOrderLine")
+            .WithSummary("Voids a line, with a required reason (ORD-10).");
+
         group.MapPut("/orders/{orderId:guid}/discount", SetOrderDiscountAsync)
             .WithName("SetOrderDiscount")
             .WithSummary("Sets or clears a percentage/fixed discount on the whole order (ORD-11).");
@@ -377,6 +381,30 @@ public static class OrderEndpoints
         }
 
         var result = order.SetLineDiscount(lineId, kindResult.Value, request.Value);
+        if (result.IsFailure)
+        {
+            return result.Error.ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Ok(order.ToDto());
+    }
+
+    private static async Task<IResult> VoidLineAsync(
+        Guid orderId,
+        Guid lineId,
+        VoidLineRequest request,
+        OrderingDbContext db,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
+        if (order is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        var result = order.VoidLine(lineId, request.Reason, clock.UtcNow);
         if (result.IsFailure)
         {
             return result.Error.ToProblem();
@@ -881,7 +909,14 @@ public static class OrderEndpoints
     /// second one. Both together sum, by construction, to exactly
     /// <c>order.Total</c>: <see cref="Order.OrderDiscountAmount"/> is what
     /// <c>Allocate</c> is handed, and it guarantees the shares it returns sum
-    /// back to that amount with no remainder lost.
+    /// back to that amount with no remainder lost. A voided line (ORD-10)
+    /// never appears here at all — its <c>LineTotal</c> is already zero, so
+    /// its weight in the order-discount proration below is naturally zero
+    /// too — it contributes nothing to what's charged, so it never happened
+    /// from the fiscal document's point of view. It still appears in the
+    /// pre-bill's own <c>Lines</c> list (via <c>ToPreBillDto</c>, built from
+    /// the order directly, not from this method's output) so staff can see
+    /// what was ordered and then cancelled.
     /// </remarks>
     private static List<FiscalDocumentLine> BuildFiscalLines(Order order)
     {
@@ -898,6 +933,11 @@ public static class OrderEndpoints
         for (var i = 0; i < order.Lines.Count; i++)
         {
             var line = order.Lines[i];
+            if (line.IsVoided)
+            {
+                continue;
+            }
+
             fiscalLines.Add(new FiscalDocumentLine(
                 line.ItemName, line.Quantity, line.UnitPrice + line.ModifiersTotal, line.VatRateFraction));
 

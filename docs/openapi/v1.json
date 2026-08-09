@@ -655,6 +655,50 @@
         }
       }
     },
+    "/api/v1/orders/{orderId}/lines/{lineId}/void": {
+      "post": {
+        "tags": [
+          "OrderEndpoints"
+        ],
+        "summary": "Voids a line, with a required reason (ORD-10).",
+        "operationId": "VoidOrderLine",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "lineId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VoidLineRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/orders/{orderId}/discount": {
       "put": {
         "tags": [
@@ -1268,6 +1312,20 @@
         "type": "object",
         "properties": {
           "station": {
+            "type": [
+              "null",
+              "string"
+            ]
+          }
+        }
+      },
+      "VoidLineRequest": {
+        "required": [
+          "reason"
+        ],
+        "type": "object",
+        "properties": {
+          "reason": {
             "type": [
               "null",
               "string"

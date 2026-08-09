@@ -47,11 +47,13 @@ as any change to an error code, the same rule as everything else in
 | `order.invalid_status_filter` | Validation | 400 | `GET /orders`'s `status` query parameter isn't a recognised `OrderStatus` value. |
 | `order.invalid_take` | Validation | 400 | `GET /orders`'s `take` query parameter is outside 1–200. |
 | `order.invalid_transfer_target` | Validation | 400 | `POST /orders/{id}/lines/{lineId}/transfer`'s `destinationOrderId` is the same as the source order. |
-| `order.line_not_found` | NotFound | 404 | `SetLineNotes()`, `SetLineDiscount()`, `DetachLine()` or `SplitByItem()`'s `lineId` doesn't belong to the order. |
+| `order.line_already_voided` | Conflict | 409 | `POST /orders/{id}/lines/{lineId}/void`'s (ORD-10) target line has already been voided. |
+| `order.line_not_found` | NotFound | 404 | `SetLineNotes()`, `SetLineDiscount()`, `VoidLine()`, `DetachLine()` or `SplitByItem()`'s `lineId` doesn't belong to the order. |
 | `order.not_empty` | Validation | 400 | `MarkMerged()` was called on an order that still has lines. |
 | `order.not_found` | NotFound | 404 | The order id in the request doesn't exist. |
-| `order.not_open` | Conflict | 409 | `AddLine()`, `EnsureCanGeneratePreBill()`, `SetLineNotes()`, `SetLineDiscount()`, `SetDiscount()`, `TransferToTable()`, `DetachLine()`, `ReceiveLine()` or `MarkMerged()` was called on an order that isn't `Open`. |
+| `order.not_open` | Conflict | 409 | `AddLine()`, `EnsureCanGeneratePreBill()`, `SetLineNotes()`, `SetLineDiscount()`, `SetDiscount()`, `VoidLine()`, `TransferToTable()`, `DetachLine()`, `ReceiveLine()` or `MarkMerged()` was called on an order that isn't `Open`. |
 | `order.notes_too_long` | Validation | 400 | `SetLineNotes()`'s `notes` is over 300 characters. |
+| `order.void_reason_required` | Validation | 400 | `POST /orders/{id}/lines/{lineId}/void`'s (ORD-10) `reason` is missing, empty or whitespace. |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |
 | `request.rate_limited` | RateLimited | 429 | The calling `(tenant, X-Brasa-Client client id)` pair exceeded `RateLimiting`'s configured requests-per-window (API-12). The response carries a `Retry-After` header. |
 

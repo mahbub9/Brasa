@@ -252,7 +252,26 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > Two pages now exist (discounts, menu item course/station), covering
 > what was just built with full context rather than attempting to
 > backfill everything at once; both indexed in the sidebar, docs site
-> build verified clean.
+> build verified clean. A line can now be voided after it's already been
+> rung up too (ORD-10) — `POST /orders/{id}/lines/{lineId}/void`, a
+> required reason, no manager-authorisation gate yet, the exact same
+> "ships ahead of the trigger" shape as ORD-11's discounts, and it reuses
+> `BuildFiscalLines` from that same feature almost unchanged: a voided
+> line is simply omitted from the issued document rather than rendered as
+> a 100%-discount line, since it was never actually delivered. Building
+> it surfaced a genuine edge case rather than one invented for symmetry:
+> voiding every line on an order still passes `Order.Close()`'s own
+> "at least one line" guard (voided or not), but then correctly fails at
+> the fiscal layer instead — `BuildFiscalLines` omits every voided line,
+> so `IFiscalProvider.IssueSimplifiedInvoiceAsync`'s own pre-existing
+> `fiscal.no_lines` guard rejects the empty result, and because
+> `CloseOrderAsync` never persists `Close()`'s in-memory transition until
+> the fiscal document actually issues, the order is left genuinely
+> `Open` in the database, not silently closed-with-nothing-to-show-for-it.
+> An early draft of this doc comment guessed at different, wrong
+> behaviour (a zero-value document being issued) before the E2E suite
+> caught the real outcome — fixed to describe what the code actually
+> does, not what seemed plausible.
 
 ---
 
@@ -385,7 +404,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ORD-07 | Courses and course firing | ⬜ |
 | ORD-08 | Send to kitchen (partial and full) | ⬜ |
 | ORD-09 | Order line status tracking | ⬜ |
-| ORD-10 | Void a line, with reason and manager authorisation | ⬜ |
+| ORD-10 | Void a line, with reason and manager authorisation | 🚧 `POST /orders/{id}/lines/{lineId}/void` — the void itself, not the manager authorisation half of this row's own title: no gate exists yet, ships ahead of that trigger the same way ORD-11's discounts did (IDN-11 is the real gate once staff accounts and roles exist). `reason` is required, rejected outright if missing/blank. The line is never deleted — `ItemName`/`UnitPrice`/`Quantity` stay exactly as rung up, an audit trail of what was ordered and then cancelled; only `LineTotal` drops to zero. `BuildFiscalLines` (shared with ORD-11) omits a voided line entirely, so it never reaches the issued fiscal document, while the pre-bill still lists it (with `isVoided: true`) for staff visibility. Found and correctly handled a real edge case along the way: voiding every line on an order leaves `Order.Close()`'s own guard satisfied (it only counts lines, not non-voided ones) but `IFiscalProvider.IssueSimplifiedInvoiceAsync`'s pre-existing `fiscal.no_lines` guard then rejects it — the order correctly stays `Open` in the database, since `CloseOrderAsync` doesn't persist the `Close()` transition until the fiscal document is actually issued. **Verified live**: void zeroes the line and drops the order total by exactly that amount, a missing/blank reason and a double-void are both rejected, the pre-bill/fiscal-document reconciliation invariant holds with a voided line in the mix, and closing a fully-voided order correctly 400s without corrupting order state |
 | ORD-11 | Discounts — line, order, percentage and fixed | ✅ `PUT /orders/{id}/lines/{lineId}/discount` and `PUT /orders/{id}/discount` — both fields null clears an existing discount; a percentage must be in (0, 100], a fixed amount must be positive and not exceed the total it's applied to (rejected, never silently clamped). Composes: an order-level discount applies on top of the already line-discounted subtotal. No manager-authorisation gate yet — ships ahead of that trigger, same as CAT-13/19; IDN-11 is the real gate once staff accounts and roles exist. `SplitByItem`'s preview doesn't yet account for it (documented gap); `SplitEvenly`/`SplitByCover` do, automatically, via `Total`. **Verified live**: line + order discount composing correctly, clearing, every rejection path (bad type, out-of-range percentage, oversized fixed, one-of-the-pair, unknown line, closed order), and — the fiscally load-bearing check — `document.GrossTotal` still equals `order.Total` to the cent through `CloseOrderAsync` with a discount applied, and the pre-bill's VAT breakdown still sums to the same total (`discounts.spec.ts`) |
 | ORD-12 | Transfer table | ✅ `POST /orders/{id}/transfer` — moves an open order to a different `Free` table. Order status checked before either table is touched; the old table's `Release()` and the new table's `Occupy()` then commit atomically together in one `FloorDbContext.SaveChangesAsync` |
 | ORD-13 | Transfer individual lines between tables | ✅ `POST /orders/{id}/lines/{lineId}/transfer` — moves one line onto a different open order. Pure Ordering, no Floor involvement (unlike ORD-12). No `pos` UI yet — deliberately: picking *another* currently-open order is a real product-design question, same scoping call already made for ORD-22 |

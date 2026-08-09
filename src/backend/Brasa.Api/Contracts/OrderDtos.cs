@@ -37,6 +37,9 @@ public sealed record SetLineNotesRequest(string? Notes);
 /// </summary>
 public sealed record SetDiscountRequest(string? Type, decimal? Value);
 
+/// <summary>Request body to void a line (ORD-10). <c>Reason</c> is required — a void with no reason is rejected outright.</summary>
+public sealed record VoidLineRequest(string? Reason);
+
 /// <summary>Request body to move a single line onto a different open order (ORD-13).</summary>
 public sealed record TransferLineRequest(Guid DestinationOrderId);
 
@@ -83,8 +86,10 @@ public sealed record OrderLineModifierDto(Guid Id, string Name, MoneyDto PriceDe
 /// One line of an order, as returned to clients. <c>DiscountType</c>/
 /// <c>DiscountValue</c> are null together when no discount is set on this
 /// line (ORD-11); <c>DiscountAmount</c> is always present and zero in that
-/// case, so a client can render it without a null check. <c>LineTotal</c>
-/// already has the discount taken off.
+/// case, so a client can render it without a null check. <c>IsVoided</c>
+/// (ORD-10) is true once the line has been cancelled after ringing up —
+/// the line itself is never removed, only its contribution to
+/// <c>LineTotal</c> (already zero when voided, discount or not).
 /// </summary>
 public sealed record OrderLineDto(
     Guid Id,
@@ -97,7 +102,9 @@ public sealed record OrderLineDto(
     decimal? DiscountValue,
     MoneyDto DiscountAmount,
     MoneyDto LineTotal,
-    string? Notes);
+    string? Notes,
+    bool IsVoided,
+    string? VoidReason);
 
 /// <summary>
 /// An order, as returned to clients. <c>DiscountType</c>/<c>DiscountValue</c>/
@@ -214,7 +221,9 @@ public static class OrderDtoMappings
         line.DiscountValue,
         line.DiscountAmount.ToDto(),
         line.LineTotal.ToDto(),
-        line.Notes);
+        line.Notes,
+        line.IsVoided,
+        line.VoidReason);
 
     /// <summary>Converts an issued fiscal document to its wire representation.</summary>
     public static FiscalDocumentDto ToDto(this FiscalDocument document) => new(

@@ -20,6 +20,9 @@ internal sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLin
         builder.Property(l => l.Notes).HasMaxLength(300);
         builder.Property(l => l.DiscountKind).HasConversion<string>().HasMaxLength(20);
         builder.Property(l => l.DiscountValue).HasColumnType("numeric(10,2)");
+        builder.Property(l => l.IsVoided).IsRequired();
+        builder.Property(l => l.VoidReason).HasMaxLength(300);
+        builder.Property(l => l.VoidedAtUtc);
 
         builder.MapMoney(l => l.UnitPrice, "unit_price");
 

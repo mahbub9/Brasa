@@ -155,15 +155,40 @@ public sealed class OrderLine : Entity
     }
 
     /// <summary>
-    /// <see cref="GrossBeforeDiscount"/> less <see cref="DiscountAmount"/>. Not
-    /// persisted — always derived, the same as <see cref="Order.Total"/>.
+    /// <see cref="GrossBeforeDiscount"/> less <see cref="DiscountAmount"/>, or
+    /// zero outright when <see cref="IsVoided"/> — a voided line contributes
+    /// nothing to what the guest owes, discount or not. Not persisted —
+    /// always derived, the same as <see cref="Order.Total"/>.
     /// </summary>
-    public Money LineTotal => GrossBeforeDiscount - DiscountAmount;
+    public Money LineTotal => IsVoided ? Money.ZeroIn(UnitPrice.Currency) : GrossBeforeDiscount - DiscountAmount;
 
     /// <summary>Sets or clears this line's discount. Only <see cref="Order.SetLineDiscount"/> calls this.</summary>
     internal void SetDiscount(DiscountType? kind, decimal? value)
     {
         DiscountKind = kind;
         DiscountValue = value;
+    }
+
+    /// <summary>
+    /// True once this line has been voided (ORD-10) — cancelled after being
+    /// rung up, e.g. a dish that came out wrong. The line is never deleted:
+    /// <see cref="ItemName"/>/<see cref="UnitPrice"/>/<see cref="Quantity"/>
+    /// stay exactly as they were, so what was ordered and then cancelled
+    /// remains visible for audit — only <see cref="LineTotal"/> drops to zero.
+    /// </summary>
+    public bool IsVoided { get; private set; }
+
+    /// <summary>Why the line was voided. Required when voiding — never null while <see cref="IsVoided"/> is true.</summary>
+    public string? VoidReason { get; private set; }
+
+    /// <summary>When the line was voided, in UTC. Null while not voided.</summary>
+    public DateTimeOffset? VoidedAtUtc { get; private set; }
+
+    /// <summary>Voids this line. Only <see cref="Order.VoidLine"/> calls this.</summary>
+    internal void Void(string reason, DateTimeOffset voidedAtUtc)
+    {
+        IsVoided = true;
+        VoidReason = reason;
+        VoidedAtUtc = voidedAtUtc;
     }
 }

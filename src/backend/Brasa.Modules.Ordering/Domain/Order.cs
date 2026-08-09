@@ -270,13 +270,14 @@ public sealed class Order : Entity
     /// price, so the shares are exact by construction.
     /// </summary>
     /// <remarks>
-    /// Known gap (ORD-11): portions are computed from each line's own
+    /// Known gap (ORD-11/ORD-10): portions are computed from each line's own
     /// unit price and modifiers, not <see cref="OrderLine.LineTotal"/> — so a
-    /// line or order-level discount is not yet reflected here, unlike
-    /// <see cref="SplitEvenly"/> and <see cref="SplitByCover"/>, which inherit
-    /// it automatically through <see cref="Total"/>. Combining an active
-    /// discount with a by-item split preview is a narrow, undocumented-to-staff
-    /// edge case for now.
+    /// line or order-level discount, or a voided line, is not yet reflected
+    /// here, unlike <see cref="SplitEvenly"/> and <see cref="SplitByCover"/>,
+    /// which inherit both automatically through <see cref="Total"/>. A voided
+    /// line can still be allocated a share at its full original price by this
+    /// method; combining either with a by-item split preview is a narrow,
+    /// undocumented-to-staff edge case for now.
     /// </remarks>
     public Result<IReadOnlyList<Money>> SplitByItem(IReadOnlyList<IReadOnlyList<LineAllocation>> groups)
     {
@@ -480,6 +481,54 @@ public sealed class Order : Entity
     }
 
     /// <summary>
+    /// Voids a line (ORD-10) — cancels it after it was already rung up, e.g.
+    /// a dish that came out wrong or was never served. The line is never
+    /// deleted (see <see cref="OrderLine.Void"/>): a receipt-adjacent audit
+    /// trail of what was ordered and then cancelled, and why, matters more
+    /// than a clean list. No manager-authorisation gate exists yet — ships
+    /// ahead of that trigger, the same shape as ORD-11's discounts; IDN-11 is
+    /// the real gate once staff accounts and roles exist.
+    /// </summary>
+    /// <param name="lineId">The line to void.</param>
+    /// <param name="reason">
+    /// Why the line is being voided. Required and non-blank — a void with no
+    /// reason is exactly the kind of gap shrinkage-detection (DIF-13) would
+    /// need to close later, so it's rejected outright rather than accepted
+    /// and left empty.
+    /// </param>
+    /// <param name="voidedAtUtc">
+    /// The current instant, from <see cref="Shared.Time.IClock"/> — never
+    /// <c>DateTimeOffset.UtcNow</c> directly.
+    /// </param>
+    public Result VoidLine(Guid lineId, string? reason, DateTimeOffset voidedAtUtc)
+    {
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure(
+                Error.Conflict("order.not_open", "Cannot void a line on an order that is not open."));
+        }
+
+        var line = _lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null)
+        {
+            return Result.Failure(Error.NotFound("order.line_not_found", $"Line {lineId} was not found on this order."));
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            return Result.Failure(Error.Validation("order.void_reason_required", "A reason is required to void a line."));
+        }
+
+        if (line.IsVoided)
+        {
+            return Result.Failure(Error.Conflict("order.line_already_voided", "This line has already been voided."));
+        }
+
+        line.Void(reason.Trim(), voidedAtUtc);
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Sets or clears a discount on one line (ORD-11) — a manager comping half
     /// off a dish that arrived late, say. No manager-authorisation gate exists
     /// yet: this ships ahead of that trigger the same way CAT-13's 86-ing and
@@ -624,7 +673,23 @@ public sealed class Order : Entity
         return Result.Success();
     }
 
-    /// <summary>Closes the order. Requires at least one line and that it is not already closed.</summary>
+    /// <summary>
+    /// Closes the order. Requires at least one line and that it is not
+    /// already closed. This check counts every line, voided (ORD-10) or not
+    /// — a fully-voided order still passes it and transitions to
+    /// <see cref="OrderStatus.Closed"/> here. It doesn't actually get to
+    /// stay closed, though: <c>BuildFiscalLines</c> (<c>OrderEndpoints</c>)
+    /// omits voided lines entirely, so a fully-voided order produces an
+    /// empty fiscal-line list, which <c>IFiscalProvider.IssueSimplifiedInvoiceAsync</c>
+    /// already rejects with <c>fiscal.no_lines</c> — a pre-existing guard,
+    /// not new logic invented for this case. <c>CloseOrderAsync</c> only
+    /// persists this transition after the fiscal document is actually
+    /// issued, so that rejection leaves the order genuinely still `Open` in
+    /// the database, not closed-with-nothing-to-show-for-it. Deliberately
+    /// not guarded here too, rather than guessing at a fiscal-correctness
+    /// rule (can AT accept a €0.00 invoice?) nobody has confirmed — see
+    /// <c>docs/fiscal/README.md</c>.
+    /// </summary>
     /// <param name="closedAtUtc">The current instant, from <see cref="Shared.Time.IClock"/>.</param>
     public Result Close(DateTimeOffset closedAtUtc)
     {
