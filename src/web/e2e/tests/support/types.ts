@@ -43,6 +43,18 @@ export interface OrderDto {
   total: MoneyDto;
 }
 
+export interface OrderSummaryDto {
+  id: string;
+  tableId: string;
+  tableLabel: string;
+  coverCount: number;
+  status: string;
+  total: MoneyDto;
+  lineCount: number;
+  openedAtUtc: string;
+  closedAtUtc: string | null;
+}
+
 export interface VatBreakdownDto {
   vatRateFraction: number;
   netTotal: MoneyDto;

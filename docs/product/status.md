@@ -30,11 +30,11 @@
 | `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
 | `Brasa.Shared` — outbox contracts | ✅ | Types defined; **no dispatcher implementation yet** |
-| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete), `/floor`, `/orders` (+`/lines`, `/split`, `/pre-bill`, `/close`), `/tables/{id}/clear`, `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
+| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete), `/floor`, `/orders` (+`GET` search/history — ORD-22, `/lines`, `/split`, `/pre-bill`, `/close`), `/tables/{id}/clear`, `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
 | EF Core + PostgreSQL + RLS | ✅ | **Verified live**, not just asserted: `brasa_app` (unprivileged runtime role) sees zero rows with no tenant set or the wrong tenant set, and cannot run DDL. Re-verified against the new `floor` schema too. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | `Modules.Identity` | 📁 | I3 (auth) |
 | `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem`, seeded demo menu spanning both VAT bands, soft delete (CAT-18), modifier groups (CAT-03/04) |
-| `Modules.Ordering` | ✅ | `Order` aggregate — open against a real `Table` (`TableId`), add line with modifiers (price/VAT/modifier snapshot, ORD-05), even split, pre-bill preview (ORD-18/19), close |
+| `Modules.Ordering` | ✅ | `Order` aggregate — open against a real `Table` (`TableId`), add line with modifiers (price/VAT/modifier snapshot, ORD-05), even split, pre-bill preview (ORD-18/19), close, history/search (ORD-22) |
 | `Modules.Floor` | ✅ | `Room`, `Table` — full `Free ⇄ Occupied ⇄ Dirty ⇄ Free` lifecycle (`BillRequested` transition exists, unused by any endpoint yet), `xmin`-based optimistic concurrency on `Table` so two concurrent occupy attempts can't both win. Seeded: 2 rooms, 8 tables |
 | `Modules.Fiscal` | ✅ | `IFiscalProvider`, `FiscalDocument`, VAT correctly derived from gross (menu prices are VAT-inclusive) |
 | `Modules.Payments` | 📁 | I6 |
@@ -68,7 +68,7 @@
 | `Brasa.Shared.Tests` | ✅ | 18 passing, incl. exhaustive allocation check and the error-code registry test (API-04) |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 5 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused. The automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 15 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), accessibility scans (QA-14), API-level split-math sweep (QA-03), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 17 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -116,6 +116,17 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > it 400s on an empty order and 409s once the order is closed, reusing
 > `order.empty`/`order.not_open`; and the modal it opens in `pos` passes the
 > same WCAG A/AA scan as every other screen.
+
+> **Update (order history, ORD-22):** `GET /orders` filters by `status`,
+> `tableId`, `openedFrom`/`openedTo`, and a capped `take` (1–200, default
+> 50), returning the lighter `OrderSummaryDto` rather than every line's full
+> detail — a history list is read by the page, not the order. Verified live
+> (`order-history.spec.ts`) against the shared, never-reset dev database
+> (QA-02's known limitation): a just-opened order shows up under
+> `status=Open` and disappears from it the moment it's closed, the same
+> order then appears under `status=Closed` with the right total, and an
+> unrecognised status or an out-of-range `take` both 400 with a stable
+> error code rather than silently returning nothing.
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:

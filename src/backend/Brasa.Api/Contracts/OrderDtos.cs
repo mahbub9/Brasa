@@ -37,6 +37,22 @@ public sealed record OrderDto(
     MoneyDto Total,
     IReadOnlyList<OrderLineDto> Lines);
 
+/// <summary>
+/// One row of <c>GET /orders</c> — order history/search (ORD-22). Deliberately
+/// lighter than <see cref="OrderDto"/>: a list of many orders doesn't need
+/// every line's modifiers, just enough to identify and total each one.
+/// </summary>
+public sealed record OrderSummaryDto(
+    Guid Id,
+    Guid TableId,
+    string TableLabel,
+    int CoverCount,
+    string Status,
+    MoneyDto Total,
+    int LineCount,
+    DateTimeOffset OpenedAtUtc,
+    DateTimeOffset? ClosedAtUtc);
+
 /// <summary>A fiscal document, as returned to clients.</summary>
 public sealed record FiscalDocumentDto(
     string DocumentNumber,
@@ -86,6 +102,18 @@ public static class OrderDtoMappings
         order.Status.ToString(),
         order.Total.ToDto(),
         [.. order.Lines.Select(l => l.ToDto())]);
+
+    /// <summary>Converts an order to its lightweight history/search row. See <see cref="OrderSummaryDto"/>.</summary>
+    public static OrderSummaryDto ToSummaryDto(this Order order) => new(
+        order.Id,
+        order.TableId,
+        order.TableLabel,
+        order.CoverCount,
+        order.Status.ToString(),
+        order.Total.ToDto(),
+        order.Lines.Count,
+        order.OpenedAtUtc,
+        order.ClosedAtUtc);
 
     private static OrderLineDto ToDto(this OrderLine line) => new(
         line.Id,

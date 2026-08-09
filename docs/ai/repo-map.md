@@ -74,8 +74,8 @@ Depended on by every module; depends on no module. Deliberately small.
 | `ErrorMapping.cs` | ✅ | The only place `ErrorType` → HTTP status is decided |
 | `Endpoints/CatalogEndpoints.cs` | ✅ | `GET /menu`, `DELETE /menu/items/{id}` (CAT-18, soft delete) |
 | `Endpoints/FloorEndpoints.cs` | ✅ | `GET /floor`, `POST /tables/{id}/clear` |
-| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders` (against a real `tableId`; also resolves + validates `selectedModifierIds` — `ResolveModifiers`), `GET /orders/{id}`, `POST /orders/{id}/lines`, `GET /orders/{id}/split`, `GET /orders/{id}/pre-bill` (ORD-18/19 — never calls `IFiscalProvider`), `POST /orders/{id}/close`. Composes Catalog + Ordering + Floor + Fiscal — see the module-boundaries note below |
-| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`/`ModifierGroupDto`/`ModifierDto`, `RoomDto`/`TableDto`, `OrderDto`/`OrderLineDto`/`OrderLineModifierDto`, `FiscalDocumentDto`, `PreBillDto`/`VatBreakdownDto` (ORD-18/19 — deliberately shaped nothing like `FiscalDocumentDto`) + mappings |
+| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders` (against a real `tableId`; also resolves + validates `selectedModifierIds` — `ResolveModifiers`), `GET /orders` (history/search — ORD-22, filters + capped `take`), `GET /orders/{id}`, `POST /orders/{id}/lines`, `GET /orders/{id}/split`, `GET /orders/{id}/pre-bill` (ORD-18/19 — never calls `IFiscalProvider`), `POST /orders/{id}/close`. Composes Catalog + Ordering + Floor + Fiscal — see the module-boundaries note below |
+| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`/`ModifierGroupDto`/`ModifierDto`, `RoomDto`/`TableDto`, `OrderDto`/`OrderLineDto`/`OrderLineModifierDto`, `OrderSummaryDto` (ORD-22 — lighter than `OrderDto`, no line detail), `FiscalDocumentDto`, `PreBillDto`/`VatBreakdownDto` (ORD-18/19 — deliberately shaped nothing like `FiscalDocumentDto`) + mappings |
 | `Seed/DevCatalogSeeder.cs` | ✅ | Seeds a Portuguese demo menu spanning both VAT bands, plus two items with modifier groups (Frango na Brasa's required "Tamanho", Água's required "Tipo"). Guarded the same way as the mock fiscal provider |
 | `Seed/DevFloorSeeder.cs` | ✅ | Seeds 2 rooms / 8 tables. Same guard |
 | `appsettings.json` | ✅ | **Two** connection strings — `Postgres` (runtime, `brasa_app`) and `PostgresMigrations` (`brasa`, superuser) |
@@ -141,7 +141,7 @@ browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
 ⬜ **Missing:** auth, offline (Dexie), everything else past I0/I1's first
 slice — see the `WEB` epic in [backlog.md](../product/backlog.md).
 
-## `src/web/e2e` ✅ I0 + I1 harness
+## `src/web/e2e` ✅ I0 + I1 harness, plus a first slice of I2
 
 Playwright + TypeScript, chromium only. `playwright.config.ts`'s `webServer`
 starts both the API (`dotnet run --no-build`) and the `pos` dev server
@@ -149,7 +149,7 @@ itself — Docker (PostgreSQL) is the only thing it doesn't start. Verified
 locally from both a warm state and a hard cold start, and **several
 consecutive full runs** under real 2-worker parallelism — that repetition is
 what caught the `Table.Occupy()` concurrency bug (see the trap in
-[README.md](README.md)) and then proved the fix; 12/12 passing every time
+[README.md](README.md)) and then proved the fix; 17/17 passing every time
 since. See [../development/e2e-testing.md](../development/e2e-testing.md) for
 the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 
@@ -157,6 +157,8 @@ the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 |---|---|---|
 | `tests/walking-skeleton.spec.ts` | ✅ | QA-05 — drives the real `pos` UI: pick a free table off the floor plan → ring up (incl. the modifier picker) → split preview → close → receipt → clear the table. Runs in Portuguese, the app's default |
 | `tests/modifiers.spec.ts` | ✅ | CAT-03/04 — the modifier picker itself: required-group validation blocks "Add", Cancel adds nothing, price deltas sum correctly onto the line |
+| `tests/pre-bill.spec.ts` | ✅ | ORD-18/19 — no fiscal fields anywhere in the wire shape, VAT-band reconciliation, byte-for-byte matching reprints, 400/409 guards, WCAG scan on the dialog |
+| `tests/order-history.spec.ts` | ✅ | ORD-22 — `GET /orders` filtering by status/table, correct totals and line counts, invalid-filter 400s |
 | `tests/accessibility.spec.ts` | ✅ | QA-14 — axe-core against the table picker, ordering screen, modifier picker and receipt (WCAG 2.0/2.1 A+AA). Found 5 real `color-contrast` failures on its first run, all from dimming text via CSS `opacity` — see [status.md](../product/status.md#accessibility-first-scan-five-real-fixes) |
 | `tests/support/ui.ts` | ✅ | `openAnyFreeTable` — retries against a different table on a 409, the UI-side counterpart to `openOrderOnAnyFreeTable` below. See the concurrency trap in [README.md](README.md) |
 | `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |

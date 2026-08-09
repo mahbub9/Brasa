@@ -33,6 +33,10 @@ public static class OrderEndpoints
             .WithName("OpenOrder")
             .WithSummary("Opens a table.");
 
+        group.MapGet("/orders", SearchOrdersAsync)
+            .WithName("SearchOrders")
+            .WithSummary("Order history/search — filter by status, table and opened-date range (ORD-22).");
+
         group.MapGet("/orders/{orderId:guid}", GetOrderAsync)
             .WithName("GetOrder")
             .WithSummary("Current state of an order.");
@@ -107,6 +111,71 @@ public static class OrderEndpoints
         await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.Created($"/api/v1/orders/{order.Id}", order.ToDto());
+    }
+
+    /// <summary>
+    /// Order history/search (ORD-22). Returns the lightest shape that can
+    /// still identify and total each order — <see cref="OrderSummaryDto"/>,
+    /// not the full line-by-line <see cref="OrderDto"/> — because a history
+    /// list is read by the page, not the order. No dedicated read model yet
+    /// (that's RPT, I8); this queries Ordering's own table directly, which is
+    /// still within bounds for I2's scale.
+    /// </summary>
+    private static async Task<IResult> SearchOrdersAsync(
+        OrderingDbContext db,
+        string? status,
+        Guid? tableId,
+        DateTimeOffset? openedFrom,
+        DateTimeOffset? openedTo,
+        CancellationToken cancellationToken,
+        int take = 50)
+    {
+        OrderStatus? statusFilter = null;
+        if (!string.IsNullOrEmpty(status))
+        {
+            if (!Enum.TryParse<OrderStatus>(status, ignoreCase: true, out var parsed))
+            {
+                return Error.Validation(
+                    "order.invalid_status_filter", $"\"{status}\" is not a recognised order status.").ToProblem();
+            }
+
+            statusFilter = parsed;
+        }
+
+        if (take is < 1 or > 200)
+        {
+            return Error.Validation("order.invalid_take", "take must be between 1 and 200.").ToProblem();
+        }
+
+        var query = db.Orders.Include(o => o.Lines).ThenInclude(l => l.Modifiers).AsQueryable();
+
+        if (statusFilter is not null)
+        {
+            query = query.Where(o => o.Status == statusFilter);
+        }
+
+        if (tableId is not null)
+        {
+            query = query.Where(o => o.TableId == tableId);
+        }
+
+        if (openedFrom is not null)
+        {
+            query = query.Where(o => o.OpenedAtUtc >= openedFrom);
+        }
+
+        if (openedTo is not null)
+        {
+            query = query.Where(o => o.OpenedAtUtc <= openedTo);
+        }
+
+        var orders = await query
+            .OrderByDescending(o => o.OpenedAtUtc)
+            .Take(take)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return Results.Ok(orders.Select(o => o.ToSummaryDto()).ToArray());
     }
 
     private static async Task<IResult> GetOrderAsync(Guid orderId, OrderingDbContext db, CancellationToken cancellationToken)

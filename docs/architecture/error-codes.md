@@ -32,6 +32,8 @@ as any change to an error code, the same rule as everything else in
 | `order.invalid_cover_count` | Validation | 400 | `POST /orders`'s `coverCount` is less than 1. |
 | `order.invalid_quantity` | Validation | 400 | An order line's `quantity` is less than 1. |
 | `order.invalid_split` | Validation | 400 | `SplitEvenly`'s `parts` is less than 1. |
+| `order.invalid_status_filter` | Validation | 400 | `GET /orders`'s `status` query parameter isn't a recognised `OrderStatus` value. |
+| `order.invalid_take` | Validation | 400 | `GET /orders`'s `take` query parameter is outside 1–200. |
 | `order.not_found` | NotFound | 404 | The order id in the request doesn't exist. |
 | `order.not_open` | Conflict | 409 | `AddLine()` or `EnsureCanGeneratePreBill()` was called on an order that isn't `Open`. |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |
