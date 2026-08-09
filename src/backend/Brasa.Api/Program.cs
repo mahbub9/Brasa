@@ -62,6 +62,11 @@ builder.Services.AddMemoryCache();
 builder.Services.Configure<Dictionary<string, ClientRequirementEntry>>(
     builder.Configuration.GetSection("ClientRequirements"));
 
+// API-08 — RFC 8594 Deprecation/Sunset headers for the whole /api/v1
+// surface. Empty by default; set once a real /api/v2 exists and v1 is
+// scheduled for removal (docs/architecture/api-contract.md §3).
+builder.Services.Configure<ApiDeprecationOptions>(builder.Configuration.GetSection("Api:Deprecation"));
+
 // ── Modules ──────────────────────────────────────────────────────────────────
 builder.Services.AddCatalogModule(connectionString);
 builder.Services.AddOrderingModule(connectionString);
@@ -148,6 +153,10 @@ app.UseResponseCompression();
 // enriches the request-completion log line itself, not just lines written
 // after it.
 app.UseMiddleware<ClientVersionMiddleware>();
+
+// API-08 — a no-op today (see ApiDeprecationOptions), cheap enough to run
+// unconditionally rather than gate behind whether anything is configured.
+app.UseMiddleware<ApiDeprecationMiddleware>();
 
 app.UseSerilogRequestLogging();
 app.UseExceptionHandler();

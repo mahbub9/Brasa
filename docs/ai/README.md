@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1
+**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1
 
 ---
 
@@ -121,7 +121,10 @@ Condensed:
   every log line for the request via Serilog's `LogContext`, plus
   `GET /client-requirements` looking up the caller's client id in a
   config-bound policy; ships ahead of any client that sends the header or
-  calls the endpoint yet), cursor pagination on `GET /orders` (API-09 —
+  calls the endpoint yet), RFC 8594 `Deprecation`/`Sunset` response headers
+  (API-08 — config-bound under `Api:Deprecation`, empty by default, so a
+  no-op until a real `/api/v2` gives it something to announce), cursor
+  pagination on `GET /orders` (API-09 —
   the one genuinely unbounded collection today; additive via a new
   `X-Next-Cursor` response header, not a breaking change to the
   already-shipped body shape), Brotli/gzip response compression incl.
@@ -166,7 +169,7 @@ Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/**11**/10 · API-01/03/05 
 CAT-**01**/02/03/04/07/**13**/**17**/18/**19** ·
 ORD-01/02/03/04/**05**/**06**/**12**/**13**/**14**/15/**16**/**17**/**18**/**19**/**20**/**22** ·
 FIS-01/02/03 · WEB-01/05/13 · QA-01/03/05/**09**/**10**/**11**/**14** · FLR-01/02/**04** ·
-API-**04**/**06**/**07**/**09**/**10**/**11**/**13** · OPS-**09**.
+API-**04**/**06**/**07**/**08**/**09**/**10**/**11**/**13** · OPS-**09**.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 
