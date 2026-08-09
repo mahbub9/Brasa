@@ -139,8 +139,8 @@ half-closed state.
 - Manager authorisation (IDN-11) — the real gate for this feature,
   tracked separately since it needs staff accounts and roles that don't
   exist yet.
-- `SplitByItem`'s by-item preview doesn't account for a voided line (same
-  documented gap as line/order discounts) — a voided line can still be
-  allocated a share at its full original price by that one method.
+- `SplitByItem`'s by-item preview now correctly gives a voided line's
+  units a zero share (fixed alongside this feature) — the remaining gap
+  there is order-level discounts, not voids.
 - No reason taxonomy (free text only) — a fixed list of common reasons
   might matter for later shrinkage reporting (DIF-13), not decided here.

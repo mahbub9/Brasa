@@ -135,11 +135,12 @@ cent once the order is actually closed with a discount applied.
 
 ## Open questions
 
-- `SplitByItem`'s by-item preview doesn't yet fold in a discount (it
-  computes portions from a line's raw unit price, not `LineTotal`) —
-  `SplitEvenly`/`SplitByCover` don't have this gap, since both inherit a
-  discount automatically through `Order.Total`. Narrow edge case; not
-  fixed yet.
+- `SplitByItem`'s by-item preview now reflects a *line*-level discount
+  correctly (fixed alongside ORD-10). An *order*-level discount still
+  isn't prorated into it, unlike `SplitEvenly`/`SplitByCover`, which
+  inherit one automatically through `Order.Total` — deliberately left
+  open pending a real answer to how to fairly split "10% off the table"
+  between guests who ordered different things.
 - No reason/note field on a discount. Real restaurants often want one for
   later shrinkage analysis (DIF-13) — deliberately left out for now rather
   than guessed at ahead of that need.

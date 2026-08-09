@@ -306,6 +306,33 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > line in the mix; and closing a fully-voided order 400s with
 > `fiscal.no_lines` while leaving the order genuinely still open.
 
+> **Update (`SplitByItem` now discount/void-aware, ORD-16):** the gap
+> both discounts (ORD-11) and voiding (ORD-10) explicitly documented and
+> left open — `POST /orders/{id}/split/by-item` computed portions from a
+> line's raw unit price, not `OrderLine.LineTotal`, so a line-level
+> discount or a voided line wasn't reflected in a by-item split preview
+> — is now fixed rather than re-documented a third time. Each line's own
+> `LineTotal` (already net of any line discount, already zero if voided)
+> is split across its quantity via `Money.Allocate` before being handed
+> to whichever groups claim those units, so a discounted or voided line
+> now splits correctly no matter how its quantity is divided between
+> guests. `Order.SplitByItem`'s return shape changed to carry one portion
+> per line allocation (grouped like the request) rather than only group
+> totals, which incidentally removed a pre-existing duplication:
+> `OrderEndpoints`'s per-line breakdown and per-group total used to be
+> two independently-computed formulas that had to be kept in sync by
+> hand; now the group total is just the sum of the same per-line numbers
+> shown in the response, so they can't disagree. Deliberately still open:
+> an *order-level* discount isn't prorated into a by-item split, since
+> that needs a real product answer (how do you fairly divide "10% off
+> the table" between guests who ordered different things?), not a
+> guessed-at one. **Verified live**: a 50%-discounted line split across
+> two groups gives each its correctly-discounted half; a voided line
+> allocated to a group contributes exactly zero; each group's stated
+> total still equals the sum of its own line portions and both groups
+> still sum to the order's own total; and the existing undiscounted/
+> non-voided case (`split-by-item.spec.ts`'s original test) is unchanged.
+
 > **Update (menu item course, CAT-14):** `PUT /menu/items/{id}/course` sets
 > or clears which point in the meal a menu item is served at (`Starter`/
 > `Main`/`Dessert`/`Drink`). Deliberately independent of `MenuCategory`: a

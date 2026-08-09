@@ -264,37 +264,44 @@ public sealed class Order : Entity
     /// the steak." <paramref name="groups"/> is one entry per guest's share;
     /// every line's <see cref="OrderLine.Quantity"/> must be allocated
     /// across the groups exactly once, with none left over and none
-    /// double-counted. Unlike <see cref="SplitEvenly"/>, this never needs
-    /// <see cref="Money.Allocate(int)"/>'s remainder distribution — each
-    /// allocation's portion is an exact multiple of the line's own per-unit
-    /// price, so the shares are exact by construction.
+    /// double-counted. Returns one portion per line allocation, grouped the
+    /// same shape as <paramref name="groups"/>, so a caller can show both
+    /// the per-line breakdown and each group's total (their sum) without
+    /// recomputing anything itself — the two can never disagree.
     /// </summary>
     /// <remarks>
-    /// Known gap (ORD-11/ORD-10): portions are computed from each line's own
-    /// unit price and modifiers, not <see cref="OrderLine.LineTotal"/> — so a
-    /// line or order-level discount, or a voided line, is not yet reflected
-    /// here, unlike <see cref="SplitEvenly"/> and <see cref="SplitByCover"/>,
-    /// which inherit both automatically through <see cref="Total"/>. A voided
-    /// line can still be allocated a share at its full original price by this
-    /// method; combining either with a by-item split preview is a narrow,
-    /// undocumented-to-staff edge case for now.
+    /// Each line's own <see cref="OrderLine.LineTotal"/> — already net of any
+    /// line-level discount (ORD-11) and already zero if the line is voided
+    /// (ORD-10) — is split across its <see cref="OrderLine.Quantity"/> units
+    /// via <see cref="Money.Allocate(int)"/> before being handed out to
+    /// whichever groups claim those units, so a discounted or voided line
+    /// splits correctly regardless of how its quantity is divided up. Unlike
+    /// <see cref="SplitEvenly"/> and <see cref="SplitByCover"/>, an
+    /// order-level discount is <em>not</em> reflected here — prorating it
+    /// first across lines and then across however each line's quantity is
+    /// split between groups is a real design question (how do you fairly
+    /// divide "10% off the table" between two guests who ordered different
+    /// things?) that hasn't been settled, so this stays a known, documented
+    /// gap rather than a guessed-at answer.
     /// </remarks>
-    public Result<IReadOnlyList<Money>> SplitByItem(IReadOnlyList<IReadOnlyList<LineAllocation>> groups)
+    public Result<IReadOnlyList<IReadOnlyList<Money>>> SplitByItem(IReadOnlyList<IReadOnlyList<LineAllocation>> groups)
     {
         if (groups.Count == 0)
         {
-            return Result.Failure<IReadOnlyList<Money>>(
+            return Result.Failure<IReadOnlyList<IReadOnlyList<Money>>>(
                 Error.Validation("order.invalid_split", "At least one group is required."));
         }
 
         var remainingQuantity = _lines.ToDictionary(l => l.Id, l => l.Quantity);
-        var totals = new List<Money>(groups.Count);
+        var consumedCount = _lines.ToDictionary(l => l.Id, l => 0);
+        var perUnitSharesByLine = _lines.ToDictionary(l => l.Id, l => l.LineTotal.Allocate(l.Quantity));
+        var groupPortions = new List<IReadOnlyList<Money>>(groups.Count);
 
         foreach (var group in groups)
         {
             if (group.Count == 0)
             {
-                return Result.Failure<IReadOnlyList<Money>>(
+                return Result.Failure<IReadOnlyList<IReadOnlyList<Money>>>(
                     Error.Validation("order.invalid_split", "Each group must include at least one line."));
             }
 
@@ -303,33 +310,36 @@ public sealed class Order : Entity
             {
                 if (!remainingQuantity.TryGetValue(allocation.LineId, out var remaining))
                 {
-                    return Result.Failure<IReadOnlyList<Money>>(Error.NotFound(
+                    return Result.Failure<IReadOnlyList<IReadOnlyList<Money>>>(Error.NotFound(
                         "order.line_not_found", $"Line {allocation.LineId} was not found on this order."));
                 }
 
                 if (allocation.Quantity < 1 || allocation.Quantity > remaining)
                 {
-                    return Result.Failure<IReadOnlyList<Money>>(Error.Validation(
+                    return Result.Failure<IReadOnlyList<IReadOnlyList<Money>>>(Error.Validation(
                         "order.invalid_split",
                         $"Line {allocation.LineId} was allocated {allocation.Quantity}, " +
                         $"more than its {remaining} remaining unallocated quantity."));
                 }
 
-                var line = _lines.First(l => l.Id == allocation.LineId);
+                var consumed = consumedCount[allocation.LineId];
+                var portion = Money.Sum(perUnitSharesByLine[allocation.LineId].Skip(consumed).Take(allocation.Quantity));
+
                 remainingQuantity[allocation.LineId] = remaining - allocation.Quantity;
-                portions.Add((line.UnitPrice + line.ModifiersTotal) * allocation.Quantity);
+                consumedCount[allocation.LineId] = consumed + allocation.Quantity;
+                portions.Add(portion);
             }
 
-            totals.Add(Money.Sum(portions));
+            groupPortions.Add(portions);
         }
 
         if (remainingQuantity.Values.Any(q => q > 0))
         {
-            return Result.Failure<IReadOnlyList<Money>>(Error.Validation(
+            return Result.Failure<IReadOnlyList<IReadOnlyList<Money>>>(Error.Validation(
                 "order.invalid_split", "Every line's quantity must be fully allocated across the groups."));
         }
 
-        return Result.Success<IReadOnlyList<Money>>(totals);
+        return Result.Success<IReadOnlyList<IReadOnlyList<Money>>>(groupPortions);
     }
 
     /// <summary>

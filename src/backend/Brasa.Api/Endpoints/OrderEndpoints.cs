@@ -761,18 +761,21 @@ public static class OrderEndpoints
         }
 
         // SplitByItem already validated every LineId against this order, so
-        // the lookup below can't miss.
+        // the lookup below can't miss. Its result already carries one
+        // portion per line allocation — the group total is just their sum,
+        // computed here rather than a second time inside SplitByItem, so
+        // the per-line breakdown and the group total can never disagree.
         var linesById = order.Lines.ToDictionary(l => l.Id);
-        var groupDtos = request.Groups.Select((group, index) =>
+        var groupDtos = request.Groups.Select((group, groupIndex) =>
         {
-            var lineDtos = group.Lines.Select(allocation =>
+            var portions = splitResult.Value[groupIndex];
+            var lineDtos = group.Lines.Select((allocation, lineIndex) =>
             {
                 var line = linesById[allocation.LineId];
-                var portion = (line.UnitPrice + line.ModifiersTotal) * allocation.Quantity;
-                return new SplitByItemLineDto(line.Id, line.ItemName, allocation.Quantity, portion.ToDto());
+                return new SplitByItemLineDto(line.Id, line.ItemName, allocation.Quantity, portions[lineIndex].ToDto());
             }).ToArray();
 
-            return new SplitByItemGroupDto(lineDtos, splitResult.Value[index].ToDto());
+            return new SplitByItemGroupDto(lineDtos, Money.Sum(portions).ToDto());
         }).ToArray();
 
         return Results.Ok(new SplitByItemResponse(groupDtos));
