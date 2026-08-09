@@ -95,6 +95,40 @@ export const en = {
   error: {
     dismiss: 'Dismiss',
     generic: 'Something went wrong.',
+    // Keyed by the server's stable error code (docs/architecture/error-codes.md),
+    // nested to match its dots — see the matching comment in resources/pt.ts.
+    code: {
+      floor: {
+        table_not_dirty: "This table doesn't need clearing.",
+        table_not_found: 'Table not found.',
+        table_not_occupied: "This table isn't occupied.",
+        table_not_free: 'This table is already occupied.',
+      },
+      order: {
+        invalid_cover_count: 'Enter at least 1 cover.',
+        not_found: 'Order not found.',
+        not_open: 'This order is no longer open.',
+        invalid_quantity: 'Enter a valid quantity.',
+        notes_too_long: 'The note is too long (300 characters max).',
+        line_not_found: 'This item is no longer on the order.',
+        invalid_split: "The bill couldn't be split with these values.",
+        empty: 'Add at least one item before continuing.',
+        already_closed: 'This order has already been closed.',
+      },
+      catalog: {
+        item_not_found: 'Menu item not found.',
+        item_unavailable: 'This item is currently unavailable.',
+        modifier_not_found: 'Customisation option not found.',
+        modifier_selection_invalid: 'Check the choices selected for this item.',
+      },
+      fiscal: {
+        no_lines: "Can't issue the receipt: there's nothing left to bill.",
+      },
+      request: {
+        idempotency_key_required: 'Something went wrong. Please try again.',
+        rate_limited: 'The system is busy. Wait a moment and try again.',
+      },
+    },
   },
   language: {
     label: 'Language',

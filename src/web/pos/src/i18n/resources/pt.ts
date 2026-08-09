@@ -100,6 +100,45 @@ export const pt = {
   error: {
     dismiss: 'Fechar',
     generic: 'Ocorreu um erro.',
+    // Keyed by the server's stable error code (docs/architecture/error-codes.md),
+    // nested to match its dots — "floor.table_not_dirty" resolves as
+    // error.code.floor.table_not_dirty, no special i18next config needed.
+    // Only the codes pos's own API calls (src/api/client.ts) can actually
+    // trigger are covered here; describeError() falls back to the raw
+    // server message for anything else, so an untranslated code is never
+    // silently hidden, just shown in English until it's added here.
+    code: {
+      floor: {
+        table_not_dirty: 'Esta mesa não precisa de ser limpa.',
+        table_not_found: 'Mesa não encontrada.',
+        table_not_occupied: 'Esta mesa não está ocupada.',
+        table_not_free: 'Esta mesa já está ocupada.',
+      },
+      order: {
+        invalid_cover_count: 'Indique pelo menos 1 pessoa.',
+        not_found: 'Pedido não encontrado.',
+        not_open: 'Este pedido já não está aberto.',
+        invalid_quantity: 'Indique uma quantidade válida.',
+        notes_too_long: 'A nota é demasiado longa (máx. 300 caracteres).',
+        line_not_found: 'Este item já não está no pedido.',
+        invalid_split: 'Não foi possível dividir a conta com estes valores.',
+        empty: 'Adicione pelo menos um item antes de continuar.',
+        already_closed: 'Este pedido já foi fechado.',
+      },
+      catalog: {
+        item_not_found: 'Item de menu não encontrado.',
+        item_unavailable: 'Este item está indisponível de momento.',
+        modifier_not_found: 'Opção de personalização não encontrada.',
+        modifier_selection_invalid: 'Verifique as opções escolhidas para este item.',
+      },
+      fiscal: {
+        no_lines: 'Não é possível emitir o recibo: não há itens para faturar.',
+      },
+      request: {
+        idempotency_key_required: 'Ocorreu um erro. Tente novamente.',
+        rate_limited: 'O sistema está ocupado. Aguarde um momento e tente novamente.',
+      },
+    },
   },
   language: {
     label: 'Idioma',

@@ -136,7 +136,7 @@ browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
 
 | File | State | Contents |
 |---|---|---|
-| `src/App.tsx` | ✅ | Orchestrates the phases: table picker (floor) → order (menu + summary) → receipt |
+| `src/App.tsx` | ✅ | Orchestrates the phases: table picker (floor) → order (menu + summary) → receipt. `describeError()` looks up `error.code.<code>` in `resources/{pt,en}.ts` before falling back to the server's raw (always-English) `ProblemDetails` message — closes the "Server-sent error text" gap ADR 0011 named, for the ~20 codes `pos`'s own API calls can trigger |
 | `src/api/client.ts` | ✅ | `fetch` wrapper; `ApiError` carries the `ProblemDetails.code`; every mutation gets its own `Idempotency-Key` via `crypto.randomUUID()`; `getFloor`/`clearTable`/`requestBill` (FLR-04) |
 | `src/api/types.ts` | ✅ | Hand-written mirror of `Brasa.Api/Contracts/*.cs` — kept in sync manually until WEB-03 |
 | `src/components/TablePicker.tsx` | ✅ | WEB-05 — rooms/tables as a static grid (not `Table.PositionX/Y` — that's the future drag-and-drop editor, FLR-03), colour-coded by state incl. `BillRequested` (its CSS/i18n existed before FLR-04's endpoint did — see the trap below), tap Free to open / tap Dirty to clear. Also hosts "Nova venda ao balcão" (ORD-20), which skips table selection entirely |
@@ -148,7 +148,7 @@ browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
 | `src/lib/tableLabel.ts` | ✅ | The opposite call from `money.ts` on the same axis: renders seeded `"Mesa N"` labels as `"Table N"` in English — display-only, `Table.Label` itself untouched. Unlike money/timestamps, a table label isn't a fiscal-correctness concern, and unlike a menu item's name it isn't identity-bearing content either — floor/kitchen staff who don't read Portuguese still need it. Anything not matching the seeded shape passes through unchanged. See ADR 0011 |
 | `src/i18n/i18n.ts` | ✅ | i18next config — pt default, en toggle (WEB-13) |
 | `src/i18n/languageStorage.ts` | ✅ | `LanguageStore` interface + `cookieLanguageStore`; the seam a mobile client swaps for `AsyncStorage` |
-| `src/i18n/resources/{pt,en}.ts` | ✅ | UI copy, incl. `floor.*`. Menu item names and money are **not** here — see the ADR |
+| `src/i18n/resources/{pt,en}.ts` | ✅ | UI copy, incl. `floor.*`. Menu item names and money are **not** here — see the ADR. `error.code.*` is nested to match a server error code's own dots (e.g. `error.code.floor.table_not_dirty`), which i18next resolves with no special config |
 | `.env.example` | ✅ | Documents `VITE_API_BASE_URL`; defaults to the API's `http` launch profile |
 
 ⬜ **Missing:** auth, offline (Dexie), everything else past I0/I1's first
@@ -221,6 +221,7 @@ for the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 | `tests/support/ui.ts` | ✅ | `openAnyFreeTable`/`transferToAnyFreeTable` — retry against a different table on a 409, the UI-side counterpart to `openOrderOnAnyFreeTable` below. Both return the *raw* seeded label (read from `data-testid`, e.g. `"Mesa 6"`), not the displayed text — `src/lib/tableLabel.ts` can render that as `"Table 6"` in English, and every caller uses the return value to build another `data-testid`, not to assert rendered copy. See the concurrency trap in [README.md](README.md) |
 | `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |
 | `tests/language-toggle.spec.ts` | ✅ | WEB-13 — default language, the pt→en toggle, cookie attributes (`Path`, `SameSite`, not `httpOnly`) surviving a reload, money staying `pt-PT` in English mode, a seeded table label reading "Table N" (not "Mesa N") on the picker, order heading and receipt alike, and a blank takeaway ticket defaulting to "Takeaway" rather than the API's own "Levantamento" |
+| `tests/error-localization.spec.ts` | ✅ | ADR 0011's "Server-sent error text" gap — triggers a genuine `409 catalog.item_unavailable` (86ing a freshly-imported item after the menu already rendered) and asserts the error banner shows the real translated string in both pt and en, not the raw English `ProblemDetails.title` |
 | `tests/support/api.ts` | ✅ | QA-03 test-data builders. Looks menu items and tables up **by name/state**, never by id (ids are UUIDv7, not stable across a fresh database). `clearTable` returns a table to the free pool directly — 16 are seeded and the dev database persists across runs; `closeOrderAndClearTable` is `closeOrder` + `clearTable` for the common case, factored apart (ORD-11) so a spec that needs the `CloseOrderResponse` itself (e.g. to check `document.GrossTotal`) isn't forced to throw it away. `openOrderOnAnyFreeTable` retries on a 409 — see the concurrency trap in [README.md](README.md) |
 
 ## `tests/`
@@ -260,7 +261,7 @@ rewrites them to site index pages, so one file serves both.
 | `architecture/site-agent.md` | In-restaurant process design (stub status) |
 | `architecture/conventions.md` | Code conventions, build policy, suppression register |
 | `architecture/decisions/README.md` | ADR index with one-line summaries |
-| `architecture/decisions/0001..0010` | ADRs — each with a "Revisit when" trigger |
+| `architecture/decisions/0001..0011` | ADRs — each with a "Revisit when" trigger |
 | `fiscal/README.md` | ATCUD, signature chain, QR, SAF-T, document types, VAT |
 | `fiscal/certification.md` | AT process, prerequisites, what AT verifies |
 | `fiscal/key-management.md` | Signing key custody and open questions |

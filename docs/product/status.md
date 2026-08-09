@@ -642,6 +642,25 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > matching the API-09 pagination test's own precedent for handling
 > legitimate cross-spec interference under `fullyParallel`.
 
+> **Update (server error messages localized by code, closes ADR 0011's
+> known gap):** `pos`'s "Server-sent error text" gap named above — the
+> API's `ProblemDetails.title` is always English, a developer-facing
+> string, so Portuguese-speaking staff saw raw English error text
+> regardless of the language toggle — is now closed. `describeError()`
+> (`App.tsx`) looks up `error.code.<code>` in `resources/{pt,en}.ts`
+> first (nested to match the code's own dots, e.g.
+> `error.code.floor.table_not_dirty`, using `i18n.exists()`/`i18n.t()`),
+> falling back to the raw server message with the code shown alongside
+> only when no entry exists yet. Scoped deliberately to the ~20 codes
+> `pos`'s own API calls (`src/api/client.ts`) can actually trigger, not
+> the full registry — `admin`'s equivalent dictionary doesn't exist yet.
+> An untranslated code is never silently hidden, just shown in English
+> with its code visible until someone adds it. **Verified live**:
+> `error-localization.spec.ts` triggers a genuine 409
+> (`catalog.item_unavailable`, 86ing an item after the menu already
+> rendered — a realistic multi-terminal race) and asserts the exact
+> rendered banner text in both Portuguese and English.
+
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
 
