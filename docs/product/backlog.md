@@ -656,7 +656,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | DOC-07 | Feature page template | ✅ |
 | DOC-08 | API contract for multi-platform clients | ✅ |
 | DOC-09 | Backlog and progress tracking (this page) | ✅ |
-| DOC-10 | Per-feature pages, written as features land | 🚧 3 pages exist (`docs/features/discounts.md`, `void-a-line.md`, `menu-item-classification.md`) against dozens of shipped backlog items — the "written as the feature is built" policy hasn't actually been followed until now; these three are a start on backfilling it, not the policy catching up on its own. All three indexed in `docs/features/README.md` and the VitePress sidebar; docs site build verified clean |
+| DOC-10 | Per-feature pages, written as features land | 🚧 5 pages exist (`docs/features/discounts.md`, `void-a-line.md`, `edit-line-quantity.md`, `menu-item-classification.md`, `channel-pricing.md`) against dozens of shipped backlog items — the "written as the feature is built" policy hasn't actually been followed until now; these five are a start on backfilling it, not the policy catching up on its own. All five indexed in `docs/features/README.md` and the VitePress sidebar; docs site build verified clean |
 
 ## MOB — Mobile apps
 

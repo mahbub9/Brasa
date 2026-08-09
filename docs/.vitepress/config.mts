@@ -145,7 +145,9 @@ export default defineConfig({
         items: [
           { text: 'Discounts', link: '/features/discounts' },
           { text: 'Void a line', link: '/features/void-a-line' },
+          { text: "Edit a line's quantity", link: '/features/edit-line-quantity' },
           { text: 'Menu item classification', link: '/features/menu-item-classification' },
+          { text: 'Channel pricing', link: '/features/channel-pricing' },
         ],
       },
     ],

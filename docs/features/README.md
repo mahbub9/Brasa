@@ -34,4 +34,6 @@ missing page as a documentation gap, not evidence the feature isn't built.
 |---|---|---|
 | [Discounts](discounts.md) | ORD-11 | Ordering |
 | [Void a line](void-a-line.md) | ORD-10 | Ordering |
+| [Edit a line's quantity](edit-line-quantity.md) | ORD-03 | Ordering |
 | [Menu item classification: course and station](menu-item-classification.md) | CAT-14, CAT-15 | Catalog |
+| [Channel pricing — dine-in vs takeaway](channel-pricing.md) | CAT-06 | Catalog |
