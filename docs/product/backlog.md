@@ -52,16 +52,16 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
-| **QA** | Automated testing | 6 | 14 | I0–I1 → ongoing |
+| **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **78** | **291** | |
+| | **Total** | **79** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 78 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 79 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -90,7 +90,11 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > file storage infra not built yet), and `GET /menu` now answers a repeat
 > pull with a bodyless `304` when the client's `If-None-Match` shows it
 > already has the current menu (API-10 — deliberately not extended to
-> `GET /floor`, whose state changes too often for caching to pay off)
+> `GET /floor`, whose state changes too often for caching to pay off), and
+> the idempotency guarantee every mutation relies on (hard rule 7) now has
+> automated proof rather than just a doc comment: replaying the same
+> `Idempotency-Key` 3× never creates a second order or issues a second
+> fiscal document on a retried close (QA-11)
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -420,7 +424,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | QA-08 | E2E: multi-terminal concurrency | ⬜ blocked on ORD-21 |
 | QA-09 | Testcontainers integration-test base fixture | ✅ `TenantIsolationIntegrationTests` — real disposable Postgres per run, migrates for real, creates `brasa_app` the same way `initdb` does. One fixture so far; extract a shared base once a second test needs it |
 | QA-10 | Tenant isolation test suite (RLS) | ✅ Automated version of the manual verification that caught ADR 0010: zero rows with no/wrong tenant set, own rows only with the right one, DDL refused — queried as `brasa_app` via raw SQL, deliberately bypassing the EF convenience filter so a silently-disabled RLS policy can't hide behind it |
-| QA-11 | Idempotency replay test harness | ⬜ |
+| QA-11 | Idempotency replay test harness | ✅ `idempotency.spec.ts` — a mutating request replayed 3× with the same `Idempotency-Key` returns byte-identical responses (`Idempotent-Replay: true` on replays 2/3), and the underlying side effect runs exactly once: `POST /orders` replayed never creates a second order for the table, `POST /orders/{id}/close` replayed never issues a second fiscal document (the exact scenario `IdempotencyMiddleware`'s own doc comment calls out — CLAUDE.md hard rule 3). Also proves the negative cases: a *different* key against the same now-occupied table is a genuine 409, not a cache hit, and a missing key 400s (`request.idempotency_key_required`) |
 | QA-12 | Fiscal golden-file infrastructure | ⬜ |
 | QA-13 | Load test — 50 sites × 5 terminals at service rates | ⬜ |
 | QA-14 | Accessibility checks on POS and guest UIs | ✅ `pos` only (no guest UI yet — `order`/QR is post-I8) — `accessibility.spec.ts`, axe-core against WCAG 2.0/2.1 A+AA. Found and fixed 5 real color-contrast failures on first run, not suppressed |
