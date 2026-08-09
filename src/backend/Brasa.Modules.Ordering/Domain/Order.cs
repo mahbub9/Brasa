@@ -158,6 +158,40 @@ public sealed class Order : Entity
     }
 
     /// <summary>
+    /// Computes a bill split proportional to how many covers are in each
+    /// group (ORD-17) — a table of 5 splitting 2-and-3, not necessarily
+    /// evenly. <paramref name="covers"/> must sum to exactly
+    /// <see cref="CoverCount"/>: it describes how this order's own covers
+    /// are grouped, not an arbitrary weighting. Uses
+    /// <see cref="Money.Allocate(ReadOnlySpan{int})"/> directly — the exact
+    /// "split unevenly by covers" case that overload's own remarks call out.
+    /// </summary>
+    public Result<Money[]> SplitByCover(IReadOnlyList<int> covers)
+    {
+        if (covers.Count == 0)
+        {
+            return Result.Failure<Money[]>(
+                Error.Validation("order.invalid_split", "At least one cover group is required."));
+        }
+
+        if (covers.Any(c => c < 1))
+        {
+            return Result.Failure<Money[]>(
+                Error.Validation("order.invalid_split", "Each group must have at least 1 cover."));
+        }
+
+        var totalCovers = covers.Sum();
+        if (totalCovers != CoverCount)
+        {
+            return Result.Failure<Money[]>(Error.Validation(
+                "order.invalid_split",
+                $"Cover groups sum to {totalCovers}, but this order has {CoverCount} cover(s)."));
+        }
+
+        return Result.Success(Total.Allocate([.. covers]));
+    }
+
+    /// <summary>
     /// Computes a bill split where each guest pays for specific items,
     /// rather than an equal share (ORD-16) — e.g. "Ana had the fish, Rui had
     /// the steak." <paramref name="groups"/> is one entry per guest's share;

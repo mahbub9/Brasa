@@ -69,6 +69,10 @@ public static class OrderEndpoints
             .WithName("PreviewOrderSplitByItem")
             .WithSummary("Previews a bill split by item (ORD-16), without changing order state.");
 
+        group.MapGet("/orders/{orderId:guid}/split/by-cover", PreviewSplitByCoverAsync)
+            .WithName("PreviewOrderSplitByCover")
+            .WithSummary("Previews a bill split proportionally by covers per group (ORD-17), without changing order state.");
+
         group.MapGet("/orders/{orderId:guid}/pre-bill", GetPreBillAsync)
             .WithName("GetOrderPreBill")
             .WithSummary("Pre-bill preview for the table — a documento não fiscal, not an invoice. Safe to call repeatedly.");
@@ -519,6 +523,31 @@ public static class OrderEndpoints
         }
 
         var splitResult = order.SplitEvenly(parts);
+        return splitResult.IsFailure
+            ? splitResult.Error.ToProblem()
+            : Results.Ok(splitResult.Value.Select(m => m.ToDto()).ToArray());
+    }
+
+    /// <summary>
+    /// Previews a bill split proportionally by covers per group (ORD-17) —
+    /// never mutates order state, the same as <c>PreviewSplitAsync</c>.
+    /// <paramref name="covers"/> binds from repeated query values
+    /// (<c>?covers=2&amp;covers=3</c>), so — like the even split — this
+    /// stays a <c>GET</c> rather than needing a structured body.
+    /// </summary>
+    private static async Task<IResult> PreviewSplitByCoverAsync(
+        Guid orderId,
+        int[] covers,
+        OrderingDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
+        if (order is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        var splitResult = order.SplitByCover(covers);
         return splitResult.IsFailure
             ? splitResult.Error.ToProblem()
             : Results.Ok(splitResult.Value.Select(m => m.ToDto()).ToArray());
