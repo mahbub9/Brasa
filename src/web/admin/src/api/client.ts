@@ -7,6 +7,7 @@ import type {
   UpdateMenuCategoryVisibilityRequest,
   UpdateMenuItemAvailabilityRequest,
   UpdateMenuItemPriceRequest,
+  UpdateMenuItemTakeawayPriceRequest,
 } from './types';
 
 // http://localhost:5216 is the "http" launch profile in
@@ -86,6 +87,9 @@ export const api = {
 
   setItemPrice: (itemId: string, body: UpdateMenuItemPriceRequest) =>
     put<MenuItemDto>(`/menu/items/${itemId}/price`, body),
+
+  setItemTakeawayPrice: (itemId: string, body: UpdateMenuItemTakeawayPriceRequest) =>
+    put<MenuItemDto>(`/menu/items/${itemId}/takeaway-price`, body),
 
   setCategoryVisibility: (categoryId: string, body: UpdateMenuCategoryVisibilityRequest) =>
     put(`/menu/categories/${categoryId}/visibility`, body),

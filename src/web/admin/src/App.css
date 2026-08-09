@@ -269,6 +269,21 @@
   border-radius: 6px;
 }
 
+.menu-manager-item-takeaway-price {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.menu-manager-item-takeaway-price-add {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--brasa);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
 .menu-manager-item-delete-confirm {
   display: flex;
   align-items: center;

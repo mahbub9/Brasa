@@ -70,6 +70,18 @@ public sealed class MenuItem : Entity, ISoftDeletable
     public VatRate VatRate { get; private set; }
 
     /// <summary>
+    /// A separate price for takeaway/counter-sale orders (CAT-06), used
+    /// instead of <see cref="Price"/> when the order is takeaway
+    /// (<c>Order.IsTakeaway</c>) — e.g. no table service to price in. Null is
+    /// a data-entry gap in the same sense as <see cref="Course"/>: it means
+    /// "charge the same as dine-in," not "free." VAT rate is unaffected —
+    /// this is a price difference only; <see cref="VatRate"/>'s own
+    /// per-channel resolution is <c>TaxRule</c> (CAT-07/08), a separate,
+    /// not-yet-built concern.
+    /// </summary>
+    public Money? TakeawayPrice { get; private set; }
+
+    /// <summary>
     /// True for alcoholic drinks, which sit in a different VAT band from food in
     /// Portugal and must be itemised separately on the invoice.
     /// </summary>
@@ -123,6 +135,21 @@ public sealed class MenuItem : Entity, ISoftDeletable
         }
 
         Price = newPrice;
+    }
+
+    /// <summary>
+    /// Sets or clears a separate takeaway price (CAT-06). Null falls back to
+    /// <see cref="Price"/> for takeaway orders too.
+    /// </summary>
+    public Result SetTakeawayPrice(Money? price)
+    {
+        if (price is { IsNegative: true })
+        {
+            return Result.Failure(Error.Validation("catalog.invalid_price", "Price must not be negative."));
+        }
+
+        TakeawayPrice = price;
+        return Result.Success();
     }
 
     /// <summary>Sets or clears which course this item is served at (CAT-14).</summary>

@@ -35,6 +35,9 @@ export const pt = {
     markAvailable: 'Disponibilizar',
     markUnavailable: 'Indisponibilizar',
     editPrice: 'Editar preço',
+    takeaway: 'Levantamento',
+    sameAsDineIn: 'Igual ao consumo local',
+    addTakeawayPrice: 'Adicionar preço de levantamento',
     deleteItem: 'Eliminar',
     deleteConfirm: 'Confirmar eliminação?',
     deleted: 'Eliminado.',
@@ -47,6 +50,7 @@ export const pt = {
   common: {
     save: 'Guardar',
     cancel: 'Cancelar',
+    clear: 'Limpar',
     yes: 'Sim',
     no: 'Não',
   },

@@ -261,7 +261,7 @@ export default function App() {
           <Receipt result={closeResult} onNewTable={handleNewTable} />
         ) : order ? (
           <div className="ordering-layout">
-            <MenuGrid categories={menu ?? []} onSelectItem={handleSelectItem} disabled={busy} />
+            <MenuGrid categories={menu ?? []} onSelectItem={handleSelectItem} disabled={busy} isTakeaway={order.isTakeaway} />
             <OrderSummary
               order={order}
               splitParts={splitParts}

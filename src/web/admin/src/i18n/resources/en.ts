@@ -38,6 +38,9 @@ export const en = {
     markAvailable: 'Mark available',
     markUnavailable: 'Mark unavailable',
     editPrice: 'Edit price',
+    takeaway: 'Takeaway',
+    sameAsDineIn: 'Same as dine-in',
+    addTakeawayPrice: 'Add takeaway price',
     deleteItem: 'Delete',
     deleteConfirm: 'Confirm delete?',
     deleted: 'Deleted.',
@@ -50,6 +53,7 @@ export const en = {
   common: {
     save: 'Save',
     cancel: 'Cancel',
+    clear: 'Clear',
     yes: 'Yes',
     no: 'No',
   },

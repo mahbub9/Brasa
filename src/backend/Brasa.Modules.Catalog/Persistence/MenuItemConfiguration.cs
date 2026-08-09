@@ -44,6 +44,7 @@ internal sealed class MenuItemConfiguration : IEntityTypeConfiguration<MenuItem>
             .IsRequired();
 
         builder.MapMoney(i => i.Price, "price");
+        builder.MapOptionalMoney(i => i.TakeawayPrice, "takeaway_price");
 
         // VatRate is a single-value wrapper around a fraction; a full conversion
         // table arrives with the I1 TaxRule model (see VatRate's remarks).

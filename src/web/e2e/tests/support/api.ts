@@ -119,6 +119,14 @@ export function updateMenuItemPriceResponse(request: APIRequestContext, itemId: 
   });
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-06). Null clears it. */
+export function updateMenuItemTakeawayPriceResponse(request: APIRequestContext, itemId: string, price: number | null) {
+  return request.put(`${apiBaseUrl}/menu/items/${itemId}/takeaway-price`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { price },
+  });
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (CAT-01). */
 export function updateMenuCategoryVisibilityResponse(request: APIRequestContext, categoryId: string, isVisible: boolean) {
   return request.put(`${apiBaseUrl}/menu/categories/${categoryId}/visibility`, {

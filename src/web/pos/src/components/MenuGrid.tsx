@@ -6,9 +6,11 @@ interface MenuGridProps {
   categories: MenuCategoryDto[];
   onSelectItem: (item: MenuItemDto) => void;
   disabled: boolean;
+  /** Whether the current order is takeaway (CAT-06) — picks `takeawayPrice` over `price` when set. */
+  isTakeaway: boolean;
 }
 
-export function MenuGrid({ categories, onSelectItem, disabled }: MenuGridProps) {
+export function MenuGrid({ categories, onSelectItem, disabled, isTakeaway }: MenuGridProps) {
   const { t } = useTranslation();
 
   if (categories.length === 0) {
@@ -31,7 +33,9 @@ export function MenuGrid({ categories, onSelectItem, disabled }: MenuGridProps) 
               >
                 <span className="menu-item-name">{item.name}</span>
                 {item.description && <span className="menu-item-description">{item.description}</span>}
-                <span className="menu-item-price">{formatMoney(item.price)}</span>
+                <span className="menu-item-price">
+                  {formatMoney(isTakeaway && item.takeawayPrice ? item.takeawayPrice : item.price)}
+                </span>
                 {item.allergens.length > 0 && (
                   <span className="menu-item-allergens">
                     {t('menu.containsAllergens')}:{' '}

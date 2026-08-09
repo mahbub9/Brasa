@@ -383,7 +383,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | CAT-03 | Modifier groups (required / optional, min / max) | ✅ `ModifierGroup` belongs to one `MenuItem` (not yet shared across items — see its doc comment); server enforces min/max on `POST /orders/{id}/lines`, not just the UI |
 | CAT-04 | Modifiers with price deltas | ✅ `Modifier.PriceDelta` (can be negative — e.g. "Meia dose"); snapshotted onto `OrderLineModifier` at the time of sale, folded into `LineTotal` and the fiscal document's gross total |
 | CAT-05 | Price lists per site | ⬜ |
-| CAT-06 | Channel pricing — dine-in / takeaway / delivery | ⬜ |
+| CAT-06 | Channel pricing — dine-in / takeaway / delivery | 🚧 Dine-in/takeaway ✅ — `MenuItem.TakeawayPrice` (nullable, "same as dine-in" when unset), `PUT /menu/items/{id}/takeaway-price`, `AddLineAsync` picks it over `Price` when `Order.IsTakeaway`. VAT rate is unaffected — that's `TaxRule` (CAT-07/08), a separate concern. Delivery not built: there is no delivery order path in this codebase at all yet, so there's nothing for a delivery price to attach to. `pos`'s menu button shows the price for the order actually being rung up; `admin` gets an inline add/edit/clear editor next to the dine-in price. **Verified live**: `menu-item-takeaway-price.spec.ts` |
 | CAT-07 | `TaxRule` — item × channel × region, effective-dated | ⬜ `VatRate` ships as the explicit I0 placeholder — see its doc comment |
 | CAT-08 | VAT resolution service with date-aware lookup | ⬜ |
 | CAT-09 | Alcohol flag driving the 23% band separation | ✅ `MenuItem.IsAlcoholic` |

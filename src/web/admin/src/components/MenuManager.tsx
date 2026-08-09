@@ -132,6 +132,8 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
   const [busy, setBusy] = useState(false);
   const [editingPrice, setEditingPrice] = useState(false);
   const [priceDraft, setPriceDraft] = useState(String(item.price.amount));
+  const [editingTakeawayPrice, setEditingTakeawayPrice] = useState(false);
+  const [takeawayPriceDraft, setTakeawayPriceDraft] = useState(String(item.takeawayPrice?.amount ?? ''));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function run(action: () => Promise<void>) {
@@ -161,6 +163,26 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
     void run(async () => {
       await api.setItemPrice(item.id, { price: parsed });
       setEditingPrice(false);
+      onReload();
+    });
+  }
+
+  function saveTakeawayPrice() {
+    const trimmed = takeawayPriceDraft.trim();
+    const parsed = trimmed === '' ? null : Number(trimmed);
+    if (parsed !== null && Number.isNaN(parsed)) {
+      return;
+    }
+    void run(async () => {
+      await api.setItemTakeawayPrice(item.id, { price: parsed });
+      setEditingTakeawayPrice(false);
+      onReload();
+    });
+  }
+
+  function clearTakeawayPrice() {
+    void run(async () => {
+      await api.setItemTakeawayPrice(item.id, { price: null });
       onReload();
     });
   }
@@ -211,6 +233,69 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
             onClick={() => setEditingPrice(true)}
           >
             {formatMoney(item.price)}
+          </button>
+        )}
+
+        {editingTakeawayPrice ? (
+          <span className="menu-manager-item-price-edit">
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              placeholder={t('menu.sameAsDineIn')}
+              value={takeawayPriceDraft}
+              data-testid={`takeaway-price-input-${item.name}`}
+              disabled={busy}
+              onChange={(e) => setTakeawayPriceDraft(e.target.value)}
+            />
+            <button
+              type="button"
+              data-testid={`takeaway-price-save-${item.name}`}
+              disabled={busy}
+              onClick={saveTakeawayPrice}
+            >
+              {t('common.save')}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setEditingTakeawayPrice(false);
+                setTakeawayPriceDraft(String(item.takeawayPrice?.amount ?? ''));
+              }}
+            >
+              {t('common.cancel')}
+            </button>
+          </span>
+        ) : item.takeawayPrice ? (
+          <span className="menu-manager-item-takeaway-price">
+            <button
+              type="button"
+              className="menu-manager-item-price"
+              data-testid={`takeaway-price-edit-${item.name}`}
+              disabled={busy}
+              onClick={() => setEditingTakeawayPrice(true)}
+            >
+              {t('menu.takeaway')}: {formatMoney(item.takeawayPrice)}
+            </button>
+            <button
+              type="button"
+              data-testid={`takeaway-price-clear-${item.name}`}
+              disabled={busy}
+              onClick={clearTakeawayPrice}
+            >
+              {t('common.clear')}
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="menu-manager-item-takeaway-price-add"
+            data-testid={`takeaway-price-add-${item.name}`}
+            disabled={busy}
+            onClick={() => setEditingTakeawayPrice(true)}
+          >
+            + {t('menu.addTakeawayPrice')}
           </button>
         )}
 

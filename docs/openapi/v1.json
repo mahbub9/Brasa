@@ -225,6 +225,41 @@
         }
       }
     },
+    "/api/v1/menu/items/{itemId}/takeaway-price": {
+      "put": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "Sets or clears a menu item's separate takeaway price (CAT-06). Null falls back to the dine-in price.",
+        "operationId": "UpdateMenuItemTakeawayPrice",
+        "parameters": [
+          {
+            "name": "itemId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMenuItemTakeawayPriceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/menu/items/{itemId}/course": {
       "put": {
         "tags": [
@@ -1376,6 +1411,23 @@
               "null",
               "string"
             ]
+          }
+        }
+      },
+      "UpdateMenuItemTakeawayPriceRequest": {
+        "required": [
+          "price"
+        ],
+        "type": "object",
+        "properties": {
+          "price": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "null",
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },

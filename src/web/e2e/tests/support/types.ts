@@ -27,6 +27,7 @@ export interface MenuItemDto {
   name: string;
   description: string | null;
   price: MoneyDto;
+  takeawayPrice: MoneyDto | null;
   vatRatePercent: number;
   isAlcoholic: boolean;
   course: string | null;

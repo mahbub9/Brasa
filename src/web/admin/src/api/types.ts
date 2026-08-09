@@ -13,6 +13,7 @@ export interface MenuItemDto {
   name: string;
   description: string | null;
   price: MoneyDto;
+  takeawayPrice: MoneyDto | null;
   vatRatePercent: number;
   isAlcoholic: boolean;
   isAvailable: boolean;
@@ -40,6 +41,10 @@ export interface UpdateMenuItemAvailabilityRequest {
 
 export interface UpdateMenuItemPriceRequest {
   price: number;
+}
+
+export interface UpdateMenuItemTakeawayPriceRequest {
+  price: number | null;
 }
 
 export interface UpdateMenuCategoryVisibilityRequest {

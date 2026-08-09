@@ -113,6 +113,36 @@ public static class ModelBuilderExtensions
     }
 
     /// <summary>
+    /// Same as <see cref="MapMoney{TEntity}"/>, for a <see cref="Money"/> that
+    /// may be genuinely absent (not just zero) — e.g. <c>MenuItem.TakeawayPrice</c>
+    /// (CAT-06), where "no separate takeaway price set" and "free" are different
+    /// things. Both columns are nullable together; there is no state where one
+    /// is set and the other isn't.
+    /// </summary>
+    public static ComplexPropertyBuilder<Money> MapOptionalMoney<TEntity>(
+        this EntityTypeBuilder<TEntity> builder,
+        Expression<Func<TEntity, Money?>> property,
+        string columnPrefix)
+        where TEntity : class
+    {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        var complex = builder.ComplexProperty(property);
+        complex.IsRequired(false);
+
+        complex.Property(m => m.MinorUnits)
+            .HasColumnName($"{columnPrefix}_minor_units")
+            .HasColumnType("bigint");
+
+        complex.Property(m => m.Currency)
+            .HasColumnName($"{columnPrefix}_currency")
+            .HasConversion<string>()
+            .HasMaxLength(3);
+
+        return complex;
+    }
+
+    /// <summary>
     /// Applies the shared column conventions for <see cref="Entity"/>: primary
     /// key, tenant index, and audit columns.
     /// </summary>

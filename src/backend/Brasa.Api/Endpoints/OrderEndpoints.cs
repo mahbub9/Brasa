@@ -330,9 +330,12 @@ public static class OrderEndpoints
 
         // The line snapshots price, VAT rate and modifiers now — see
         // docs/architecture/module-boundaries.md on why that is correctness,
-        // not denormalisation.
+        // not denormalisation. A takeaway order uses the item's separate
+        // takeaway price when one is set (CAT-06) — no table service to
+        // cover — falling back to the dine-in price otherwise.
+        var unitPrice = order.IsTakeaway ? menuItem.TakeawayPrice ?? menuItem.Price : menuItem.Price;
         var addResult = order.AddLine(
-            menuItem.Id, menuItem.Name, menuItem.Price, menuItem.VatRate.Fraction, request.Quantity, modifiersResult.Value);
+            menuItem.Id, menuItem.Name, unitPrice, menuItem.VatRate.Fraction, request.Quantity, modifiersResult.Value);
         if (addResult.IsFailure)
         {
             return addResult.Error.ToProblem();

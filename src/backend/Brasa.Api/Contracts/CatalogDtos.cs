@@ -24,6 +24,7 @@ public sealed record MenuItemDto(
     string Name,
     string? Description,
     MoneyDto Price,
+    MoneyDto? TakeawayPrice,
     decimal VatRatePercent,
     bool IsAlcoholic,
     bool IsAvailable,
@@ -77,6 +78,15 @@ public sealed record UpdateMenuItemStationRequest(string? Station);
 /// </summary>
 public sealed record UpdateMenuItemPriceRequest(decimal Price);
 
+/// <summary>
+/// Request body to set or clear a menu item's separate takeaway price
+/// (CAT-06), used instead of <see cref="MenuItemDto.Price"/> for takeaway
+/// orders. Same decimal-major-units convention as
+/// <see cref="UpdateMenuItemPriceRequest"/>; null clears it back to "same as
+/// dine-in."
+/// </summary>
+public sealed record UpdateMenuItemTakeawayPriceRequest(decimal? Price);
+
 /// <summary>Request body to hide a menu category from <c>GET /menu</c>, or show it again (CAT-01).</summary>
 public sealed record UpdateMenuCategoryVisibilityRequest(bool IsVisible);
 
@@ -116,6 +126,7 @@ public static class CatalogDtoMappings
         item.Name,
         item.Description,
         item.Price.ToDto(),
+        item.TakeawayPrice?.ToDto(),
         item.VatRate.Fraction,
         item.IsAlcoholic,
         item.IsAvailable,

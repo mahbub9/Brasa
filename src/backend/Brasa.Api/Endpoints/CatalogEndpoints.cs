@@ -52,6 +52,10 @@ public static class CatalogEndpoints
             .WithName("UpdateMenuItemPrice")
             .WithSummary("Changes a menu item's price for future orders. Past order lines keep their own snapshot.");
 
+        group.MapPut("/menu/items/{itemId:guid}/takeaway-price", UpdateMenuItemTakeawayPriceAsync)
+            .WithName("UpdateMenuItemTakeawayPrice")
+            .WithSummary("Sets or clears a menu item's separate takeaway price (CAT-06). Null falls back to the dine-in price.");
+
         group.MapPut("/menu/items/{itemId:guid}/course", UpdateMenuItemCourseAsync)
             .WithName("UpdateMenuItemCourse")
             .WithSummary("Sets or clears which course a menu item is served at (CAT-14).");
@@ -264,6 +268,46 @@ public static class CatalogEndpoints
         catch (ArgumentException)
         {
             return Error.Validation("catalog.invalid_price", "Price must not be negative.").ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(item.ToDto());
+    }
+
+    /// <summary>
+    /// Sets or clears a menu item's separate takeaway price (CAT-06) — a
+    /// dine-in item is often priced differently with no table service to
+    /// cover. VAT rate is unaffected: this only changes which
+    /// <see cref="Money"/> <c>AddLineAsync</c> snapshots onto the line, per
+    /// <c>Order.IsTakeaway</c>, not the rate charged on it — that's a
+    /// separate, not-yet-built <c>TaxRule</c> (CAT-07/08) concern. Delivery
+    /// pricing (the third channel this row's own title names) isn't built
+    /// either: there is no delivery order path in this codebase yet at all,
+    /// so there is nothing for a delivery price to attach to.
+    /// </summary>
+    private static async Task<IResult> UpdateMenuItemTakeawayPriceAsync(
+        Guid itemId,
+        UpdateMenuItemTakeawayPriceRequest request,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        var price = request.Price is null ? (Money?)null : Money.FromDecimal(request.Price.Value);
+        var result = item.SetTakeawayPrice(price);
+        if (result.IsFailure)
+        {
+            return result.Error.ToProblem();
         }
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

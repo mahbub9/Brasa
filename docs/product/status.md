@@ -687,6 +687,34 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > with the right code; and the stepper in a real browser increases/
 > decreases the line and disables "−" at 1.
 
+> **Update (channel pricing — dine-in/takeaway, CAT-06):** `MenuItem`
+> gets an optional `TakeawayPrice` (`MapOptionalMoney`, a new sibling to
+> `MapMoney` for a money value that's genuinely absent, not zero) — null
+> means "same as dine-in," not "free," the same convention as `Course`/
+> `Station`. `PUT /menu/items/{id}/takeaway-price` sets or clears it;
+> `AddLineAsync` picks `TakeawayPrice ?? Price` when `Order.IsTakeaway`,
+> `Price` otherwise, so a line already rung up is unaffected by a later
+> change either way — the same snapshot guarantee `Reprice` already gives
+> dine-in orders. Deliberately doesn't touch VAT: this row's own title
+> names "channel pricing," not "channel tax," and per-channel VAT
+> resolution is `TaxRule` (CAT-07/08), a separate, not-yet-built concern
+> — `VatRateFraction` is copied onto the line unchanged regardless of
+> which price won. Delivery, the third channel this row names, isn't
+> built either: there is no delivery order path anywhere in this
+> codebase yet, so there is nothing for a delivery price to attach to —
+> an honest gap, not an oversight, the same shape as CAT-17's "CSV only"
+> caveat for Excel. Shipped with real UI on both sides for once, not
+> API-only: `pos`'s menu button shows whichever price the order actually
+> being rung up would charge (dine-in vs. takeaway), and `admin` gets an
+> inline add/edit/clear editor next to the existing dine-in price field.
+> **Verified live**: setting/clearing round-trips through `GET /menu`; a
+> takeaway order rings up the takeaway price while a dine-in order for
+> the exact same item still charges the dine-in one; negative price and
+> unknown item both rejected with the right code; the `pos` menu button
+> shows "5,00 €" on a dine-in order and "4,00 €" on a takeaway order for
+> the same item; and the `admin` editor's add/edit/clear round-trips to
+> the real API, not just local state.
+
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
 
