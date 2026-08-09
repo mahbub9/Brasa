@@ -194,7 +194,7 @@ decision record and what QA-04/06/07/08 are still blocked on.
 
 | Project | State | Notes |
 |---|---|---|
-| `Brasa.Shared.Tests` | ✅ | `Primitives/MoneyTests.cs` — 17 tests, exhaustive allocation over ~12,000 combinations. `ErrorCodeRegistryTests.cs` (API-04) — text-scans every `Error.*(...)` call site under `src/` against `docs/architecture/error-codes.md`, no Docker needed |
+| `Brasa.Shared.Tests` | ✅ | `Primitives/MoneyTests.cs` — 17 tests, exhaustive allocation over ~12,000 combinations. `ErrorCodeRegistryTests.cs` (API-04) — text-scans every `Error.*(...)` call site under `src/` against `docs/architecture/error-codes.md`, no Docker needed. `Time/PortugueseTimeZoneTests.cs` — 14 tests: IANA ids resolve on this runtime, Azores stays 1h behind the mainland year-round, the rollover-hour boundary is inclusive, and the same instant can land on two different business days in different regions |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 tests: `FiscalDocumentLineTests` (gross→net VAT derivation, exhaustive per rate — the regression test for the I0 VAT bug), `MockFiscalProviderTests` (per-tenant sequential numbering, mock markers, mixed-rate reconciliation) |
 | `Brasa.Api.IntegrationTests` | ✅ | `TenantIsolationReflectionTests` (DAT-11 — every module's built EF model, no DB) + `TenantIsolationIntegrationTests` (QA-09/10 — real Testcontainers Postgres, queries as `brasa_app` via raw SQL so a disabled RLS policy can't hide behind the EF convenience filter). `Mvc.Testing` referenced, not yet used — no HTTP-level integration test exists yet |
 

@@ -60,7 +60,11 @@ Condensed:
 
 - ✅ **Built, tested, and proven live** (not just unit-tested — see §3a):
   `Money` (17 tests), `Result`/`Error` (18th test: the error-code registry,
-  API-04 — see [error-codes.md](../architecture/error-codes.md)), tenancy +
+  API-04 — see [error-codes.md](../architecture/error-codes.md)),
+  `PortugueseTimeZone` (14 tests — IANA ids resolve on this runtime, Azores
+  stays 1h behind the mainland year-round, the same instant can land on two
+  different business days in different regions, the exact scenario the
+  type's own doc comment warns about), tenancy +
   **real RLS** (DAT-01…06),
   `Catalog` (categories/items, seeded, soft delete — CAT-18, modifier groups
   — CAT-03/04, description + declared allergens — CAT-02, a fixed EU-wide

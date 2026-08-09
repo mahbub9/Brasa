@@ -27,7 +27,7 @@
 | `Brasa.Shared` — `Money` | ✅ | Integer cents, allocation-based splitting, 17 tests passing |
 | `Brasa.Shared` — `Result`/`Error` | ✅ | Expected failures as values |
 | `Brasa.Shared` — tenancy | ✅ | `ITenantContext`, resolve-once-per-scope `TenantContext` |
-| `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation |
+| `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation. `PortugueseTimeZone` — 14 tests: IANA ids actually resolve on this runtime, Azores is 1h behind the mainland year-round, the rollover-hour boundary is inclusive, and the same UTC instant can land on two different business days in different regions (the exact scenario the type's own doc comment warns about) |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
 | `Brasa.Shared` — outbox contracts | ✅ | Types defined; **no dispatcher implementation yet** |
 | `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete, `/items/{id}/details` — CAT-02, `/items/import` — CAT-17, `ETag`/`If-None-Match` caching — API-10), `/floor`, `/orders` (+`GET` search/history — ORD-22, cursor-paginated via `X-Next-Cursor` — API-09, `/takeaway` — ORD-20, `/lines`, `/lines/{id}/notes` — ORD-06, `/lines/{id}/transfer` — ORD-13, `/merge` — ORD-14, `/split`, `/split/by-item` — ORD-16, `/split/by-cover` — ORD-17, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/client-requirements` (API-07), `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, `X-Brasa-Client` parsing (API-06), Brotli/gzip response compression incl. error bodies (API-11), CORS for web clients (`Cors:AllowedOrigins`, `ETag`/`X-Next-Cursor` exposed for browser reads) |
@@ -65,7 +65,7 @@
 
 | Suite | State | Notes |
 |---|---|---|
-| `Brasa.Shared.Tests` | ✅ | 18 passing, incl. exhaustive allocation check and the error-code registry test (API-04) |
+| `Brasa.Shared.Tests` | ✅ | 32 passing, incl. exhaustive allocation check, the error-code registry test (API-04), and `PortugueseTimeZoneTests` (previously zero coverage on code CLAUDE.md itself flags as easy to get wrong) |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 13 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused (the automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)) — plus `CsvParserTests` (CAT-17, no DB): quoting, escaped quotes, embedded newlines, CRLF/LF, blank lines |
 | E2E (Playwright) | ✅ | `src/web/e2e` — 55 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). That same repeated-run discipline is what caught the API-10 JSON-casing regression below before it reached a commit, and shaped the API-09 pagination test itself: a first version asserting exact page sizes flaked under concurrent specs sharing the dev database, fixed by walking the full cursor chain and asserting only what must hold regardless of noise from other tests. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), menu bulk CSV import (CAT-17), menu `ETag`/304 caching (API-10), idempotency replay — a retried close never double-issues a fiscal document (QA-11), client version negotiation (API-06/07), order-history cursor pagination (API-09), response compression incl. error bodies (API-11), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
@@ -390,6 +390,24 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > 2 invalid rows came back `{"created":2,"errors":[...]}` with the exact bad
 > value named in each row's message, and the 2 valid rows were confirmed on
 > the real `GET /menu` response afterward, not just in the import receipt.
+
+> **Update (`PortugueseTimeZone` test coverage):** `Brasa.Shared.Time`'s
+> region/business-day logic had zero tests despite CLAUDE.md itself flagging
+> it as easy to get wrong ("the Azores are an hour behind the mainland,
+> which affects daily close and SAF-T period boundaries"). `PortugueseTimeZoneTests`
+> (14 tests) closes that gap: every region's IANA id actually resolves via
+> `TimeZoneInfo.FindSystemTimeZoneById` on this runtime (the kind of thing
+> that fails at first use in a new environment, not at compile time, if the
+> OS/ICU data disagrees), Azores stays exactly one hour behind the mainland
+> year-round (both observe the same EU DST transitions, so the differential
+> never moves), the rollover hour itself belongs to the new business day
+> (inclusive boundary), a sale just after midnight rolls back across a
+> month boundary correctly, and — the scenario the type's own doc comment
+> warns about — the same UTC instant can land on two different business
+> days in Continental vs. Azores. One of these tests initially had its own
+> UTC-to-local arithmetic wrong in the setup (an off-by-one day), not a bug
+> in `PortugueseTimeZone` itself — caught by the test actually failing on
+> first run, not assumed passing.
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
