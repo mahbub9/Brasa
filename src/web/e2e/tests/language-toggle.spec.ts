@@ -11,7 +11,7 @@ test.describe('language toggle', () => {
   test('defaults to Portuguese with no cookie set', async ({ page, context }) => {
     await page.goto('/');
 
-    await expect(page.getByRole('heading', { name: 'Abrir mesa' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
     await expect(page.getByTestId('lang-pt')).toHaveAttribute('aria-pressed', 'true');
     await expect(page.getByTestId('lang-en')).toHaveAttribute('aria-pressed', 'false');
 
@@ -27,7 +27,7 @@ test.describe('language toggle', () => {
 
     await page.getByTestId('lang-en').click();
 
-    await expect(page.getByRole('heading', { name: 'Open a table' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Choose a table' })).toBeVisible();
     await expect(page.getByTestId('lang-en')).toHaveAttribute('aria-pressed', 'true');
 
     const cookiesAfterToggle = await context.cookies();
@@ -42,11 +42,11 @@ test.describe('language toggle', () => {
 
     await page.reload();
 
-    await expect(page.getByRole('heading', { name: 'Open a table' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Choose a table' })).toBeVisible();
     await expect(page.getByTestId('lang-en')).toHaveAttribute('aria-pressed', 'true');
 
     await page.getByTestId('lang-pt').click();
-    await expect(page.getByRole('heading', { name: 'Abrir mesa' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
 
     const cookiesAfterSwitchBack = await context.cookies();
     expect(cookiesAfterSwitchBack.find((c) => c.name === 'brasa.lang')?.value).toBe('pt');
@@ -55,15 +55,25 @@ test.describe('language toggle', () => {
   test('money keeps pt-PT formatting even when the UI language is English', async ({ page }) => {
     // A total must not change format when staff switch the interface to
     // English — see the comment on formatMoney in src/lib/money.ts. Proven
-    // here on a freshly opened (zero-total) order: "0,00 €" (comma decimal,
-    // trailing €), never "€0.00".
+    // on a real order total: "9,50 €" (comma decimal, trailing €), never
+    // "€9.50" — even though every button and label around it reads English.
     await page.goto('/');
     await page.getByTestId('lang-en').click();
-    await expect(page.getByRole('heading', { name: 'Open a table' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Choose a table' })).toBeVisible();
 
-    await page.getByLabel('Table').fill(`Money Format ${Date.now()}`);
-    await page.getByRole('button', { name: 'Open table' }).click();
+    const freeTable = page.locator('.floor-tables button:not([disabled])').first();
+    const tableLabel = await freeTable.locator('.floor-table-label').textContent();
+    await freeTable.click();
+    await page.getByTestId('confirm-open-table').click();
 
-    await expect(page.getByTestId('order-total')).toHaveText(/^0,00\s?€$/);
+    await page.getByRole('button', { name: 'Frango na Brasa' }).click();
+    await expect(page.getByTestId('order-total')).toHaveText(/^9,50\s?€$/);
+
+    // Cleanup: close and clear so the table returns to the free pool for
+    // other specs — see support/api.ts's file-level comment.
+    await page.getByTestId('close-order-button').click();
+    await expect(page.getByRole('heading', { name: 'Receipt issued' })).toBeVisible();
+    await page.getByRole('button', { name: 'Open another table' }).click();
+    await page.getByTestId(`table-${tableLabel}`).click();
   });
 });

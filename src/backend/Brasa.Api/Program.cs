@@ -7,6 +7,8 @@ using Brasa.Api.Tenancy;
 using Brasa.Fiscal.Mock;
 using Brasa.Modules.Catalog;
 using Brasa.Modules.Catalog.Persistence;
+using Brasa.Modules.Floor;
+using Brasa.Modules.Floor.Persistence;
 using Brasa.Modules.Ordering;
 using Brasa.Modules.Ordering.Persistence;
 using Brasa.Shared.Persistence;
@@ -52,6 +54,7 @@ builder.Services.AddMemoryCache();
 // ── Modules ──────────────────────────────────────────────────────────────────
 builder.Services.AddCatalogModule(connectionString);
 builder.Services.AddOrderingModule(connectionString);
+builder.Services.AddFloorModule(connectionString);
 
 // Fiscal.Portugal (the real, AT-certifiable engine) is I7 work — see
 // docs/architecture/decisions/0002-own-fiscal-engine.md. Until it exists, there
@@ -98,6 +101,7 @@ if (!app.Environment.IsProduction())
 {
     await MigrateAsync(migrationsConnectionString, CancellationToken.None).ConfigureAwait(false);
     await DevCatalogSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
+    await DevFloorSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
 }
 
 app.UseSerilogRequestLogging();
@@ -144,6 +148,7 @@ v1.MapGet("/ping", () => Results.Ok(new
 .WithSummary("Cheap reachability check used by the POS to decide whether the cloud is available.");
 
 v1.MapCatalogEndpoints();
+v1.MapFloorEndpoints();
 v1.MapOrderEndpoints();
 
 await app.RunAsync().ConfigureAwait(false);
@@ -179,6 +184,14 @@ static async Task MigrateAsync(string migrationsConnectionString, CancellationTo
     await using (var orderingDb = new OrderingDbContext(orderingOptions, tenantContext, tenantContextAccessor, clock))
     {
         await orderingDb.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    var floorOptions = new DbContextOptionsBuilder<FloorDbContext>()
+        .UseNpgsql(migrationsConnectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "floor"))
+        .Options;
+    await using (var floorDb = new FloorDbContext(floorOptions, tenantContext, tenantContextAccessor, clock))
+    {
+        await floorDb.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
     }
 }
 

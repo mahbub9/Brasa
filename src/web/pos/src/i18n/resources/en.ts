@@ -2,13 +2,20 @@ export const en = {
   app: {
     tagline: 'POS — I0 walking skeleton',
   },
-  openTable: {
-    title: 'Open a table',
-    tableLabel: 'Table',
-    tablePlaceholder: 'e.g. Table 12',
+  floor: {
+    title: 'Choose a table',
+    seats: '{{count}} seats',
     covers: 'Covers',
-    submit: 'Open table',
-    submitBusy: 'Opening…',
+    open: 'Open table',
+    opening: 'Opening…',
+    clear: 'Clear table',
+    empty: 'No tables configured.',
+    state: {
+      Free: 'Free',
+      Occupied: 'Occupied',
+      BillRequested: 'Bill requested',
+      Dirty: 'Needs clearing',
+    },
   },
   menu: {
     empty: 'No menu items available.',

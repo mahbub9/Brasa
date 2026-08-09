@@ -1,23 +1,25 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from './api/client';
-import type { CloseOrderResponse, MenuCategoryDto, MoneyDto, OrderDto } from './api/types';
+import type { CloseOrderResponse, MenuCategoryDto, MoneyDto, OrderDto, RoomDto } from './api/types';
 import { ErrorBanner } from './components/ErrorBanner';
 import i18n from './i18n/i18n';
 import { LanguageToggle } from './components/LanguageToggle';
 import { MenuGrid } from './components/MenuGrid';
-import { OpenTableForm } from './components/OpenTableForm';
 import { OrderSummary } from './components/OrderSummary';
 import { Receipt } from './components/Receipt';
+import { TablePicker } from './components/TablePicker';
 import './App.css';
 
 /**
- * The I0 walking-skeleton POS: open a table, ring up items from the live
- * menu, preview a split, close and see the fiscal document. One screen, one
- * tenant (DevTenantMiddleware), no auth — see docs/product/status.md.
+ * The walking-skeleton POS: pick a real table off the floor plan, ring up
+ * items from the live menu, preview a split, close and see the fiscal
+ * document. One screen, one tenant (DevTenantMiddleware), no auth — see
+ * docs/product/status.md.
  */
 export default function App() {
   const { t } = useTranslation();
+  const [floor, setFloor] = useState<RoomDto[] | null>(null);
   const [menu, setMenu] = useState<MenuCategoryDto[] | null>(null);
   const [order, setOrder] = useState<OrderDto | null>(null);
   const [closeResult, setCloseResult] = useState<CloseOrderResponse | null>(null);
@@ -28,13 +30,32 @@ export default function App() {
 
   useEffect(() => {
     api.getMenu().then(setMenu).catch((err) => setError(describeError(err)));
+    loadFloor();
   }, []);
 
-  async function handleOpenTable(tableLabel: string, coverCount: number) {
+  function loadFloor() {
+    api.getFloor().then(setFloor).catch((err) => setError(describeError(err)));
+  }
+
+  async function handleOpenTable(tableId: string, coverCount: number) {
     setBusy(true);
     setError(null);
     try {
-      setOrder(await api.openOrder({ tableLabel, coverCount }));
+      setOrder(await api.openOrder({ tableId, coverCount }));
+    } catch (err) {
+      setError(describeError(err));
+      loadFloor(); // someone else may have just occupied it — refresh state
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleClearTable(tableId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await api.clearTable(tableId);
+      loadFloor();
     } catch (err) {
       setError(describeError(err));
     } finally {
@@ -87,6 +108,7 @@ export default function App() {
     setCloseResult(null);
     setSplitAmounts(null);
     setSplitParts(2);
+    loadFloor();
   }
 
   return (
@@ -116,7 +138,12 @@ export default function App() {
             />
           </div>
         ) : (
-          <OpenTableForm onOpen={handleOpenTable} busy={busy} />
+          <TablePicker
+            rooms={floor ?? []}
+            busy={busy}
+            onOpenTable={handleOpenTable}
+            onClearTable={handleClearTable}
+          />
         )}
       </main>
     </div>

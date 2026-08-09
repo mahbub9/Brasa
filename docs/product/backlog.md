@@ -42,27 +42,29 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **DAT** | Persistence, tenancy, RLS | 9 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 4 | 18 | I0 (rest: I1) |
-| **FLR** | Floor plan & tables | 0 | 7 | I1 |
+| **FLR** | Floor plan & tables | 3 | 7 | I1 |
 | **ORD** | Ordering | 5 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
 | **FIS** | Fiscal engine | 3 | 24 | I0 (rest: I7) |
-| **WEB** | Web clients | 2 | 13 | I0 (rest: I1–I8) |
+| **WEB** | Web clients | 3 | 13 | I0 (rest: I1–I8) |
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
 | **QA** | Automated testing | 3 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **54** | **291** | |
+| | **Total** | **58** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 53 of 291 — I0's backend, the `pos` web shell (now with pt/en i18n), and a
-> first Playwright E2E harness are done and proven against a live API (details:
+> 58 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> harness) is done except deployment, and I1's opening slice — real rooms and
+> tables (FLR) replacing free-text table labels — is done and proven against
+> a live API (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -176,12 +178,12 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| FLR-01 | Rooms / areas (indoor, esplanada, bar) | ⬜ |
-| FLR-02 | Tables — number, seats, position, shape | ⬜ |
-| FLR-03 | Drag-and-drop floor plan editor | ⬜ |
-| FLR-04 | Table states (free, occupied, bill requested, dirty) | ⬜ |
+| FLR-01 | Rooms / areas (indoor, esplanada, bar) | ✅ `Room` — seeded (Salão, Esplanada), no editor UI yet |
+| FLR-02 | Tables — number, seats, position, shape | ✅ `Table` — position/shape stored for FLR-03 to use later; `pos` renders a static grid, not the coordinates |
+| FLR-03 | Drag-and-drop floor plan editor | ⬜ back-office feature (WEB-10), needs `admin` app |
+| FLR-04 | Table states (free, occupied, bill requested, dirty) | ✅ all four modelled; `Free ⇄ Occupied ⇄ Dirty ⇄ Free` wired end-to-end through `pos`, `BillRequested` has a domain transition (`RequestBill`) but no endpoint or UI yet |
 | FLR-05 | Table merge / split for large parties | ⬜ |
-| FLR-06 | Section assignment to waiters | ⬜ |
+| FLR-06 | Section assignment to waiters | ⬜ depends on IDN |
 | FLR-07 | Multi-floor support | ⬜ |
 
 ## ORD — Ordering
@@ -189,7 +191,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ID | Task | Status |
 |---|---|---|
 | ORD-01 | Order aggregate — lifecycle and state machine | ✅ `Open`/`Closed`; richer states (courses, kitchen status) are I2 |
-| ORD-02 | Open a table, set cover count | ✅ |
+| ORD-02 | Open a table, set cover count | ✅ opens against a real `Table` (FLR), not free text — see `Order.TableId` |
 | ORD-03 | Add / remove / edit order lines | 🚧 add only — remove/edit are I2 |
 | ORD-04 | Line snapshots — name, price, VAT rate at time of sale | ✅ |
 | ORD-05 | Apply modifiers to a line | ⬜ |
@@ -313,7 +315,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | WEB-02 | Shared `web/ui` component library | ⬜ |
 | WEB-03 | Shared `web/sdk` — OpenAPI-generated typed client | ⬜ replaces `pos`'s hand-written `src/api/` (I0 placeholder) |
 | WEB-04 | `pos` — Dexie local store and offline-first data layer | ⬜ I2, depends on SYN |
-| WEB-05 | `pos` — floor plan / table selection screen | ⬜ depends on FLR |
+| WEB-05 | `pos` — floor plan / table selection screen | ✅ `TablePicker` — static grid per room, colour-coded by state, tap Free to open / tap Dirty to clear. Not the drag-and-drop layout (FLR-03) |
 | WEB-06 | `pos` — menu browsing with modifiers and courses | ⬜ |
 | WEB-07 | `pos` — staff PIN login screen | ⬜ depends on IDN |
 | WEB-08 | `kds` shell — station view, bump, prep timers | ⬜ I4 |

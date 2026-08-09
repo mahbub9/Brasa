@@ -12,6 +12,7 @@ internal sealed class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.ToTable("orders");
         builder.ApplyEntityConventions();
 
+        builder.Property(o => o.TableId).IsRequired();
         builder.Property(o => o.TableLabel).HasMaxLength(100).IsRequired();
         builder.Property(o => o.CoverCount).IsRequired();
         builder.Property(o => o.Status).HasConversion<string>().HasMaxLength(20).IsRequired();

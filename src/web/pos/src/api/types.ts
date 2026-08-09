@@ -23,8 +23,29 @@ export interface MenuCategoryDto {
   items: MenuItemDto[];
 }
 
+export type TableState = 'Free' | 'Occupied' | 'BillRequested' | 'Dirty';
+export type TableShape = 'Round' | 'Square' | 'Rectangle';
+
+export interface TableDto {
+  id: string;
+  roomId: string;
+  label: string;
+  seats: number;
+  positionX: number;
+  positionY: number;
+  shape: TableShape;
+  state: TableState;
+}
+
+export interface RoomDto {
+  id: string;
+  name: string;
+  displayOrder: number;
+  tables: TableDto[];
+}
+
 export interface OpenOrderRequest {
-  tableLabel: string;
+  tableId: string;
   coverCount: number;
 }
 
@@ -44,6 +65,7 @@ export interface OrderLineDto {
 
 export interface OrderDto {
   id: string;
+  tableId: string;
   tableLabel: string;
   coverCount: number;
   status: 'Open' | 'Closed';

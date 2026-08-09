@@ -25,6 +25,7 @@
     <ProjectReference Include="..\Brasa.Modules.Identity\Brasa.Modules.Identity.csproj" />
     <ProjectReference Include="..\Brasa.Modules.Catalog\Brasa.Modules.Catalog.csproj" />
     <ProjectReference Include="..\Brasa.Modules.Ordering\Brasa.Modules.Ordering.csproj" />
+    <ProjectReference Include="..\Brasa.Modules.Floor\Brasa.Modules.Floor.csproj" />
     <ProjectReference Include="..\Brasa.Modules.Fiscal\Brasa.Modules.Fiscal.csproj" />
     <ProjectReference Include="..\Brasa.Modules.Payments\Brasa.Modules.Payments.csproj" />
     <ProjectReference Include="..\Brasa.Modules.Reporting\Brasa.Modules.Reporting.csproj" />

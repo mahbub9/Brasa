@@ -2,10 +2,11 @@ import { expect, test } from '@playwright/test';
 
 // QA-05 — the I0 smoke test everything else builds on (see
 // docs/development/e2e-testing.md). Drives the real rendered pos UI in a
-// real browser: open a table, add a mixed food+alcohol order, preview a
-// split, close, and check the receipt. This is deliberately the one spec
-// that does NOT use the API builders in support/api.ts — it exists to prove
-// the UI itself works, not just the API behind it.
+// real browser: pick a free table off the floor plan, add a mixed
+// food+alcohol order, preview a split, close, and check the receipt. This is
+// deliberately the one spec that does NOT use the API builders in
+// support/api.ts — it exists to prove the UI itself works, not just the API
+// behind it.
 //
 // Runs in the app's default language (Portuguese, docs/architecture/
 // decisions/0011-i18n.md) deliberately — that is what a real restaurant
@@ -17,16 +18,21 @@ import { expect, test } from '@playwright/test';
 // comparable to that record: 2x Frango na Brasa (13% VAT) + 2x Imperial
 // (23% VAT) = 22.60 EUR, split 3 ways = 7.54 / 7.53 / 7.53.
 
-test('open a table, ring up a mixed order, split it, close it, get a receipt', async ({ page }) => {
-  const tableLabel = `E2E Mesa ${Date.now()}`;
-
+test('pick a table, ring up a mixed order, split it, close it, get a receipt', async ({ page }) => {
   await page.goto('/');
 
-  await page.getByLabel('Mesa').fill(tableLabel);
-  await page.getByLabel('Pessoas').fill('3');
-  await page.getByRole('button', { name: 'Abrir mesa' }).click();
+  await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
 
-  await expect(page.getByRole('heading', { name: tableLabel })).toBeVisible();
+  // Never hardcode a specific table — the seeded floor plan is shared with
+  // other specs running in parallel. Any free (non-disabled) table works.
+  const freeTable = page.locator('.floor-tables button:not([disabled])').first();
+  const tableLabel = await freeTable.locator('.floor-table-label').textContent();
+  await freeTable.click();
+
+  await page.getByTestId('table-confirm').getByRole('spinbutton').fill('3');
+  await page.getByTestId('confirm-open-table').click();
+
+  await expect(page.getByRole('heading', { name: tableLabel ?? '' })).toBeVisible();
 
   const frango = page.getByRole('button', { name: 'Frango na Brasa' });
   const imperial = page.getByRole('button', { name: 'Imperial' });
@@ -66,5 +72,9 @@ test('open a table, ring up a mixed order, split it, close it, get a receipt', a
   expect(await page.getByTestId('receipt-gross').textContent()).toBe(orderTotalDuringService);
 
   await page.getByRole('button', { name: 'Abrir outra mesa' }).click();
-  await expect(page.getByRole('heading', { name: 'Abrir mesa' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
+
+  // Give the table back — see the file-level comment in support/api.ts on
+  // why an E2E table must always return to the free pool.
+  await page.getByTestId(`table-${tableLabel}`).click();
 });

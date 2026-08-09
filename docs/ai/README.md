@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 backend, POS web shell and a first Playwright E2E harness proven live end-to-end; only deployment (OPS-11) remains
+**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's opening slice (real rooms/tables — Floor module) proven live end-to-end
 
 ---
 
@@ -60,14 +60,17 @@ Condensed:
 
 - ✅ **Built, tested, and proven live** (not just unit-tested — see §3a):
   `Money` (17 tests), `Result`/`Error`, tenancy + **real RLS** (DAT-01…06),
-  `Catalog` (categories/items, seeded), `Ordering` (open/add-line/split/close),
-  `Fiscal` contract + `Fiscal.Mock`, API layer (versioning, ProblemDetails,
-  idempotency, CORS, the full order flow), the `pos` web shell (React 19 +
-  Vite + TS, one screen, WEB-01, pt-PT default / en toggle behind a
-  mobile-portable cookie seam — WEB-13, ADR 0011), a Playwright E2E harness
-  driving the real UI (`src/web/e2e`, QA-01/03/05), Docker Compose
-  (PostgreSQL 18 + Seq), full docs tree, CI (including an `e2e` job —
-  written, not yet run in CI).
+  `Catalog` (categories/items, seeded, soft delete — CAT-18),
+  `Ordering` (open against a real table/add-line/split/close),
+  `Floor` (rooms, tables, full `Free ⇄ Occupied ⇄ Dirty ⇄ Free` lifecycle —
+  FLR-01/02/04), `Fiscal` contract + `Fiscal.Mock`, API layer (versioning,
+  ProblemDetails, idempotency, CORS, the full order flow composing all four
+  modules), the `pos` web shell (React 19 + Vite + TS, table-picker → order →
+  receipt, WEB-01/05, pt-PT default / en toggle behind a mobile-portable
+  cookie seam — WEB-13, ADR 0011), a Playwright E2E harness driving the real
+  UI (`src/web/e2e`, QA-01/03/05, 9 tests green across 3 consecutive full
+  runs), Docker Compose (PostgreSQL 18 + Seq), full docs tree, CI (including
+  an `e2e` job — written, not yet run in CI).
 - 📁 **Empty projects (structure only, zero logic):** `Modules.Identity`,
   `Modules.Payments`, `Modules.Reporting`, `Fiscal.Portugal`.
 - 🚧 **Stub:** `SiteAgent` starts and stops; nothing else.
@@ -75,16 +78,18 @@ Condensed:
 
 **Delivery is incremental** — vertical slices, each ending in a runnable demo.
 **[../product/roadmap.md](../product/roadmap.md) says what to build next**;
-[../product/backlog.md](../product/backlog.md) holds the 290 tasks and their
+[../product/backlog.md](../product/backlog.md) holds the 291 tasks and their
 status. Reference IDs in commits: `feat(identity): terminal pairing (IDN-07)`,
 and update the status in the same commit.
 
-**Current increment: I0 — walking skeleton, week 1.** Backend, the `pos` web
-shell, and a first E2E harness are done and proven; **only deployment
-(OPS-11) remains** to close out I0.
+**Current increment: I0 is done except deployment (OPS-11).** I1 ("Menu and
+floor," see roadmap) has started — its floor-plan slice (FLR-01/02/04,
+WEB-05) is done and proven; the rest of I1 (modifiers, price lists, the
+`admin` back-office shell) is not.
 
-Backend I0 tasks — **done**: DAT-01/03/04/**05**/06/10 · API-01/03/05 ·
-CAT-01/02/07 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01/13 · QA-01/03/05.
+Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/10 · API-01/03/05 ·
+CAT-01/02/07/18 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01/05/13 ·
+QA-01/03/05 · FLR-01/02/04.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 
@@ -141,7 +146,8 @@ src/backend/
   Brasa.Shared            Shared kernel — depends on no module
   Brasa.Modules.Identity  Users, roles, staff PINs, terminal pairing
   Brasa.Modules.Catalog   Menu, modifiers, price lists, tax rules
-  Brasa.Modules.Ordering  Orders, tables, courses, splits, transfers
+  Brasa.Modules.Ordering  Orders, courses, splits, transfers
+  Brasa.Modules.Floor     Rooms, tables, table state
   Brasa.Modules.Fiscal    IFiscalProvider, document lifecycle, audit
   Brasa.Modules.Payments  Tenders, cash sessions, tips
   Brasa.Modules.Reporting Read models, X/Z reports, VAT summaries
@@ -220,6 +226,23 @@ there is actually met.
   even in English mode.** Not a missed i18n string — a total or a fiscal
   timestamp must not change format because staff switched their own
   interface language. See ADR 0011.
+- **`OpenOrderAsync`/`CloseOrderAsync` save two `DbContext`s sequentially, not
+  in one transaction.** Ordering saves first in both. That's deliberate: if
+  the second save (Floor) fails, "an order exists but the table's floor
+  state is stale" is recoverable; "a table stuck Occupied with no order
+  behind it" would not be. Don't "fix" this into a `TransactionScope` across
+  two Npgsql connections — read the comment at each call site first, and see
+  [module-boundaries.md](../architecture/module-boundaries.md) rule 5.
+- **`Order.TableId` is a bare `Guid`, not a navigation property, and
+  Ordering never queries `floor.tables`.** Same pattern as
+  `OrderLine.MenuItemId` — a cross-module reference is an opaque id an
+  endpoint resolves, never a join. `TableLabel` is the part that gets
+  snapshotted (for the receipt-history reason above); `TableId` deliberately
+  isn't.
+- **The seeded floor plan has only 8 tables, and the dev database is not
+  reset between E2E runs.** Every spec that opens a table (`src/web/e2e`)
+  must close the order and clear the table before finishing, or repeated
+  runs exhaust the free-table pool. See `tests/support/api.ts`.
 - **`Money.Format(culture)` is not called `ToString`.** Deliberate — it forces
   callers to name the culture, and keeps `ToString()` unambiguously invariant.
 - **`Fiscal.Mock` must never run in Production.** It produces structurally valid

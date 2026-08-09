@@ -25,6 +25,16 @@ line at the time the line is created**. That is not denormalisation for
 performance — it is correctness. A receipt must show what the item cost *when it
 was sold*, not what it costs today. The same applies to VAT rates.
 
+Not everything needs copying, though — only business facts that must survive
+the referenced row changing later. `Order.TableId` is a plain `Guid`
+reference to a Floor `Table`, resolved fresh by the API layer on every call,
+the same way `OrderLine.MenuItemId` is: Ordering stores the id, never a
+navigation property, and never queries `floor.tables` itself. The difference
+from the price/name case is that a table reference has no "value at the
+time" to preserve — `TableLabel` is what gets snapshotted, for exactly the
+receipt reason above, while `TableId` stays a live-ish pointer an endpoint
+can resolve when it needs current state (is this table still occupied?).
+
 ### 3. Cross-module communication is integration events
 
 The only sanctioned channel is
@@ -47,13 +57,24 @@ Deduplicate on `EventId`.
 An endpoint may call Ordering and then Fiscal. Ordering may not call Fiscal
 directly.
 
+**This means composing endpoints save more than one `DbContext`, and that is
+not one transaction.** `OrderEndpoints.OpenOrderAsync` saves Ordering, then
+Floor; `CloseOrderAsync` saves Ordering, then (best-effort) Floor. Order the
+saves so that if the second one fails, what's left is the more recoverable
+inconsistency — see the comments at each call site for the specific
+reasoning. Real cross-module atomicity is the outbox (rule 3), which is
+async by design; a synchronous composing endpoint that needs two writes to
+agree exactly, always, doesn't have a solution here yet. That is scoped work
+for I5+, not an oversight to "fix" by reaching for a distributed transaction.
+
 ## The modules
 
 | Module | Owns |
 |---|---|
 | `Identity` | Users, roles, staff PINs, terminal pairing |
 | `Catalog` | Menu, categories, modifiers, price lists, tax rules |
-| `Ordering` | Orders, tables, courses, splits, transfers |
+| `Ordering` | Orders, courses, splits, transfers |
+| `Floor` | Rooms, tables, table state (free / occupied / bill requested / dirty) |
 | `Fiscal` | `IFiscalProvider`, document lifecycle, series, audit |
 | `Payments` | Tenders, cash sessions, tips |
 | `Reporting` | Read models, X/Z reports, VAT summaries |

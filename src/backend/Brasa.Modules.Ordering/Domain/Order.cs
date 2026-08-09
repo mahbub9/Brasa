@@ -9,9 +9,18 @@ namespace Brasa.Modules.Ordering.Domain;
 /// </summary>
 /// <remarks>
 /// <para>
-/// <see cref="TableLabel"/> is free text in I0 because the floor-plan module
-/// (epic FLR) does not exist yet. It becomes a real <c>TableId</c> reference in
-/// I1 without changing anything about how a line is priced or a bill is split.
+/// <see cref="TableId"/> is a plain, opaque reference to a
+/// <c>Brasa.Modules.Floor.Domain.Table</c> — the same pattern
+/// <see cref="OrderLine.MenuItemId"/> uses for a Catalog item. Ordering never
+/// queries the Floor module directly; the API layer resolves the table,
+/// transitions its state, and passes its label down here to snapshot. See
+/// <c>docs/architecture/module-boundaries.md</c>.
+/// </para>
+/// <para>
+/// <see cref="TableLabel"/> is still stored as its own column, snapshotted at
+/// open time exactly like an order line's item name — if a table is ever
+/// relabelled, a past order keeps showing what it was called when it was
+/// opened.
 /// </para>
 /// <para>
 /// Basic input validation (empty strings, non-positive counts) throws, matching
@@ -31,8 +40,9 @@ public sealed class Order : Entity
         TableLabel = string.Empty;
     }
 
-    private Order(string tableLabel, int coverCount, DateTimeOffset openedAtUtc)
+    private Order(Guid tableId, string tableLabel, int coverCount, DateTimeOffset openedAtUtc)
     {
+        TableId = tableId;
         TableLabel = tableLabel;
         CoverCount = coverCount;
         OpenedAtUtc = openedAtUtc;
@@ -40,14 +50,20 @@ public sealed class Order : Entity
     }
 
     /// <summary>Opens a new order for a table.</summary>
-    /// <param name="tableLabel">Free-text table identifier, e.g. "Mesa 5".</param>
+    /// <param name="tableId">The Floor module table's id, already transitioned to occupied by the caller.</param>
+    /// <param name="tableLabel">The table's label at the moment it was opened, e.g. "Mesa 5".</param>
     /// <param name="coverCount">Number of guests. At least 1.</param>
     /// <param name="openedAtUtc">
     /// The current instant, from <see cref="Shared.Time.IClock"/> — never
     /// <c>DateTimeOffset.UtcNow</c> directly.
     /// </param>
-    public static Order Open(string tableLabel, int coverCount, DateTimeOffset openedAtUtc)
+    public static Order Open(Guid tableId, string tableLabel, int coverCount, DateTimeOffset openedAtUtc)
     {
+        if (tableId == Guid.Empty)
+        {
+            throw new ArgumentException("Table id must not be empty.", nameof(tableId));
+        }
+
         if (string.IsNullOrWhiteSpace(tableLabel))
         {
             throw new ArgumentException("Table label must not be empty.", nameof(tableLabel));
@@ -58,10 +74,13 @@ public sealed class Order : Entity
             throw new ArgumentOutOfRangeException(nameof(coverCount), coverCount, "Cover count must be at least 1.");
         }
 
-        return new Order(tableLabel, coverCount, openedAtUtc);
+        return new Order(tableId, tableLabel, coverCount, openedAtUtc);
     }
 
-    /// <summary>Free-text table identifier. See remarks — becomes a real reference in I1.</summary>
+    /// <summary>The Floor module table this order was opened against.</summary>
+    public Guid TableId { get; private set; }
+
+    /// <summary>The table's label at the moment it was opened. See remarks.</summary>
     public string TableLabel { get; private set; }
 
     /// <summary>Number of guests seated.</summary>

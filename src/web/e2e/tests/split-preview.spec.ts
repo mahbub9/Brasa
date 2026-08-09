@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { addLine, findMenuItem, getMenu, openOrder } from './support/api';
+import { addLine, closeOrderAndClearTable, findFreeTable, findMenuItem, getFloor, getMenu, openOrder } from './support/api';
 
 // QA-03 — exercises the deterministic test-data builders directly against
 // the API (Playwright's `request` fixture, no browser). Complements
@@ -13,8 +13,9 @@ test.describe('split preview — Money.Allocate invariant', () => {
   for (const parts of [1, 2, 3, 5, 7]) {
     test(`splitting into ${parts} share(s) always sums back to the total`, async ({ request }) => {
       const menu = findMenuItemFixtures(await getMenu(request));
+      const table = findFreeTable(await getFloor(request));
 
-      const order = await openOrder(request, `API Mesa ${Date.now()}-${parts}`, 2);
+      const order = await openOrder(request, table.id, 2);
       await addLine(request, order.id, menu.frango.id, 2);
       const updated = await addLine(request, order.id, menu.imperial.id, 2);
 
@@ -35,6 +36,11 @@ test.describe('split preview — Money.Allocate invariant', () => {
       // one cent.
       const amounts = shares.map((s) => s.amount);
       expect(Math.max(...amounts) - Math.min(...amounts)).toBeLessThanOrEqual(0.01 + 1e-9);
+
+      // Only 8 tables exist in the seeded floor plan and the dev database
+      // isn't reset between runs — give this one back or repeated runs
+      // eventually run out. See the comment in support/api.ts.
+      await closeOrderAndClearTable(request, order.id, table.id);
     });
   }
 });

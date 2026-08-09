@@ -3,8 +3,8 @@ using Brasa.Modules.Ordering.Domain;
 
 namespace Brasa.Api.Contracts;
 
-/// <summary>Request body to open a table.</summary>
-public sealed record OpenOrderRequest(string TableLabel, int CoverCount);
+/// <summary>Request body to open a table. <c>TableId</c> is a Floor module table id — see <c>GET /floor</c>.</summary>
+public sealed record OpenOrderRequest(Guid TableId, int CoverCount);
 
 /// <summary>Request body to ring up a menu item onto an open order.</summary>
 public sealed record AddLineRequest(Guid MenuItemId, int Quantity);
@@ -15,6 +15,7 @@ public sealed record OrderLineDto(Guid Id, Guid MenuItemId, string ItemName, Mon
 /// <summary>An order, as returned to clients.</summary>
 public sealed record OrderDto(
     Guid Id,
+    Guid TableId,
     string TableLabel,
     int CoverCount,
     string Status,
@@ -40,6 +41,7 @@ public static class OrderDtoMappings
     /// <summary>Converts an order and its lines to their wire representation.</summary>
     public static OrderDto ToDto(this Order order) => new(
         order.Id,
+        order.TableId,
         order.TableLabel,
         order.CoverCount,
         order.Status.ToString(),

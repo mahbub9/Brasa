@@ -5,6 +5,8 @@ import type {
   OpenOrderRequest,
   OrderDto,
   ProblemDetails,
+  RoomDto,
+  TableDto,
 } from './types';
 
 // http://localhost:5216 is the "http" launch profile in
@@ -61,6 +63,10 @@ function post<T>(path: string, body?: unknown): Promise<T> {
 
 export const api = {
   getMenu: () => request<MenuCategoryDto[]>('/menu'),
+
+  getFloor: () => request<RoomDto[]>('/floor'),
+
+  clearTable: (tableId: string) => post<TableDto>(`/tables/${tableId}/clear`),
 
   openOrder: (body: OpenOrderRequest) => post<OrderDto>('/orders', body),
 

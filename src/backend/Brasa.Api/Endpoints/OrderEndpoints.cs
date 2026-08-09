@@ -1,6 +1,7 @@
 using Brasa.Api.Contracts;
 using Brasa.Modules.Catalog.Persistence;
 using Brasa.Modules.Fiscal;
+using Brasa.Modules.Floor.Persistence;
 using Brasa.Modules.Ordering.Domain;
 using Brasa.Modules.Ordering.Persistence;
 using Brasa.Shared.Primitives;
@@ -11,14 +12,14 @@ using Microsoft.EntityFrameworkCore;
 namespace Brasa.Api.Endpoints;
 
 /// <summary>
-/// The I0 walking-skeleton flow: open a table, ring up lines, preview a split,
+/// The walking-skeleton flow: open a table, ring up lines, preview a split,
 /// close and be issued a fiscal document.
 /// </summary>
 /// <remarks>
-/// This handler composes the Ordering, Catalog and Fiscal modules — reading from
-/// more than one module's DbContext in a single request is exactly what the API
-/// layer is for. The modules never do this to each other directly. See
-/// <c>docs/architecture/module-boundaries.md</c>.
+/// This handler composes the Ordering, Catalog, Floor and Fiscal modules —
+/// reading from more than one module's DbContext in a single request is
+/// exactly what the API layer is for. The modules never do this to each other
+/// directly. See <c>docs/architecture/module-boundaries.md</c>.
 /// </remarks>
 public static class OrderEndpoints
 {
@@ -52,24 +53,43 @@ public static class OrderEndpoints
 
     private static async Task<IResult> OpenOrderAsync(
         OpenOrderRequest request,
-        OrderingDbContext db,
+        OrderingDbContext orderingDb,
+        FloorDbContext floorDb,
         IClock clock,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.TableLabel))
-        {
-            return Error.Validation("order.invalid_table_label", "Table label is required.").ToProblem();
-        }
-
         if (request.CoverCount < 1)
         {
             return Error.Validation("order.invalid_cover_count", "Cover count must be at least 1.").ToProblem();
         }
 
-        var order = Order.Open(request.TableLabel, request.CoverCount, clock.UtcNow);
+        var table = await floorDb.Tables
+            .FirstOrDefaultAsync(t => t.Id == request.TableId, cancellationToken)
+            .ConfigureAwait(false);
 
-        db.Orders.Add(order);
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        if (table is null)
+        {
+            return Error.NotFound("floor.table_not_found", $"Table {request.TableId} was not found.").ToProblem();
+        }
+
+        var occupyResult = table.Occupy();
+        if (occupyResult.IsFailure)
+        {
+            return occupyResult.Error.ToProblem();
+        }
+
+        var order = Order.Open(table.Id, table.Label, request.CoverCount, clock.UtcNow);
+        orderingDb.Orders.Add(order);
+
+        // Ordering saves before Floor, deliberately. Two DbContexts means this
+        // isn't one transaction — if the second save fails, "an order exists
+        // but the table still shows Free" (fixable: it's just a stale floor
+        // view, the order itself works) is a much smaller problem than "the
+        // table is stuck Occupied with no order behind it" would be. Same
+        // I0/I1-scope trade-off CloseOrderAsync already makes below; real
+        // cross-module atomicity is outbox-based work for I5+.
+        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await floorDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.Created($"/api/v1/orders/{order.Id}", order.ToDto());
     }
@@ -146,13 +166,14 @@ public static class OrderEndpoints
 
     private static async Task<IResult> CloseOrderAsync(
         Guid orderId,
-        OrderingDbContext db,
+        OrderingDbContext orderingDb,
+        FloorDbContext floorDb,
         IFiscalProvider fiscalProvider,
         ITenantContext tenantContext,
         IClock clock,
         CancellationToken cancellationToken)
     {
-        var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
+        var order = await FindOrderAsync(orderingDb, orderId, cancellationToken).ConfigureAwait(false);
         if (order is null)
         {
             return OrderNotFound(orderId).ToProblem();
@@ -184,7 +205,22 @@ public static class OrderEndpoints
             return fiscalResult.Error.ToProblem();
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        // The order is now closed and fiscally issued — the part that must not
+        // fail silently already succeeded. Marking the table dirty is
+        // housekeeping on top of that: if it doesn't apply (table already
+        // moved on somehow, or this save fails), the close itself still stands
+        // and the response below is still correct. Staff can always clear a
+        // stuck table by hand; they can never recover a lost fiscal document.
+        var table = await floorDb.Tables
+            .FirstOrDefaultAsync(t => t.Id == order.TableId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (table is not null && table.MarkDirty().IsSuccess)
+        {
+            await floorDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
 
         return Results.Ok(new CloseOrderResponse(order.ToDto(), fiscalResult.Value.ToDto()));
     }

@@ -63,18 +63,20 @@ Depended on by every module; depends on no module. Deliberately small.
 
 ⬜ **Missing:** the dispatcher implementation.
 
-## `src/backend/Brasa.Api` ✅ I0 walking skeleton
+## `src/backend/Brasa.Api` ✅ I0 + I1's first slice
 
 | File | State | Contents |
 |---|---|---|
-| `Program.cs` | ✅ | Two-role DI wiring (runtime vs. migration connection — [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)), API versioning, CORS (`Cors:AllowedOrigins`, for web clients), migration runner, dev seeding, full middleware pipeline |
+| `Program.cs` | ✅ | Two-role DI wiring (runtime vs. migration connection — [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)), API versioning, CORS (`Cors:AllowedOrigins`, for web clients), migration runner, dev seeding (Catalog + Floor), full middleware pipeline |
 | `Tenancy/DevTenantMiddleware.cs` | ✅ | Attributes every request to one hardcoded tenant. **The entire auth story until IDN-03…08 (I3).** Throws if `IsProduction()` |
 | `Idempotency/IdempotencyMiddleware.cs` | ✅ | Requires `Idempotency-Key` on mutating `/api` requests; replays the cached response on repeat. In-memory, per-instance — durable store needed before scaling out |
 | `ErrorMapping.cs` | ✅ | The only place `ErrorType` → HTTP status is decided |
-| `Endpoints/CatalogEndpoints.cs` | ✅ | `GET /menu` |
-| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders`, `GET /orders/{id}`, `POST /orders/{id}/lines`, `GET /orders/{id}/split`, `POST /orders/{id}/close` |
-| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`, `OrderDto`/`OrderLineDto`, `FiscalDocumentDto` + mappings |
+| `Endpoints/CatalogEndpoints.cs` | ✅ | `GET /menu`, `DELETE /menu/items/{id}` (CAT-18, soft delete) |
+| `Endpoints/FloorEndpoints.cs` | ✅ | `GET /floor`, `POST /tables/{id}/clear` |
+| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders` (now against a real `tableId`), `GET /orders/{id}`, `POST /orders/{id}/lines`, `GET /orders/{id}/split`, `POST /orders/{id}/close`. Composes Catalog + Ordering + Floor + Fiscal — see the module-boundaries note below |
+| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`, `RoomDto`/`TableDto`, `OrderDto`/`OrderLineDto`, `FiscalDocumentDto` + mappings |
 | `Seed/DevCatalogSeeder.cs` | ✅ | Seeds a Portuguese demo menu spanning both VAT bands. Guarded the same way as the mock fiscal provider |
+| `Seed/DevFloorSeeder.cs` | ✅ | Seeds 2 rooms / 8 tables. Same guard |
 | `appsettings.json` | ✅ | **Two** connection strings — `Postgres` (runtime, `brasa_app`) and `PostgresMigrations` (`brasa`, superuser) |
 
 ## `src/backend/Brasa.Modules.*`
@@ -83,14 +85,19 @@ Depended on by every module; depends on no module. Deliberately small.
 |---|---|---|
 | `Identity` | 📁 empty | I3 |
 | `Catalog` | ✅ `MenuCategory`, `MenuItem` (soft-deletable, CAT-18), `VatRate` (I0 placeholder for I1's full `TaxRule`), EF config + migrations + design-time factory | — |
-| `Ordering` | ✅ `Order` aggregate, `OrderLine`, `OrderStatus`; EF config + migration + design-time factory | — |
+| `Ordering` | ✅ `Order` aggregate (opens against a real `TableId`), `OrderLine`, `OrderStatus`; EF config + migrations + design-time factory | — |
+| `Floor` | ✅ `Room`, `Table` (`Free`/`Occupied`/`BillRequested`/`Dirty` state machine); EF config + migration (RLS) + design-time factory | — |
 | `Fiscal` | ✅ `IFiscalProvider`, `FiscalDocument`, `FiscalDocumentLine` (VAT-inclusive derivation), `FiscalDocumentRequest`, `FiscalDocumentType` | — |
 | `Payments` | 📁 empty | I6 |
 | `Reporting` | 📁 empty | I8 |
 
-Each references **only** `Brasa.Shared`. Never each other. `Brasa.Api`'s
-`OrderEndpoints` composes Catalog + Ordering + Fiscal in one handler — that
-composition is the API layer's job, not something the modules do to each other.
+Each references **only** `Brasa.Shared`. Never each other. `Order.TableId` is
+a plain `Guid` reference to a Floor table, the same pattern
+`OrderLine.MenuItemId` uses for a Catalog item — never a live query across
+modules. `Brasa.Api`'s `OrderEndpoints` composes Catalog + Ordering + Floor +
+Fiscal in one handler — that composition is the API layer's job, not
+something the modules do to each other. See
+[module-boundaries.md](../architecture/module-boundaries.md).
 
 ## `src/backend/Brasa.Fiscal.*`
 
@@ -109,42 +116,45 @@ composition is the API layer's job, not something the modules do to each other.
 ⬜ **Missing (Month 3):** SQLite store, fiscal signing, ESC/POS printing, LAN
 REST + SignalR hub, cloud outbox sync.
 
-## `src/web/pos` ✅ I0 shell
+## `src/web/pos` ✅ I0 + I1's first slice
 
-React 19 + Vite 8 + TypeScript. One screen, no auth, no offline — proves the
-API in a browser. Hand-written API layer (`src/api/`) is a placeholder for
-`web/sdk` (WEB-03, generated from OpenAPI) once a second client app needs it.
+React 19 + Vite 8 + TypeScript. No auth, no offline — proves the API in a
+browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
+(WEB-03, generated from OpenAPI) once a second client app needs it.
 
 | File | State | Contents |
 |---|---|---|
-| `src/App.tsx` | ✅ | Orchestrates the three phases: open table → order (menu + summary) → receipt |
-| `src/api/client.ts` | ✅ | `fetch` wrapper; `ApiError` carries the `ProblemDetails.code`; every mutation gets its own `Idempotency-Key` via `crypto.randomUUID()` |
+| `src/App.tsx` | ✅ | Orchestrates the phases: table picker (floor) → order (menu + summary) → receipt |
+| `src/api/client.ts` | ✅ | `fetch` wrapper; `ApiError` carries the `ProblemDetails.code`; every mutation gets its own `Idempotency-Key` via `crypto.randomUUID()`; `getFloor`/`clearTable` |
 | `src/api/types.ts` | ✅ | Hand-written mirror of `Brasa.Api/Contracts/*.cs` — kept in sync manually until WEB-03 |
-| `src/components/*.tsx` | ✅ | `OpenTableForm`, `MenuGrid`, `OrderSummary`, `Receipt`, `ErrorBanner`, `LanguageToggle` |
+| `src/components/TablePicker.tsx` | ✅ | WEB-05 — rooms/tables as a static grid (not `Table.PositionX/Y` — that's the future drag-and-drop editor, FLR-03), colour-coded by state, tap Free to open / tap Dirty to clear |
+| `src/components/*.tsx` | ✅ | `MenuGrid`, `OrderSummary`, `Receipt`, `ErrorBanner`, `LanguageToggle` |
 | `src/lib/money.ts` | ✅ | `Intl.NumberFormat('pt-PT', …)` — never formats `Money` by hand, and deliberately never follows the language toggle (see [ADR 0011](../architecture/decisions/0011-i18n.md)) |
 | `src/i18n/i18n.ts` | ✅ | i18next config — pt default, en toggle (WEB-13) |
 | `src/i18n/languageStorage.ts` | ✅ | `LanguageStore` interface + `cookieLanguageStore`; the seam a mobile client swaps for `AsyncStorage` |
-| `src/i18n/resources/{pt,en}.ts` | ✅ | UI copy. Menu item names and money are **not** here — see the ADR |
+| `src/i18n/resources/{pt,en}.ts` | ✅ | UI copy, incl. `floor.*`. Menu item names and money are **not** here — see the ADR |
 | `.env.example` | ✅ | Documents `VITE_API_BASE_URL`; defaults to the API's `http` launch profile |
 
-⬜ **Missing:** auth, offline (Dexie), floor plan, everything past I0 — see the
-`WEB` epic in [backlog.md](../product/backlog.md).
+⬜ **Missing:** auth, offline (Dexie), everything else past I0/I1's first
+slice — see the `WEB` epic in [backlog.md](../product/backlog.md).
 
-## `src/web/e2e` ✅ I0 harness
+## `src/web/e2e` ✅ I0 + I1 harness
 
 Playwright + TypeScript, chromium only. `playwright.config.ts`'s `webServer`
 starts both the API (`dotnet run --no-build`) and the `pos` dev server
 itself — Docker (PostgreSQL) is the only thing it doesn't start. Verified
-locally from both a warm state and a hard cold start; 6/6 passing either way.
+locally from both a warm state and a hard cold start, and **three
+consecutive full runs** (proving `support/api.ts`'s table cleanup actually
+works, not just that one run happens to pass); 9/9 passing every time.
 See [../development/e2e-testing.md](../development/e2e-testing.md) for the
 QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 
 | File | State | Contents |
 |---|---|---|
-| `tests/walking-skeleton.spec.ts` | ✅ | QA-05 — drives the real `pos` UI: open table → ring up → split preview → close → receipt. Runs in Portuguese, the app's default |
+| `tests/walking-skeleton.spec.ts` | ✅ | QA-05 — drives the real `pos` UI: pick a free table off the floor plan → ring up → split preview → close → receipt → clear the table. Runs in Portuguese, the app's default |
 | `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |
 | `tests/language-toggle.spec.ts` | ✅ | WEB-13 — default language, the pt→en toggle, cookie attributes (`Path`, `SameSite`, not `httpOnly`) surviving a reload, and money staying `pt-PT` in English mode |
-| `tests/support/api.ts` | ✅ | QA-03 test-data builders. Looks menu items up **by name**, never by id (ids are UUIDv7, not stable across a fresh database) |
+| `tests/support/api.ts` | ✅ | QA-03 test-data builders. Looks menu items and tables up **by name/state**, never by id (ids are UUIDv7, not stable across a fresh database). `closeOrderAndClearTable` returns a table to the free pool — only 8 are seeded and the dev database persists across runs |
 
 ## `tests/`
 
@@ -192,7 +202,7 @@ rewrites them to site index pages, so one file serves both.
 | `development/documentation.md` | The documentation contract |
 | `features/` | Per-feature documentation, one page each |
 | `product/roadmap.md` | **Increments I0–I8 with demo scripts. What to build next** |
-| `product/backlog.md` | 290 tasks, 20 epics, stable IDs. Task status |
+| `product/backlog.md` | 291 tasks, 20 epics, stable IDs. Task status |
 | `product/differentiation.md` | Competitive positioning; DIF epic rationale |
 | `product/plan.md` | Approved build plan and 6-month roadmap (historical) |
 | `product/status.md` | **Honest inventory of which code exists** |

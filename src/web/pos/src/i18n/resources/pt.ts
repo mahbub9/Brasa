@@ -4,13 +4,20 @@ export const pt = {
   app: {
     tagline: 'POS — protótipo inicial (I0)',
   },
-  openTable: {
-    title: 'Abrir mesa',
-    tableLabel: 'Mesa',
-    tablePlaceholder: 'ex. Mesa 12',
+  floor: {
+    title: 'Escolher mesa',
+    seats: '{{count}} lugares',
     covers: 'Pessoas',
-    submit: 'Abrir mesa',
-    submitBusy: 'A abrir…',
+    open: 'Abrir mesa',
+    opening: 'A abrir…',
+    clear: 'Limpar mesa',
+    empty: 'Sem mesas configuradas.',
+    state: {
+      Free: 'Livre',
+      Occupied: 'Ocupada',
+      BillRequested: 'Conta pedida',
+      Dirty: 'Por limpar',
+    },
   },
   menu: {
     empty: 'Sem itens de menu disponíveis.',

@@ -9,6 +9,7 @@
     <Project Path="src/backend/Brasa.Fiscal.Portugal/Brasa.Fiscal.Portugal.csproj" />
     <Project Path="src/backend/Brasa.Modules.Catalog/Brasa.Modules.Catalog.csproj" />
     <Project Path="src/backend/Brasa.Modules.Fiscal/Brasa.Modules.Fiscal.csproj" />
+    <Project Path="src/backend/Brasa.Modules.Floor/Brasa.Modules.Floor.csproj" />
     <Project Path="src/backend/Brasa.Modules.Identity/Brasa.Modules.Identity.csproj" />
     <Project Path="src/backend/Brasa.Modules.Ordering/Brasa.Modules.Ordering.csproj" />
     <Project Path="src/backend/Brasa.Modules.Payments/Brasa.Modules.Payments.csproj" />

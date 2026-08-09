@@ -21,7 +21,20 @@ export interface MenuCategoryDto {
 
 export interface OrderDto {
   id: string;
+  tableId: string;
   tableLabel: string;
   status: string;
   total: MoneyDto;
+}
+
+export interface TableDto {
+  id: string;
+  label: string;
+  state: 'Free' | 'Occupied' | 'BillRequested' | 'Dirty';
+}
+
+export interface RoomDto {
+  id: string;
+  name: string;
+  tables: TableDto[];
 }
