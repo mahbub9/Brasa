@@ -62,6 +62,24 @@ export function defaultRequiredModifierIds(item: MenuItemDto): string[] {
     .filter((id): id is string => id !== undefined);
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-17). */
+export function importMenuItemsResponse(request: APIRequestContext, csv: string) {
+  return request.post(`${apiBaseUrl}/menu/items/import`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { csv },
+  });
+}
+
+/** Deletes (soft) a menu item — CAT-18. Used to give an imported test item back when a spec is done with it. */
+export async function deleteMenuItem(request: APIRequestContext, itemId: string): Promise<void> {
+  const response = await request.delete(`${apiBaseUrl}/menu/items/${itemId}`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+  });
+  if (!response.ok()) {
+    throw new Error(`DELETE /menu/items/${itemId} failed: ${response.status()} ${await response.text()}`);
+  }
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (CAT-02). */
 export function updateMenuItemDetailsResponse(
   request: APIRequestContext,

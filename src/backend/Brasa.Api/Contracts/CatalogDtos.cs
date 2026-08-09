@@ -37,6 +37,25 @@ public sealed record MenuCategoryDto(Guid Id, string Name, int DisplayOrder, IRe
 /// </summary>
 public sealed record UpdateMenuItemDetailsRequest(string? Description, IReadOnlyList<string>? Allergens);
 
+/// <summary>
+/// Bulk menu import request (CAT-17). <c>Csv</c> is the raw file content,
+/// header row required: <c>CategoryName,Name,Description,Price,VatRate,IsAlcoholic</c>.
+/// Creates only — an existing item with the same name is not matched or
+/// updated, so importing the same file twice creates duplicates. Excel
+/// (.xlsx) is not supported yet; CSV only.
+/// </summary>
+public sealed record ImportMenuItemsRequest(string Csv);
+
+/// <summary>One row's import failure — 1-indexed against the data rows (row 1 is the first row after the header), matching what a user sees in a spreadsheet.</summary>
+public sealed record ImportMenuItemsRowError(int RowNumber, string Message);
+
+/// <summary>
+/// Bulk import result. Partial success is normal — rows import
+/// independently, so one bad row (an unknown category, an unparsable
+/// price) doesn't block the rest.
+/// </summary>
+public sealed record ImportMenuItemsResponse(int Created, IReadOnlyList<ImportMenuItemsRowError> Errors);
+
 /// <summary>Maps Catalog domain entities to wire DTOs.</summary>
 public static class CatalogDtoMappings
 {

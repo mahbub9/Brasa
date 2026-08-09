@@ -1,4 +1,6 @@
+using System.Globalization;
 using Brasa.Api.Contracts;
+using Brasa.Api.Csv;
 using Brasa.Modules.Catalog.Domain;
 using Brasa.Modules.Catalog.Persistence;
 using Brasa.Shared.Primitives;
@@ -32,6 +34,10 @@ public static class CatalogEndpoints
         group.MapPut("/menu/items/{itemId:guid}/details", UpdateMenuItemDetailsAsync)
             .WithName("UpdateMenuItemDetails")
             .WithSummary("Sets a menu item's description and declared allergens (CAT-02).");
+
+        group.MapPost("/menu/items/import", ImportMenuItemsAsync)
+            .WithName("ImportMenuItems")
+            .WithSummary("Bulk-creates menu items from a CSV file (CAT-17).");
 
         return group;
     }
@@ -121,5 +127,111 @@ public static class CatalogEndpoints
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.Ok(item.ToDto());
+    }
+
+    private static readonly string[] RequiredImportColumns = ["CategoryName", "Name", "Price", "VatRate"];
+
+    /// <summary>
+    /// Bulk-creates menu items from a CSV file (CAT-17). Rows import
+    /// independently — one bad row (an unknown category, an unparsable
+    /// price) is reported and skipped, it does not fail the whole request.
+    /// Ships ahead of any admin UI to upload a file from, the same way
+    /// CAT-02/CAT-18 shipped ahead of theirs.
+    /// </summary>
+    private static async Task<IResult> ImportMenuItemsAsync(
+        ImportMenuItemsRequest request,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var rows = CsvParser.Parse(request.Csv);
+        if (rows.Count == 0)
+        {
+            return Error.Validation("catalog.import_empty", "The CSV has no rows.").ToProblem();
+        }
+
+        var header = rows[0];
+        var columnIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        for (var i = 0; i < header.Count; i++)
+        {
+            columnIndex[header[i].Trim()] = i;
+        }
+
+        var missingColumns = RequiredImportColumns.Where(c => !columnIndex.ContainsKey(c)).ToArray();
+        if (missingColumns.Length > 0)
+        {
+            return Error.Validation(
+                "catalog.import_invalid_header",
+                $"CSV header is missing required column(s): {string.Join(", ", missingColumns)}.").ToProblem();
+        }
+
+        var hasDescription = columnIndex.TryGetValue("Description", out var descriptionIndex);
+        var hasIsAlcoholic = columnIndex.TryGetValue("IsAlcoholic", out var isAlcoholicIndex);
+
+        var categoriesByName = await db.Categories
+            .ToDictionaryAsync(c => c.Name, c => c.Id, StringComparer.OrdinalIgnoreCase, cancellationToken)
+            .ConfigureAwait(false);
+
+        var errors = new List<ImportMenuItemsRowError>();
+        var created = new List<MenuItem>();
+
+        for (var rowNumber = 1; rowNumber < rows.Count; rowNumber++)
+        {
+            var row = rows[rowNumber];
+            var displayRowNumber = rowNumber; // 1-indexed against data rows — the header doesn't count.
+
+            string Field(int index) => index < row.Count ? row[index].Trim() : string.Empty;
+
+            var categoryName = Field(columnIndex["CategoryName"]);
+            var name = Field(columnIndex["Name"]);
+            var priceText = Field(columnIndex["Price"]);
+            var vatRateText = Field(columnIndex["VatRate"]);
+            var description = hasDescription ? Field(descriptionIndex) : null;
+            var isAlcoholicText = hasIsAlcoholic ? Field(isAlcoholicIndex) : string.Empty;
+
+            if (!categoriesByName.TryGetValue(categoryName, out var categoryId))
+            {
+                errors.Add(new ImportMenuItemsRowError(displayRowNumber, $"Unknown category \"{categoryName}\"."));
+                continue;
+            }
+
+            if (!decimal.TryParse(priceText, NumberStyles.Number, CultureInfo.InvariantCulture, out var priceAmount))
+            {
+                errors.Add(new ImportMenuItemsRowError(displayRowNumber, $"\"{priceText}\" is not a valid price."));
+                continue;
+            }
+
+            if (!decimal.TryParse(vatRateText, NumberStyles.Number, CultureInfo.InvariantCulture, out var vatFraction))
+            {
+                errors.Add(new ImportMenuItemsRowError(displayRowNumber, $"\"{vatRateText}\" is not a valid VAT rate."));
+                continue;
+            }
+
+            var isAlcoholic = isAlcoholicText.Equals("true", StringComparison.OrdinalIgnoreCase)
+                || isAlcoholicText.Equals("yes", StringComparison.OrdinalIgnoreCase)
+                || isAlcoholicText == "1";
+
+            try
+            {
+                var item = new MenuItem(categoryId, name, Money.FromDecimal(priceAmount), new VatRate(vatFraction), isAlcoholic);
+                if (!string.IsNullOrWhiteSpace(description))
+                {
+                    item.SetDescription(description);
+                }
+
+                created.Add(item);
+            }
+            catch (ArgumentException ex)
+            {
+                errors.Add(new ImportMenuItemsRowError(displayRowNumber, ex.Message));
+            }
+        }
+
+        if (created.Count > 0)
+        {
+            db.Items.AddRange(created);
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        return Results.Ok(new ImportMenuItemsResponse(created.Count, errors));
     }
 }

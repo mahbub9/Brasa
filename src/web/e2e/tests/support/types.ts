@@ -27,6 +27,8 @@ export interface MenuItemDto {
   name: string;
   description: string | null;
   price: MoneyDto;
+  vatRatePercent: number;
+  isAlcoholic: boolean;
   allergens: string[];
   modifierGroups: ModifierGroupDto[];
 }
@@ -35,6 +37,16 @@ export interface MenuCategoryDto {
   id: string;
   name: string;
   items: MenuItemDto[];
+}
+
+export interface ImportMenuItemsRowError {
+  rowNumber: number;
+  message: string;
+}
+
+export interface ImportMenuItemsResponse {
+  created: number;
+  errors: ImportMenuItemsRowError[];
 }
 
 export interface OrderLineDto {
