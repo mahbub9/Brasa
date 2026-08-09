@@ -65,6 +65,10 @@ export interface OpenOrderRequest {
   coverCount: number;
 }
 
+export interface OpenTakeawayOrderRequest {
+  label: string | null;
+}
+
 export interface AddLineRequest {
   menuItemId: string;
   quantity: number;
@@ -101,7 +105,8 @@ export interface OrderDto {
   tableId: string;
   tableLabel: string;
   coverCount: number;
-  status: 'Open' | 'Closed';
+  isTakeaway: boolean;
+  status: 'Open' | 'Closed' | 'Merged';
   total: MoneyDto;
   lines: OrderLineDto[];
 }

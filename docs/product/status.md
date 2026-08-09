@@ -30,11 +30,11 @@
 | `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
 | `Brasa.Shared` — outbox contracts | ✅ | Types defined; **no dispatcher implementation yet** |
-| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete), `/floor`, `/orders` (+`GET` search/history — ORD-22, `/lines`, `/lines/{id}/notes` — ORD-06, `/lines/{id}/transfer` — ORD-13, `/merge` — ORD-14, `/split`, `/split/by-item` — ORD-16, `/split/by-cover` — ORD-17, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
+| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete), `/floor`, `/orders` (+`GET` search/history — ORD-22, `/takeaway` — ORD-20, `/lines`, `/lines/{id}/notes` — ORD-06, `/lines/{id}/transfer` — ORD-13, `/merge` — ORD-14, `/split`, `/split/by-item` — ORD-16, `/split/by-cover` — ORD-17, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
 | EF Core + PostgreSQL + RLS | ✅ | **Verified live**, not just asserted: `brasa_app` (unprivileged runtime role) sees zero rows with no tenant set or the wrong tenant set, and cannot run DDL. Re-verified against the new `floor` schema too. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | `Modules.Identity` | 📁 | I3 (auth) |
 | `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem`, seeded demo menu spanning both VAT bands, soft delete (CAT-18), modifier groups (CAT-03/04) |
-| `Modules.Ordering` | ✅ | `Order` aggregate — open against a real `Table` (`TableId`), add line with modifiers (price/VAT/modifier snapshot, ORD-05), per-line kitchen notes (ORD-06), split evenly, by item or by cover (ORD-15/16/17), pre-bill preview (ORD-18/19), transfer to a different table (ORD-12), move a single line onto a different order (ORD-13) or merge two orders (ORD-14, `OrderStatus.Merged`), close, history/search (ORD-22) |
+| `Modules.Ordering` | ✅ | `Order` aggregate — open against a real `Table` (`TableId`) or as a takeaway with no table at all (ORD-20, `IsTakeaway`), add line with modifiers (price/VAT/modifier snapshot, ORD-05), per-line kitchen notes (ORD-06), split evenly, by item or by cover (ORD-15/16/17), pre-bill preview (ORD-18/19), transfer to a different table (ORD-12, converts a takeaway to dine-in), move a single line onto a different order (ORD-13) or merge two orders (ORD-14, `OrderStatus.Merged`), close, history/search (ORD-22) |
 | `Modules.Floor` | ✅ | `Room`, `Table` — full `Free ⇄ Occupied ⇄ Dirty ⇄ Free` lifecycle (`BillRequested` transition exists, unused by any endpoint yet), plus `Release()` — `Occupied`/`BillRequested` straight back to `Free`, skipping `Dirty`, used only for table transfers (ORD-12). `xmin`-based optimistic concurrency on `Table` so two concurrent occupy attempts can't both win. Seeded: 2 rooms, 16 tables |
 | `Modules.Fiscal` | ✅ | `IFiscalProvider`, `FiscalDocument`, VAT correctly derived from gross (menu prices are VAT-inclusive) |
 | `Modules.Payments` | 📁 | I6 |
@@ -56,7 +56,7 @@
 
 | Client | State | Notes |
 |---|---|---|
-| `pos` | ✅ I0/I1 shell | React 19 + Vite 8 + TS: floor table picker (WEB-05) → menu, incl. a modifier picker for items with groups (CAT-03/04) → lines, each with an inline kitchen-note editor (ORD-06) → transfer to a different table (ORD-12) → split preview → pre-bill preview (ORD-18/19, clearly labelled *documento não fiscal*) → close → receipt. pt-PT default / en toggle, cookie-persisted (ADR 0011). No auth, no offline, no Dexie yet — those are I2 (see [roadmap.md](roadmap.md)) |
+| `pos` | ✅ I0/I1 shell | React 19 + Vite 8 + TS: floor table picker (WEB-05, incl. "Nova venda ao balcão" for a takeaway order with no table — ORD-20) → menu, incl. a modifier picker for items with groups (CAT-03/04) → lines, each with an inline kitchen-note editor (ORD-06) → transfer to a different table (ORD-12) → split preview → pre-bill preview (ORD-18/19, clearly labelled *documento não fiscal*) → close → receipt. pt-PT default / en toggle, cookie-persisted (ADR 0011). No auth, no offline, no Dexie yet — those are I2 (see [roadmap.md](roadmap.md)) |
 | `kds` | ⬜ | |
 | `admin` | ⬜ | |
 | `order` (QR self-ordering) | ⬜ | |
@@ -68,7 +68,7 @@
 | `Brasa.Shared.Tests` | ✅ | 18 passing, incl. exhaustive allocation check and the error-code registry test (API-04) |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 5 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused. The automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 31 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 34 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -219,6 +219,24 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > yields exactly 9.04/13.56 (summing to the cent), the order is unchanged
 > afterward, and the guards (no cover groups, a zero-cover group, covers
 > that don't sum to the order's own cover count) all fire.
+
+> **Update (takeaway, ORD-20):** `POST /orders/takeaway` rings up a
+> counter-sale order with no Floor table involved at all — pure Ordering,
+> unlike every other `Open*` path. `Order.IsTakeaway` is the real signal
+> callers must check; `TableId` stays `Guid.Empty`, but that is deliberately
+> never a magic value anywhere else in this codebase, and must not become
+> one here either. `CoverCount` is fixed at 1 (meaningless for a counter
+> sale, not worth a nullable column for). Transferring a takeaway order onto
+> a real table (ORD-12) converts it to dine-in — the one place
+> `IsTakeaway` can turn false again; nothing converts the other way.
+> `pos` gets a "Nova venda ao balcão" entry point on the table picker that
+> skips table selection entirely, and hides the covers line for takeaway
+> orders (showing "1 pessoas" for a counter sale would be actively
+> misleading). Verified live (`takeaway.spec.ts`): opens with the all-zero
+> table id and a custom or defaulted ("Levantamento") label, closes and
+> issues a real fiscal document exactly like a dine-in order (Close/Fiscal
+> never look at Floor at all), and the UI flow works end-to-end through a
+> real receipt.
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:

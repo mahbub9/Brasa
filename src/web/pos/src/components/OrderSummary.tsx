@@ -38,7 +38,7 @@ export function OrderSummary({
           {t('order.transferTable')}
         </button>
       </div>
-      <p className="covers">{t('order.covers', { count: order.coverCount })}</p>
+      {!order.isTakeaway && <p className="covers">{t('order.covers', { count: order.coverCount })}</p>}
 
       {order.lines.length === 0 ? (
         <p className="empty-state">{t('order.empty')}</p>

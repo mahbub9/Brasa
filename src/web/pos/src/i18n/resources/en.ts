@@ -10,6 +10,8 @@ export const en = {
     opening: 'Opening…',
     clear: 'Clear table',
     empty: 'No tables configured.',
+    newTakeaway: 'New counter sale',
+    takeawayLabelPlaceholder: 'Name or ticket number (optional)',
     state: {
       Free: 'Free',
       Occupied: 'Occupied',

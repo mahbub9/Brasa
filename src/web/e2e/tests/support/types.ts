@@ -46,6 +46,8 @@ export interface OrderDto {
   id: string;
   tableId: string;
   tableLabel: string;
+  coverCount: number;
+  isTakeaway: boolean;
   status: string;
   total: MoneyDto;
   lines: OrderLineDto[];
@@ -95,6 +97,17 @@ export interface SplitByItemGroupDto {
 
 export interface SplitByItemResponse {
   groups: SplitByItemGroupDto[];
+}
+
+export interface FiscalDocumentDto {
+  documentNumber: string;
+  atcud: string;
+  grossTotal: MoneyDto;
+}
+
+export interface CloseOrderResponse {
+  order: OrderDto;
+  document: FiscalDocumentDto;
 }
 
 export interface TableDto {

@@ -40,13 +40,14 @@ public sealed class Order : Entity
         TableLabel = string.Empty;
     }
 
-    private Order(Guid tableId, string tableLabel, int coverCount, DateTimeOffset openedAtUtc)
+    private Order(Guid tableId, string tableLabel, int coverCount, DateTimeOffset openedAtUtc, bool isTakeaway)
     {
         TableId = tableId;
         TableLabel = tableLabel;
         CoverCount = coverCount;
         OpenedAtUtc = openedAtUtc;
         Status = OrderStatus.Open;
+        IsTakeaway = isTakeaway;
     }
 
     /// <summary>Opens a new order for a table.</summary>
@@ -74,17 +75,41 @@ public sealed class Order : Entity
             throw new ArgumentOutOfRangeException(nameof(coverCount), coverCount, "Cover count must be at least 1.");
         }
 
-        return new Order(tableId, tableLabel, coverCount, openedAtUtc);
+        return new Order(tableId, tableLabel, coverCount, openedAtUtc, isTakeaway: false);
     }
 
-    /// <summary>The Floor module table this order was opened against.</summary>
+    /// <summary>
+    /// Opens a takeaway / counter-sale order (ORD-20) — rung up directly,
+    /// with no Floor table involved at all. <see cref="TableId"/> stays
+    /// <see cref="Guid.Empty"/>, but that is never the signal callers should
+    /// check: <see cref="IsTakeaway"/> is. <c>Guid.Empty</c> is not a magic
+    /// value anywhere else in this codebase and must not become one here.
+    /// </summary>
+    /// <param name="label">A ticket label for the order, e.g. a customer name or "Levantamento 7".</param>
+    /// <param name="openedAtUtc">The current instant, from <see cref="Shared.Time.IClock"/>.</param>
+    public static Order OpenTakeaway(string label, DateTimeOffset openedAtUtc)
+    {
+        if (string.IsNullOrWhiteSpace(label))
+        {
+            throw new ArgumentException("Label must not be empty.", nameof(label));
+        }
+
+        // CoverCount has no real meaning for a counter sale — fixed at 1
+        // rather than adding a nullable column for a value nothing reads.
+        return new Order(Guid.Empty, label, coverCount: 1, openedAtUtc, isTakeaway: true);
+    }
+
+    /// <summary>The Floor module table this order was opened against. <see cref="Guid.Empty"/> when <see cref="IsTakeaway"/>.</summary>
     public Guid TableId { get; private set; }
 
-    /// <summary>The table's label at the moment it was opened. See remarks.</summary>
+    /// <summary>The table's label at the moment it was opened, or the takeaway ticket label. See remarks.</summary>
     public string TableLabel { get; private set; }
 
-    /// <summary>Number of guests seated.</summary>
+    /// <summary>Number of guests seated. Always 1 for a takeaway order (ORD-20) — not a meaningful count there.</summary>
     public int CoverCount { get; private set; }
+
+    /// <summary>True for a counter-sale order not tied to any Floor table (ORD-20). See <see cref="OpenTakeaway"/>.</summary>
+    public bool IsTakeaway { get; private set; }
 
     /// <summary>Current lifecycle state.</summary>
     public OrderStatus Status { get; private set; }
@@ -359,6 +384,12 @@ public sealed class Order : Entity
 
         TableId = newTableId;
         TableLabel = newTableLabel;
+
+        // A takeaway order transferred onto a real table has, by definition,
+        // become a dine-in one — this is the one place IsTakeaway can turn
+        // false again. Never the reverse: OpenTakeaway is the only path in.
+        IsTakeaway = false;
+
         return Result.Success();
     }
 

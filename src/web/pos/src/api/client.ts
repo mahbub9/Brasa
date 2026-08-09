@@ -3,6 +3,7 @@ import type {
   CloseOrderResponse,
   MenuCategoryDto,
   OpenOrderRequest,
+  OpenTakeawayOrderRequest,
   OrderDto,
   PreBillDto,
   ProblemDetails,
@@ -81,6 +82,8 @@ export const api = {
   clearTable: (tableId: string) => post<TableDto>(`/tables/${tableId}/clear`),
 
   openOrder: (body: OpenOrderRequest) => post<OrderDto>('/orders', body),
+
+  openTakeawayOrder: (body: OpenTakeawayOrderRequest) => post<OrderDto>('/orders/takeaway', body),
 
   getOrder: (orderId: string) => request<OrderDto>(`/orders/${orderId}`),
 

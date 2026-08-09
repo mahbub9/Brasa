@@ -33,6 +33,10 @@ public static class OrderEndpoints
             .WithName("OpenOrder")
             .WithSummary("Opens a table.");
 
+        group.MapPost("/orders/takeaway", OpenTakeawayOrderAsync)
+            .WithName("OpenTakeawayOrder")
+            .WithSummary("Opens a takeaway/counter-sale order — no Floor table involved (ORD-20).");
+
         group.MapGet("/orders", SearchOrdersAsync)
             .WithName("SearchOrders")
             .WithSummary("Order history/search — filter by status, table and opened-date range (ORD-22).");
@@ -131,6 +135,25 @@ public static class OrderEndpoints
         }
 
         var order = Order.Open(table.Id, table.Label, request.CoverCount, clock.UtcNow);
+        orderingDb.Orders.Add(order);
+        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Created($"/api/v1/orders/{order.Id}", order.ToDto());
+    }
+
+    /// <summary>
+    /// Opens a takeaway/counter-sale order (ORD-20) — pure Ordering, no
+    /// Floor involvement at all, unlike <c>OpenOrderAsync</c>: there's no
+    /// table to occupy or race for.
+    /// </summary>
+    private static async Task<IResult> OpenTakeawayOrderAsync(
+        OpenTakeawayOrderRequest request,
+        OrderingDbContext orderingDb,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var label = string.IsNullOrWhiteSpace(request.Label) ? "Levantamento" : request.Label.Trim();
+        var order = Order.OpenTakeaway(label, clock.UtcNow);
         orderingDb.Orders.Add(order);
         await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 

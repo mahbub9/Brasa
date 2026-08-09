@@ -7,6 +7,7 @@ interface TablePickerProps {
   busy: boolean;
   onOpenTable: (tableId: string, coverCount: number) => void;
   onClearTable: (tableId: string) => void;
+  onOpenTakeaway: (label: string) => void;
 }
 
 /**
@@ -15,14 +16,12 @@ interface TablePickerProps {
  * future editor; this screen deliberately ignores them and lays tables out
  * in a plain responsive grid instead.
  */
-export function TablePicker({ rooms, busy, onOpenTable, onClearTable }: TablePickerProps) {
+export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTakeaway }: TablePickerProps) {
   const { t } = useTranslation();
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [coverCount, setCoverCount] = useState(2);
-
-  if (rooms.length === 0) {
-    return <p className="empty-state">{t('floor.empty')}</p>;
-  }
+  const [showTakeaway, setShowTakeaway] = useState(false);
+  const [takeawayLabel, setTakeawayLabel] = useState('');
 
   function handleTableClick(table: TableDto) {
     if (table.state === 'Free') {
@@ -36,6 +35,38 @@ export function TablePicker({ rooms, busy, onOpenTable, onClearTable }: TablePic
   return (
     <div className="table-picker">
       <h1>{t('floor.title')}</h1>
+
+      <div className="takeaway-picker">
+        {showTakeaway ? (
+          <div className="takeaway-confirm" data-testid="takeaway-confirm">
+            <input
+              type="text"
+              placeholder={t('floor.takeawayLabelPlaceholder')}
+              value={takeawayLabel}
+              onChange={(e) => setTakeawayLabel(e.target.value)}
+              data-testid="takeaway-label-input"
+            />
+            <button
+              type="button"
+              data-testid="confirm-open-takeaway"
+              disabled={busy}
+              onClick={() => {
+                onOpenTakeaway(takeawayLabel);
+                setTakeawayLabel('');
+                setShowTakeaway(false);
+              }}
+            >
+              {busy ? t('floor.opening') : t('floor.open')}
+            </button>
+          </div>
+        ) : (
+          <button type="button" data-testid="new-takeaway-button" disabled={busy} onClick={() => setShowTakeaway(true)}>
+            {t('floor.newTakeaway')}
+          </button>
+        )}
+      </div>
+
+      {rooms.length === 0 && <p className="empty-state">{t('floor.empty')}</p>}
       {rooms.map((room) => (
         <section key={room.id} className="floor-room">
           <h2>{room.name}</h2>

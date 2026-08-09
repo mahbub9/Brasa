@@ -12,6 +12,8 @@ export const pt = {
     opening: 'A abrir…',
     clear: 'Limpar mesa',
     empty: 'Sem mesas configuradas.',
+    newTakeaway: 'Nova venda ao balcão',
+    takeawayLabelPlaceholder: 'Nome ou nº do talão (opcional)',
     state: {
       Free: 'Livre',
       Occupied: 'Ocupada',

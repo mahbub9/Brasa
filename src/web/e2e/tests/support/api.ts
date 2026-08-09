@@ -1,5 +1,6 @@
 import type { APIRequestContext } from '@playwright/test';
 import type {
+  CloseOrderResponse,
   MenuCategoryDto,
   MenuItemDto,
   OrderDto,
@@ -90,6 +91,18 @@ export async function openOrder(
   });
   if (!response.ok()) {
     throw new Error(`POST /orders failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Opens a takeaway/counter-sale order (ORD-20) — no Floor table involved, so no race to retry against. */
+export async function openTakeawayOrder(request: APIRequestContext, label: string | null = null): Promise<OrderDto> {
+  const response = await request.post(`${apiBaseUrl}/orders/takeaway`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { label },
+  });
+  if (!response.ok()) {
+    throw new Error(`POST /orders/takeaway failed: ${response.status()} ${await response.text()}`);
   }
   return response.json();
 }
@@ -328,17 +341,23 @@ export async function getPreBill(request: APIRequestContext, orderId: string): P
  * this at the end of any test that opened a table via the API — see the
  * file-level comment on why that matters for repeatability.
  */
+/** Closes an order with no table to release — takeaway orders (ORD-20) only. Dine-in orders must use closeOrderAndClearTable. */
+export async function closeOrder(request: APIRequestContext, orderId: string): Promise<CloseOrderResponse> {
+  const response = await request.post(`${apiBaseUrl}/orders/${orderId}/close`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+  });
+  if (!response.ok()) {
+    throw new Error(`POST /orders/${orderId}/close failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 export async function closeOrderAndClearTable(
   request: APIRequestContext,
   orderId: string,
   tableId: string,
 ): Promise<void> {
-  const closeResponse = await request.post(`${apiBaseUrl}/orders/${orderId}/close`, {
-    headers: { 'Idempotency-Key': idempotencyKey() },
-  });
-  if (!closeResponse.ok()) {
-    throw new Error(`POST /orders/${orderId}/close failed: ${closeResponse.status()} ${await closeResponse.text()}`);
-  }
+  await closeOrder(request, orderId);
 
   const clearResponse = await request.post(`${apiBaseUrl}/tables/${tableId}/clear`, {
     headers: { 'Idempotency-Key': idempotencyKey() },

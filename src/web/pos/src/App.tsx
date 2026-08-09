@@ -64,6 +64,18 @@ export default function App() {
     }
   }
 
+  async function handleOpenTakeaway(label: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      setOrder(await api.openTakeawayOrder({ label: label.trim() === '' ? null : label.trim() }));
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleClearTable(tableId: string) {
     setBusy(true);
     setError(null);
@@ -236,6 +248,7 @@ export default function App() {
             busy={busy}
             onOpenTable={handleOpenTable}
             onClearTable={handleClearTable}
+            onOpenTakeaway={handleOpenTakeaway}
           />
         )}
       </main>

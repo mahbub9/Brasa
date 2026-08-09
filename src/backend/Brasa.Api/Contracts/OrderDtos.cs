@@ -8,6 +8,13 @@ namespace Brasa.Api.Contracts;
 public sealed record OpenOrderRequest(Guid TableId, int CoverCount);
 
 /// <summary>
+/// Request body to open a takeaway/counter-sale order (ORD-20) — no Floor
+/// table involved. <c>Label</c> identifies the ticket, e.g. a customer name;
+/// defaults to "Levantamento" when omitted.
+/// </summary>
+public sealed record OpenTakeawayOrderRequest(string? Label);
+
+/// <summary>
 /// Request body to ring up a menu item onto an open order.
 /// <c>SelectedModifierIds</c> — ids of <c>Modifier</c> rows from the item's
 /// own modifier groups (see <c>GET /menu</c>); empty when the item has none.
@@ -79,6 +86,7 @@ public sealed record OrderDto(
     Guid TableId,
     string TableLabel,
     int CoverCount,
+    bool IsTakeaway,
     string Status,
     MoneyDto Total,
     IReadOnlyList<OrderLineDto> Lines);
@@ -93,6 +101,7 @@ public sealed record OrderSummaryDto(
     Guid TableId,
     string TableLabel,
     int CoverCount,
+    bool IsTakeaway,
     string Status,
     MoneyDto Total,
     int LineCount,
@@ -145,6 +154,7 @@ public static class OrderDtoMappings
         order.TableId,
         order.TableLabel,
         order.CoverCount,
+        order.IsTakeaway,
         order.Status.ToString(),
         order.Total.ToDto(),
         [.. order.Lines.Select(l => l.ToDto())]);
@@ -155,6 +165,7 @@ public static class OrderDtoMappings
         order.TableId,
         order.TableLabel,
         order.CoverCount,
+        order.IsTakeaway,
         order.Status.ToString(),
         order.Total.ToDto(),
         order.Lines.Count,

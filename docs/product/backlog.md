@@ -43,7 +43,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 6 | 18 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
-| **ORD** | Ordering | 15 | 22 | I0 (rest: I2) |
+| **ORD** | Ordering | 16 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 6 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **76** | **291** | |
+| | **Total** | **77** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 76 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 77 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -84,7 +84,8 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > fiscal document was issued for it), and a bill can be split by item
 > instead of evenly (ORD-16, exact per-allocation portions, no `Allocate`
 > remainder needed) or by cover (ORD-17, reusing `Money.Allocate`'s own
-> weighted overload directly) (details:
+> weighted overload directly), and a counter sale can be rung up with no
+> table at all (ORD-20, `Order.IsTakeaway`) (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -229,7 +230,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ORD-17 | Split bill by cover | ✅ `GET /orders/{id}/split/by-cover?covers=2&covers=3` — reuses `Money.Allocate(ReadOnlySpan<int>)` directly, the exact "split unevenly by covers" case that overload's own remarks call out. Weights must sum to the order's `CoverCount` |
 | ORD-18 | Pre-bill — *documento não fiscal*, correctly labelled | ✅ `GET /orders/{id}/pre-bill` — reuses `FiscalDocumentLine`'s gross→net/VAT math purely as a calculator, never calls `IFiscalProvider`; `PreBillDto` has no document number/ATCUD/QR field at all, plus a `documentKind` discriminator, so it can't be mistaken for an invoice on the wire |
 | ORD-19 | Reprint pre-bill (must match the original exactly) | ✅ pre-bill is never persisted or numbered, so requesting it any number of times against an unchanged order reproduces identical figures — verified live (`pre-bill.spec.ts`), not just by construction |
-| ORD-20 | Takeaway and counter-sale flow | ⬜ |
+| ORD-20 | Takeaway and counter-sale flow | ✅ `POST /orders/takeaway` — pure Ordering, no Floor at all. `Order.IsTakeaway` is the real signal (`TableId` stays `Guid.Empty`, never treated as magic elsewhere); transferring a takeaway order onto a real table (ORD-12) converts it to dine-in. `pos` gets a "Nova venda ao balcão" entry point on the table picker |
 | ORD-21 | Order ownership + concurrent-terminal conflict protocol | ⬜ |
 | ORD-22 | Order history and search | ✅ `GET /orders` — filter by `status`/`tableId`/`openedFrom`/`openedTo`, capped `take` (1–200, default 50). Returns the lighter `OrderSummaryDto`, not full line detail |
 
