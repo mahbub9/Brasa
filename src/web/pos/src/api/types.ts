@@ -7,6 +7,21 @@ export interface MoneyDto {
   currency: string;
 }
 
+export interface ModifierDto {
+  id: string;
+  name: string;
+  priceDelta: MoneyDto;
+}
+
+export interface ModifierGroupDto {
+  id: string;
+  name: string;
+  isRequired: boolean;
+  minSelect: number;
+  maxSelect: number;
+  modifiers: ModifierDto[];
+}
+
 export interface MenuItemDto {
   id: string;
   name: string;
@@ -14,6 +29,7 @@ export interface MenuItemDto {
   vatRatePercent: number;
   isAlcoholic: boolean;
   isAvailable: boolean;
+  modifierGroups: ModifierGroupDto[];
 }
 
 export interface MenuCategoryDto {
@@ -52,6 +68,13 @@ export interface OpenOrderRequest {
 export interface AddLineRequest {
   menuItemId: string;
   quantity: number;
+  selectedModifierIds?: string[];
+}
+
+export interface OrderLineModifierDto {
+  id: string;
+  name: string;
+  priceDelta: MoneyDto;
 }
 
 export interface OrderLineDto {
@@ -60,6 +83,7 @@ export interface OrderLineDto {
   itemName: string;
   unitPrice: MoneyDto;
   quantity: number;
+  modifiers: OrderLineModifierDto[];
   lineTotal: MoneyDto;
 }
 

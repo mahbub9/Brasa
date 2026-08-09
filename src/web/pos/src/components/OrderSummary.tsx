@@ -34,9 +34,21 @@ export function OrderSummary({
         <ul className="order-lines">
           {order.lines.map((line) => (
             <li key={line.id}>
-              <span className="order-line-qty">{line.quantity}×</span>
-              <span className="order-line-name">{line.itemName}</span>
-              <span className="order-line-total">{formatMoney(line.lineTotal)}</span>
+              <div className="order-line-row">
+                <span className="order-line-qty">{line.quantity}×</span>
+                <span className="order-line-name">{line.itemName}</span>
+                <span className="order-line-total">{formatMoney(line.lineTotal)}</span>
+              </div>
+              {line.modifiers.length > 0 && (
+                <ul className="order-line-modifiers">
+                  {line.modifiers.map((modifier) => (
+                    <li key={modifier.id}>
+                      {modifier.name}
+                      {modifier.priceDelta.amount !== 0 && ` (+${formatMoney(modifier.priceDelta)})`}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </li>
           ))}
         </ul>

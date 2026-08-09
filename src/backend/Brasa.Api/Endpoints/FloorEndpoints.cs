@@ -61,7 +61,19 @@ public static class FloorEndpoints
             return clearResult.Error.ToProblem();
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Someone else's request touched this table between our read and
+            // our write — see TableConfiguration.cs. Whatever state it's in
+            // now, it isn't the Dirty state we just checked, so report the
+            // same conflict a stale in-memory check would have given.
+            return Error.Conflict("floor.table_not_dirty", $"Table {table.Label} is not dirty.").ToProblem();
+        }
+
         return Results.Ok(table.ToDto());
     }
 }

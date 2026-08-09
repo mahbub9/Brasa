@@ -1,14 +1,14 @@
 import { useTranslation } from 'react-i18next';
-import type { MenuCategoryDto } from '../api/types';
+import type { MenuCategoryDto, MenuItemDto } from '../api/types';
 import { formatMoney } from '../lib/money';
 
 interface MenuGridProps {
   categories: MenuCategoryDto[];
-  onAddItem: (menuItemId: string) => void;
+  onSelectItem: (item: MenuItemDto) => void;
   disabled: boolean;
 }
 
-export function MenuGrid({ categories, onAddItem, disabled }: MenuGridProps) {
+export function MenuGrid({ categories, onSelectItem, disabled }: MenuGridProps) {
   const { t } = useTranslation();
 
   if (categories.length === 0) {
@@ -27,7 +27,7 @@ export function MenuGrid({ categories, onAddItem, disabled }: MenuGridProps) {
                 type="button"
                 className="menu-item"
                 disabled={disabled}
-                onClick={() => onAddItem(item.id)}
+                onClick={() => onSelectItem(item)}
               >
                 <span className="menu-item-name">{item.name}</span>
                 <span className="menu-item-price">{formatMoney(item.price)}</span>

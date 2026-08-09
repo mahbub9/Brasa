@@ -33,9 +33,9 @@
 | `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete), `/floor`, `/orders` (+`/lines`, `/split`, `/close`), `/tables/{id}/clear`, `/health`. Serilog, ProblemDetails, API versioning, idempotency, CORS for web clients (`Cors:AllowedOrigins`) |
 | EF Core + PostgreSQL + RLS | ✅ | **Verified live**, not just asserted: `brasa_app` (unprivileged runtime role) sees zero rows with no tenant set or the wrong tenant set, and cannot run DDL. Re-verified against the new `floor` schema too. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | `Modules.Identity` | 📁 | I3 (auth) |
-| `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem`, seeded demo menu spanning both VAT bands, soft delete (CAT-18) |
+| `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem`, seeded demo menu spanning both VAT bands, soft delete (CAT-18), modifier groups (CAT-03/04) |
 | `Modules.Ordering` | ✅ | `Order` aggregate — open against a real `Table` (`TableId`), add line (price/VAT snapshot), even split, close |
-| `Modules.Floor` | ✅ | `Room`, `Table` — full `Free ⇄ Occupied ⇄ Dirty ⇄ Free` lifecycle (`BillRequested` transition exists, unused by any endpoint yet). Seeded: 2 rooms, 8 tables |
+| `Modules.Floor` | ✅ | `Room`, `Table` — full `Free ⇄ Occupied ⇄ Dirty ⇄ Free` lifecycle (`BillRequested` transition exists, unused by any endpoint yet), `xmin`-based optimistic concurrency on `Table` so two concurrent occupy attempts can't both win. Seeded: 2 rooms, 8 tables |
 | `Modules.Fiscal` | ✅ | `IFiscalProvider`, `FiscalDocument`, VAT correctly derived from gross (menu prices are VAT-inclusive) |
 | `Modules.Payments` | 📁 | I6 |
 | `Modules.Reporting` | 📁 | I8 |
@@ -56,7 +56,7 @@
 
 | Client | State | Notes |
 |---|---|---|
-| `pos` | ✅ I0/I1 shell | React 19 + Vite 8 + TS: floor table picker (WEB-05) → menu → lines → split preview → close → receipt. pt-PT default / en toggle, cookie-persisted (ADR 0011). No auth, no offline, no Dexie yet — those are I2 (see [roadmap.md](roadmap.md)) |
+| `pos` | ✅ I0/I1 shell | React 19 + Vite 8 + TS: floor table picker (WEB-05) → menu, incl. a modifier picker for items with groups (CAT-03/04) → lines → split preview → close → receipt. pt-PT default / en toggle, cookie-persisted (ADR 0011). No auth, no offline, no Dexie yet — those are I2 (see [roadmap.md](roadmap.md)) |
 | `kds` | ⬜ | |
 | `admin` | ⬜ | |
 | `order` (QR self-ordering) | ⬜ | |
@@ -68,7 +68,7 @@
 | `Brasa.Shared.Tests` | ✅ | 17 passing, incl. exhaustive allocation check |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 5 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused. The automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 9 tests, all green across 3 consecutive full runs (proving the self-cleanup, not just a single pass): UI walking-skeleton through the real table picker (QA-05), API-level split-math sweep (QA-03), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 10 tests, all green across 4+ consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), API-level split-math sweep (QA-03), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -138,17 +138,49 @@ real database, not just built:
   with the right one.
 - **The two-DbContext trade-off in `OpenOrderAsync`/`CloseOrderAsync`.**
   Ordering and Floor are separate schemas and separate `DbContext`s — opening
-  a table is not one atomic transaction across them. Ordering saves first in
-  both handlers, deliberately: if the second save fails, "an order exists but
-  the table's floor state is stale" is a recoverable, order-preserving
-  failure; "a table is stuck occupied with no order behind it" would not be.
-  See the comments in `OrderEndpoints.cs`. Real cross-module atomicity is
-  outbox-based work for I5+, the same acknowledged gap `CloseOrderAsync`'s
-  fiscal-issuance ordering already documented.
+  a table is not one atomic transaction across them. `OpenOrderAsync` saves
+  Floor first, `CloseOrderAsync` saves Ordering first — deliberately
+  different orderings, because the failure each is protecting against is
+  different. See the comments at each call site and
+  `docs/architecture/module-boundaries.md` rule 5. Real cross-module
+  atomicity is outbox-based work for I5+.
 - **The E2E suite's own repeatability.** Only 8 tables are seeded and the dev
   database isn't reset between runs — every spec that opens one now closes
-  and clears it. Confirmed by running the full suite three times in a row
-  with all 9 tests green each time, not just once.
+  and clears it. Confirmed by running the full suite four-plus times in a
+  row with all tests green each time, not just once.
+
+### A real concurrency bug, found by running the suite enough times
+
+`Table.Occupy()` was a check-then-act on in-memory state with nothing at the
+database level stopping two concurrent requests from both reading a table as
+`Free`, both transitioning it in memory, and both successfully saving — EF's
+default `SaveChangesAsync` is a blind `UPDATE ... WHERE Id = @id`, so the
+second writer doesn't fail, it just silently overwrites the first. This
+surfaced as E2E flakiness under Playwright's 2-worker parallelism: two
+sub-tests would occasionally both "win" the same table, and later one of
+them would fail trying to clear a table that turned out not to be `Dirty`
+after all — because the *other* test had already cleared it first.
+
+**Fixed** with an `xmin`-based optimistic concurrency token on `Table`
+(`TableConfiguration.cs`) — `xmin` is a PostgreSQL system column every row
+already has, so this needed no real schema change, just a metadata-only
+migration (the scaffolded one had to be hand-edited to remove an `ADD COLUMN
+xmin`, which Postgres rejects outright: the name is reserved). EF now adds
+`AND xmin = @original` to the `UPDATE`'s `WHERE` clause, so the loser of a
+race matches zero rows and throws `DbUpdateConcurrencyException` instead of
+overwriting the winner — caught at each call site
+(`OrderEndpoints.OpenOrderAsync`/`CloseOrderAsync`, `FloorEndpoints.ClearTableAsync`)
+and turned into the same `floor.table_not_free` / `floor.table_not_dirty` 409
+a non-concurrent conflict already returns. `OpenOrderAsync` was also
+reordered to save Floor *before* Ordering specifically so this new check runs
+before an `Order` row is ever created — a lost race now leaves nothing
+behind to clean up.
+
+Re-verified: the full E2E suite green across 4 consecutive runs under real
+2-worker parallelism after the fix, versus reproducible failures before it —
+this is the second bug this session where deliberately running something for
+real, repeatedly, under realistic conditions caught what a single passing
+run could not (the first was RLS, ADR 0010).
 
 ## Mobile readiness
 

@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { addLine, closeOrderAndClearTable, findFreeTable, findMenuItem, getFloor, getMenu, openOrder } from './support/api';
+import {
+  addLine,
+  closeOrderAndClearTable,
+  defaultRequiredModifierIds,
+  findMenuItem,
+  getMenu,
+  openOrderOnAnyFreeTable,
+} from './support/api';
 
 // QA-03 — exercises the deterministic test-data builders directly against
 // the API (Playwright's `request` fixture, no browser). Complements
@@ -13,10 +20,11 @@ test.describe('split preview — Money.Allocate invariant', () => {
   for (const parts of [1, 2, 3, 5, 7]) {
     test(`splitting into ${parts} share(s) always sums back to the total`, async ({ request }) => {
       const menu = findMenuItemFixtures(await getMenu(request));
-      const table = findFreeTable(await getFloor(request));
-
-      const order = await openOrder(request, table.id, 2);
-      await addLine(request, order.id, menu.frango.id, 2);
+      const { order, table } = await openOrderOnAnyFreeTable(request, 2);
+      // Frango na Brasa carries a required "Tamanho" group (CAT-03/04) —
+      // the default selection is zero-price, so the well-known 22.60 total
+      // below is unaffected.
+      await addLine(request, order.id, menu.frango.id, 2, defaultRequiredModifierIds(menu.frango));
       const updated = await addLine(request, order.id, menu.imperial.id, 2);
 
       expect(updated.total.amount).toBeCloseTo(22.6, 2);

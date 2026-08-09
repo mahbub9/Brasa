@@ -15,6 +15,8 @@ namespace Brasa.Modules.Catalog.Domain;
 /// </remarks>
 public sealed class MenuItem : Entity, ISoftDeletable
 {
+    private readonly List<ModifierGroup> _modifierGroups = [];
+
     private MenuItem()
     {
         // EF Core materialisation.
@@ -97,5 +99,16 @@ public sealed class MenuItem : Entity, ISoftDeletable
         }
 
         Price = newPrice;
+    }
+
+    /// <summary>Modifier groups a guest can (or must) choose from when ordering this item. CAT-03.</summary>
+    public IReadOnlyList<ModifierGroup> ModifierGroups => _modifierGroups;
+
+    /// <summary>Adds a modifier group to this item, e.g. "Tamanho" or "Extras".</summary>
+    public ModifierGroup AddModifierGroup(string name, bool isRequired, int minSelect, int maxSelect, int displayOrder)
+    {
+        var group = new ModifierGroup(Id, name, isRequired, minSelect, maxSelect, displayOrder);
+        _modifierGroups.Add(group);
+        return group;
     }
 }

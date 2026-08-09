@@ -7,10 +7,26 @@ export interface MoneyDto {
   currency: string;
 }
 
+export interface ModifierDto {
+  id: string;
+  name: string;
+  priceDelta: MoneyDto;
+}
+
+export interface ModifierGroupDto {
+  id: string;
+  name: string;
+  isRequired: boolean;
+  minSelect: number;
+  maxSelect: number;
+  modifiers: ModifierDto[];
+}
+
 export interface MenuItemDto {
   id: string;
   name: string;
   price: MoneyDto;
+  modifierGroups: ModifierGroupDto[];
 }
 
 export interface MenuCategoryDto {

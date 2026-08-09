@@ -29,5 +29,12 @@ internal sealed class MenuItemConfiguration : IEntityTypeConfiguration<MenuItem>
             .IsRequired();
 
         builder.HasIndex(i => i.CategoryId);
+
+        builder.HasMany(i => i.ModifierGroups)
+            .WithOne()
+            .HasForeignKey(g => g.MenuItemId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(i => i.ModifierGroups).UsePropertyAccessMode(PropertyAccessMode.Field);
     }
 }

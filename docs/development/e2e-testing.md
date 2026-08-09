@@ -36,18 +36,30 @@ a service actually survives a Saturday night.**
   isn't up, the API's `webServer` entry fails fast with a clear error instead
   of hanging.
 - **`tests/walking-skeleton.spec.ts`** (QA-05) — drives the real rendered
-  `pos` UI in a real browser: open a table, ring up 2× Frango na Brasa +
-  2× Imperial, preview a 3-way split, close, check the receipt. Deliberately
-  does **not** use the API builders below — it exists to prove the UI itself
-  works, which nothing before it had actually done (see
+  `pos` UI in a real browser: pick a free table, ring up 2× Frango na Brasa
+  (through the modifier picker) + 2× Imperial, preview a 3-way split, close,
+  check the receipt, clear the table. Deliberately does **not** use the API
+  builders below — it exists to prove the UI itself works, which nothing
+  before it had actually done (see
   [status.md](../product/status.md#i0-demo-verified-live-not-just-unit-tested)
   for the gap this closed).
+- **`tests/modifiers.spec.ts`** (CAT-03/04) — the modifier picker itself:
+  a required group blocks "Add" until satisfied, Cancel adds nothing, and
+  selected price deltas total correctly on the rung-up line.
 - **`tests/support/api.ts`** (QA-03) — typed builders (`openOrder`,
-  `addLine`, `getMenu`, `findMenuItem`) for setting up order state via the
-  API directly, for specs that aren't exercising the ordering UI itself.
-  Menu items are looked up **by name**, never by id — ids are UUIDv7,
-  generated at seed time, and not stable across a fresh database.
-- **`tests/split-preview.spec.ts`** — uses those builders to sweep
+  `addLine`, `getMenu`, `findMenuItem`, `defaultRequiredModifierIds`) for
+  setting up order state via the API directly, for specs that aren't
+  exercising the ordering UI itself. Menu items and tables are looked up
+  **by name/state**, never by id — ids are UUIDv7, generated at seed time,
+  and not stable across a fresh database.
+  `openOrderOnAnyFreeTable`/`closeOrderAndClearTable` retry on a 409 and
+  return tables to the free pool respectively — table state is genuinely
+  contended now (see the concurrency note below), not just a formality.
+- **`tests/support/ui.ts`** — `openAnyFreeTable`, the UI-driven counterpart:
+  clicks a free table, and on a 409 (shown as an error banner, not a thrown
+  exception, since the UI handles it) dismisses it and retries against
+  whatever the refreshed floor state now shows as free.
+- **`tests/split-preview.spec.ts`** — uses the API builders to sweep
   `Money.Allocate` across several part counts (1, 2, 3, 5, 7) purely at the
   API level (Playwright's `request` fixture, no browser), asserting shares
   always sum back to the total to the cent and never differ from each other
@@ -62,10 +74,15 @@ a service actually survives a Saturday night.**
   green) but treat it as reviewed, not proven, until it has gone green in an
   actual GitHub Actions run.
 
-Verified locally, twice: once reusing already-running dev servers, once from
-a cold start with both processes killed first, so `webServer` launching them
-from nothing is actually exercised — not just assumed to work because a
-server happened to already be up. Both runs: 6/6 passing.
+Verified locally from a warm state, from a cold start (both dev processes
+killed first, so `webServer` launching them from nothing is actually
+exercised), and across **four-plus consecutive full runs** under Playwright's
+real 2-worker parallelism. That last form of repetition is what actually
+matters here: a single green run never exercised two tests genuinely racing
+for the same table, and that race is exactly what surfaced a real
+concurrency bug in `Table.Occupy()` — see
+[status.md](../product/status.md#a-real-concurrency-bug-found-by-running-the-suite-enough-times).
+10/10 passing, every run, since the fix.
 
 ### What's deliberately not built yet
 
@@ -156,10 +173,19 @@ If that passes reliably, the core product promise is proven.
 4. **QA-06** the offline suite above — blocked on `WEB-04`/`SYN` (no offline
    capability exists to test yet).
 5. **QA-08** multi-terminal concurrency — blocked on `ORD-21` (ownership /
-   conflict protocol doesn't exist yet either).
+   conflict protocol doesn't exist yet either). A narrower slice of this —
+   two requests racing to occupy the *same table* — is incidentally covered
+   now: `Table`'s `xmin` concurrency token and `openOrderOnAnyFreeTable`/
+   `openAnyFreeTable`'s retry-on-409 were built specifically because that
+   race showed up under this suite's own parallelism. Full multi-terminal
+   *order* ownership is still unbuilt.
 6. **QA-07** split-bill flows — partially covered (`split-preview.spec.ts`
    covers even splits); by-item and by-cover splits don't exist yet
    (`ORD-16`/`ORD-17`).
+7. ~~**DAT-11** / **QA-09/10** tenant isolation~~ — done, but lives in
+   `tests/Brasa.Api.IntegrationTests` (.NET, Testcontainers), not here — see
+   [testing.md](testing.md#integration-tests). This harness is specifically
+   the browser/UI layer.
 
 ## Not in scope here
 

@@ -16,6 +16,8 @@ namespace Brasa.Modules.Ordering.Domain;
 /// </remarks>
 public sealed class OrderLine : Entity
 {
+    private readonly List<OrderLineModifier> _modifiers = [];
+
     private OrderLine()
     {
         // EF Core materialisation.
@@ -26,7 +28,14 @@ public sealed class OrderLine : Entity
     /// Creates a line. Only <see cref="Order.AddLine"/> constructs one, so every
     /// line is guaranteed to belong to an order that was open when it was added.
     /// </summary>
-    internal OrderLine(Guid orderId, Guid menuItemId, string itemName, Money unitPrice, decimal vatRateFraction, int quantity)
+    internal OrderLine(
+        Guid orderId,
+        Guid menuItemId,
+        string itemName,
+        Money unitPrice,
+        decimal vatRateFraction,
+        int quantity,
+        IReadOnlyList<SelectedModifier> modifiers)
     {
         OrderId = orderId;
         MenuItemId = menuItemId;
@@ -34,6 +43,11 @@ public sealed class OrderLine : Entity
         UnitPrice = unitPrice;
         VatRateFraction = vatRateFraction;
         Quantity = quantity;
+
+        foreach (var modifier in modifiers)
+        {
+            _modifiers.Add(new OrderLineModifier(Id, modifier.ModifierId, modifier.Name, modifier.PriceDelta));
+        }
     }
 
     /// <summary>The order this line belongs to.</summary>
@@ -62,6 +76,21 @@ public sealed class OrderLine : Entity
     /// <summary>How many were ordered.</summary>
     public int Quantity { get; private set; }
 
-    /// <summary>Unit price times quantity. Not persisted — always derived.</summary>
-    public Money LineTotal => UnitPrice * Quantity;
+    /// <summary>Modifiers selected on this line, snapshotted at the time of sale. CAT-03/CAT-04.</summary>
+    public IReadOnlyList<OrderLineModifier> Modifiers => _modifiers;
+
+    /// <summary>
+    /// Sum of every selected modifier's price delta, per unit — not yet
+    /// multiplied by <see cref="Quantity"/>. Zero when no modifiers were
+    /// selected.
+    /// </summary>
+    public Money ModifiersTotal => _modifiers.Count == 0
+        ? Money.ZeroIn(UnitPrice.Currency)
+        : Money.Sum(_modifiers.Select(m => m.PriceDelta));
+
+    /// <summary>
+    /// (Unit price + modifiers) times quantity. Not persisted — always
+    /// derived, the same as <see cref="Order.Total"/>.
+    /// </summary>
+    public Money LineTotal => (UnitPrice + ModifiersTotal) * Quantity;
 }

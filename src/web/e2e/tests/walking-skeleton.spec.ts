@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openAnyFreeTable } from './support/ui';
 
 // QA-05 — the I0 smoke test everything else builds on (see
 // docs/development/e2e-testing.md). Drives the real rendered pos UI in a
@@ -24,23 +25,28 @@ test('pick a table, ring up a mixed order, split it, close it, get a receipt', a
   await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
 
   // Never hardcode a specific table — the seeded floor plan is shared with
-  // other specs running in parallel. Any free (non-disabled) table works.
-  const freeTable = page.locator('.floor-tables button:not([disabled])').first();
-  const tableLabel = await freeTable.locator('.floor-table-label').textContent();
-  await freeTable.click();
-
-  await page.getByTestId('table-confirm').getByRole('spinbutton').fill('3');
-  await page.getByTestId('confirm-open-table').click();
-
-  await expect(page.getByRole('heading', { name: tableLabel ?? '' })).toBeVisible();
+  // other specs running in parallel, and openAnyFreeTable retries if another
+  // worker wins the race for whichever one this test tries first.
+  const tableLabel = await openAnyFreeTable(page, 3);
 
   const frango = page.getByRole('button', { name: 'Frango na Brasa' });
   const imperial = page.getByRole('button', { name: 'Imperial' });
   await expect(frango).toBeVisible();
   await expect(imperial).toBeVisible();
 
+  // Frango na Brasa carries a required "Tamanho" modifier group (CAT-03/04)
+  // — picking the zero-price "Dose normal" option twice keeps this spec's
+  // total identical to the pre-modifiers regression numbers below.
   await frango.click();
+  await expect(page.getByRole('dialog')).toBeVisible();
+  await page.getByTestId('modifier-Dose normal').click();
+  await page.getByTestId('confirm-modifiers').click();
+  await expect(page.getByRole('dialog')).toBeHidden();
+
   await frango.click();
+  await page.getByTestId('modifier-Dose normal').click();
+  await page.getByTestId('confirm-modifiers').click();
+
   await imperial.click();
   await imperial.click();
 

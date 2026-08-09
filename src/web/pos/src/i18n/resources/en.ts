@@ -20,6 +20,15 @@ export const en = {
   menu: {
     empty: 'No menu items available.',
   },
+  modifiers: {
+    title: 'Customise',
+    required: 'Required',
+    chooseOne: 'Choose 1',
+    chooseUpTo: 'Choose up to {{count}}',
+    chooseBetween: 'Choose between {{min}} and {{max}}',
+    add: 'Add',
+    cancel: 'Cancel',
+  },
   order: {
     covers: '{{count}} covers',
     empty: 'No items yet — tap the menu to add some.',

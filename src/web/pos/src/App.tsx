@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from './api/client';
-import type { CloseOrderResponse, MenuCategoryDto, MoneyDto, OrderDto, RoomDto } from './api/types';
+import type { CloseOrderResponse, MenuCategoryDto, MenuItemDto, MoneyDto, OrderDto, RoomDto } from './api/types';
 import { ErrorBanner } from './components/ErrorBanner';
 import i18n from './i18n/i18n';
 import { LanguageToggle } from './components/LanguageToggle';
 import { MenuGrid } from './components/MenuGrid';
+import { ModifierPicker } from './components/ModifierPicker';
 import { OrderSummary } from './components/OrderSummary';
 import { Receipt } from './components/Receipt';
 import { TablePicker } from './components/TablePicker';
@@ -27,6 +28,7 @@ export default function App() {
   const [splitAmounts, setSplitAmounts] = useState<MoneyDto[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pickerItem, setPickerItem] = useState<MenuItemDto | null>(null);
 
   useEffect(() => {
     api.getMenu().then(setMenu).catch((err) => setError(describeError(err)));
@@ -63,12 +65,26 @@ export default function App() {
     }
   }
 
-  async function handleAddItem(menuItemId: string) {
+  function handleSelectItem(item: MenuItemDto) {
+    if (item.modifierGroups.length > 0) {
+      setPickerItem(item);
+      return;
+    }
+    void addLine(item.id, []);
+  }
+
+  async function handleConfirmModifiers(selectedModifierIds: string[]) {
+    if (!pickerItem) return;
+    await addLine(pickerItem.id, selectedModifierIds);
+    setPickerItem(null);
+  }
+
+  async function addLine(menuItemId: string, selectedModifierIds: string[]) {
     if (!order) return;
     setBusy(true);
     setError(null);
     try {
-      setOrder(await api.addLine(order.id, { menuItemId, quantity: 1 }));
+      setOrder(await api.addLine(order.id, { menuItemId, quantity: 1, selectedModifierIds }));
       setSplitAmounts(null);
     } catch (err) {
       setError(describeError(err));
@@ -126,7 +142,7 @@ export default function App() {
           <Receipt result={closeResult} onNewTable={handleNewTable} />
         ) : order ? (
           <div className="ordering-layout">
-            <MenuGrid categories={menu ?? []} onAddItem={handleAddItem} disabled={busy} />
+            <MenuGrid categories={menu ?? []} onSelectItem={handleSelectItem} disabled={busy} />
             <OrderSummary
               order={order}
               splitParts={splitParts}
@@ -146,6 +162,15 @@ export default function App() {
           />
         )}
       </main>
+
+      {pickerItem && (
+        <ModifierPicker
+          item={pickerItem}
+          busy={busy}
+          onConfirm={handleConfirmModifiers}
+          onCancel={() => setPickerItem(null)}
+        />
+      )}
     </div>
   );
 }

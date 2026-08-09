@@ -41,7 +41,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **API** | API platform & mobile readiness | 3 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
-| **CAT** | Catalog & menu | 4 | 18 | I0 (rest: I1) |
+| **CAT** | Catalog & menu | 6 | 18 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
 | **ORD** | Ordering | 5 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
@@ -55,16 +55,16 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 5 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **61** | **291** | |
+| | **Total** | **63** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 61 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 63 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
-> tables (FLR) replacing free-text table labels — is done and proven against
-> a live API, and there is now a real automated regression test for tenant
+> tables (FLR) and menu modifiers (CAT-03/04) — is done and proven against a
+> live API, and there is now a real automated regression test for tenant
 > isolation (QA-09/10, DAT-11), not just the manual verification that first
 > caught ADR 0010 (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
@@ -159,8 +159,8 @@ The plan of record. Every feature and task, with a stable ID and a status.
 |---|---|---|
 | CAT-01 | Menu categories, ordering, visibility | ✅ |
 | CAT-02 | Menu items — name, description, image, allergens | 🚧 name/price/VAT only; description/image/allergens are I1 |
-| CAT-03 | Modifier groups (required / optional, min / max) | ⬜ |
-| CAT-04 | Modifiers with price deltas | ⬜ |
+| CAT-03 | Modifier groups (required / optional, min / max) | ✅ `ModifierGroup` belongs to one `MenuItem` (not yet shared across items — see its doc comment); server enforces min/max on `POST /orders/{id}/lines`, not just the UI |
+| CAT-04 | Modifiers with price deltas | ✅ `Modifier.PriceDelta` (can be negative — e.g. "Meia dose"); snapshotted onto `OrderLineModifier` at the time of sale, folded into `LineTotal` and the fiscal document's gross total |
 | CAT-05 | Price lists per site | ⬜ |
 | CAT-06 | Channel pricing — dine-in / takeaway / delivery | ⬜ |
 | CAT-07 | `TaxRule` — item × channel × region, effective-dated | ⬜ `VatRate` ships as the explicit I0 placeholder — see its doc comment |

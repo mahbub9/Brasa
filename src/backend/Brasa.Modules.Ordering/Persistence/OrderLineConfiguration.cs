@@ -20,8 +20,16 @@ internal sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLin
 
         builder.MapMoney(l => l.UnitPrice, "unit_price");
 
-        // LineTotal is derived (UnitPrice * Quantity) and never persisted.
+        // LineTotal and ModifiersTotal are derived and never persisted.
         builder.Ignore(l => l.LineTotal);
+        builder.Ignore(l => l.ModifiersTotal);
+
+        builder.HasMany(l => l.Modifiers)
+            .WithOne()
+            .HasForeignKey(m => m.OrderLineId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(l => l.Modifiers).UsePropertyAccessMode(PropertyAccessMode.Field);
 
         builder.HasIndex(l => l.OrderId);
     }

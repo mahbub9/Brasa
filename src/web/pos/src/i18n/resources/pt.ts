@@ -22,6 +22,15 @@ export const pt = {
   menu: {
     empty: 'Sem itens de menu disponíveis.',
   },
+  modifiers: {
+    title: 'Personalizar',
+    required: 'Obrigatório',
+    chooseOne: 'Escolha 1',
+    chooseUpTo: 'Escolha até {{count}}',
+    chooseBetween: 'Escolha entre {{min}} e {{max}}',
+    add: 'Adicionar',
+    cancel: 'Cancelar',
+  },
   order: {
     covers: '{{count}} pessoas',
     empty: 'Ainda sem itens — toque no menu para adicionar.',

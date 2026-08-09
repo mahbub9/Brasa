@@ -73,9 +73,9 @@ Depended on by every module; depends on no module. Deliberately small.
 | `ErrorMapping.cs` | ✅ | The only place `ErrorType` → HTTP status is decided |
 | `Endpoints/CatalogEndpoints.cs` | ✅ | `GET /menu`, `DELETE /menu/items/{id}` (CAT-18, soft delete) |
 | `Endpoints/FloorEndpoints.cs` | ✅ | `GET /floor`, `POST /tables/{id}/clear` |
-| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders` (now against a real `tableId`), `GET /orders/{id}`, `POST /orders/{id}/lines`, `GET /orders/{id}/split`, `POST /orders/{id}/close`. Composes Catalog + Ordering + Floor + Fiscal — see the module-boundaries note below |
-| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`, `RoomDto`/`TableDto`, `OrderDto`/`OrderLineDto`, `FiscalDocumentDto` + mappings |
-| `Seed/DevCatalogSeeder.cs` | ✅ | Seeds a Portuguese demo menu spanning both VAT bands. Guarded the same way as the mock fiscal provider |
+| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders` (against a real `tableId`; also resolves + validates `selectedModifierIds` — `ResolveModifiers`), `GET /orders/{id}`, `POST /orders/{id}/lines`, `GET /orders/{id}/split`, `POST /orders/{id}/close`. Composes Catalog + Ordering + Floor + Fiscal — see the module-boundaries note below |
+| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`/`ModifierGroupDto`/`ModifierDto`, `RoomDto`/`TableDto`, `OrderDto`/`OrderLineDto`/`OrderLineModifierDto`, `FiscalDocumentDto` + mappings |
+| `Seed/DevCatalogSeeder.cs` | ✅ | Seeds a Portuguese demo menu spanning both VAT bands, plus two items with modifier groups (Frango na Brasa's required "Tamanho", Água's required "Tipo"). Guarded the same way as the mock fiscal provider |
 | `Seed/DevFloorSeeder.cs` | ✅ | Seeds 2 rooms / 8 tables. Same guard |
 | `appsettings.json` | ✅ | **Two** connection strings — `Postgres` (runtime, `brasa_app`) and `PostgresMigrations` (`brasa`, superuser) |
 
@@ -84,9 +84,9 @@ Depended on by every module; depends on no module. Deliberately small.
 | Module | State | Roadmap |
 |---|---|---|
 | `Identity` | 📁 empty | I3 |
-| `Catalog` | ✅ `MenuCategory`, `MenuItem` (soft-deletable, CAT-18), `VatRate` (I0 placeholder for I1's full `TaxRule`), EF config + migrations + design-time factory | — |
-| `Ordering` | ✅ `Order` aggregate (opens against a real `TableId`), `OrderLine`, `OrderStatus`; EF config + migrations + design-time factory | — |
-| `Floor` | ✅ `Room`, `Table` (`Free`/`Occupied`/`BillRequested`/`Dirty` state machine); EF config + migration (RLS) + design-time factory | — |
+| `Catalog` | ✅ `MenuCategory`, `MenuItem` (soft-deletable, CAT-18), `ModifierGroup`/`Modifier` (CAT-03/04, one item per group for now), `VatRate` (I0 placeholder for I1's full `TaxRule`), EF config + migrations + design-time factory | — |
+| `Ordering` | ✅ `Order` aggregate (opens against a real `TableId`), `OrderLine`, `OrderLineModifier` (snapshotted selections), `SelectedModifier` (the record the API layer hands in — Ordering never resolves a modifier id itself), `OrderStatus`; EF config + migrations + design-time factory | — |
+| `Floor` | ✅ `Room`, `Table` (`Free`/`Occupied`/`BillRequested`/`Dirty` state machine, `xmin` optimistic concurrency — see the trap in [README.md](README.md)); EF config + migrations (RLS) + design-time factory | — |
 | `Fiscal` | ✅ `IFiscalProvider`, `FiscalDocument`, `FiscalDocumentLine` (VAT-inclusive derivation), `FiscalDocumentRequest`, `FiscalDocumentType` | — |
 | `Payments` | 📁 empty | I6 |
 | `Reporting` | 📁 empty | I8 |
@@ -128,6 +128,7 @@ browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
 | `src/api/client.ts` | ✅ | `fetch` wrapper; `ApiError` carries the `ProblemDetails.code`; every mutation gets its own `Idempotency-Key` via `crypto.randomUUID()`; `getFloor`/`clearTable` |
 | `src/api/types.ts` | ✅ | Hand-written mirror of `Brasa.Api/Contracts/*.cs` — kept in sync manually until WEB-03 |
 | `src/components/TablePicker.tsx` | ✅ | WEB-05 — rooms/tables as a static grid (not `Table.PositionX/Y` — that's the future drag-and-drop editor, FLR-03), colour-coded by state, tap Free to open / tap Dirty to clear |
+| `src/components/ModifierPicker.tsx` | ✅ | CAT-03/04 — shown when a tapped menu item has modifier groups; single-select renders as radio-like buttons, multi-select as toggles capped at `maxSelect`. Validity mirrors the server's own min/max check exactly |
 | `src/components/*.tsx` | ✅ | `MenuGrid`, `OrderSummary`, `Receipt`, `ErrorBanner`, `LanguageToggle` |
 | `src/lib/money.ts` | ✅ | `Intl.NumberFormat('pt-PT', …)` — never formats `Money` by hand, and deliberately never follows the language toggle (see [ADR 0011](../architecture/decisions/0011-i18n.md)) |
 | `src/i18n/i18n.ts` | ✅ | i18next config — pt default, en toggle (WEB-13) |
@@ -143,18 +144,21 @@ slice — see the `WEB` epic in [backlog.md](../product/backlog.md).
 Playwright + TypeScript, chromium only. `playwright.config.ts`'s `webServer`
 starts both the API (`dotnet run --no-build`) and the `pos` dev server
 itself — Docker (PostgreSQL) is the only thing it doesn't start. Verified
-locally from both a warm state and a hard cold start, and **three
-consecutive full runs** (proving `support/api.ts`'s table cleanup actually
-works, not just that one run happens to pass); 9/9 passing every time.
-See [../development/e2e-testing.md](../development/e2e-testing.md) for the
-QA-01 decision record and what QA-04/06/07/08 are still blocked on.
+locally from both a warm state and a hard cold start, and **four-plus
+consecutive full runs** under real 2-worker parallelism — that repetition is
+what caught the `Table.Occupy()` concurrency bug (see the trap in
+[README.md](README.md)) and then proved the fix; 10/10 passing every time
+since. See [../development/e2e-testing.md](../development/e2e-testing.md) for
+the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 
 | File | State | Contents |
 |---|---|---|
-| `tests/walking-skeleton.spec.ts` | ✅ | QA-05 — drives the real `pos` UI: pick a free table off the floor plan → ring up → split preview → close → receipt → clear the table. Runs in Portuguese, the app's default |
+| `tests/walking-skeleton.spec.ts` | ✅ | QA-05 — drives the real `pos` UI: pick a free table off the floor plan → ring up (incl. the modifier picker) → split preview → close → receipt → clear the table. Runs in Portuguese, the app's default |
+| `tests/modifiers.spec.ts` | ✅ | CAT-03/04 — the modifier picker itself: required-group validation blocks "Add", Cancel adds nothing, price deltas sum correctly onto the line |
+| `tests/support/ui.ts` | ✅ | `openAnyFreeTable` — retries against a different table on a 409, the UI-side counterpart to `openOrderOnAnyFreeTable` below. See the concurrency trap in [README.md](README.md) |
 | `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |
 | `tests/language-toggle.spec.ts` | ✅ | WEB-13 — default language, the pt→en toggle, cookie attributes (`Path`, `SameSite`, not `httpOnly`) surviving a reload, and money staying `pt-PT` in English mode |
-| `tests/support/api.ts` | ✅ | QA-03 test-data builders. Looks menu items and tables up **by name/state**, never by id (ids are UUIDv7, not stable across a fresh database). `closeOrderAndClearTable` returns a table to the free pool — only 8 are seeded and the dev database persists across runs |
+| `tests/support/api.ts` | ✅ | QA-03 test-data builders. Looks menu items and tables up **by name/state**, never by id (ids are UUIDv7, not stable across a fresh database). `closeOrderAndClearTable` returns a table to the free pool — only 8 are seeded and the dev database persists across runs. `openOrderOnAnyFreeTable` retries on a 409 — see the concurrency trap in [README.md](README.md) |
 
 ## `tests/`
 

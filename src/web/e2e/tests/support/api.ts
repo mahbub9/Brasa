@@ -1,5 +1,5 @@
 import type { APIRequestContext } from '@playwright/test';
-import type { MenuCategoryDto, OrderDto, RoomDto, TableDto } from './types';
+import type { MenuCategoryDto, MenuItemDto, OrderDto, RoomDto, TableDto } from './types';
 
 // Deterministic test-data builders (QA-03) — set up state via the API
 // directly instead of clicking through the UI, so specs that aren't
@@ -37,6 +37,21 @@ export function findMenuItem(categories: MenuCategoryDto[], name: string) {
   throw new Error(`No seeded menu item named "${name}" — did DevCatalogSeeder change?`);
 }
 
+/**
+ * Picks the minimum valid modifier selection for an item — the first
+ * (lowest displayOrder) choice from every required group, none from
+ * optional ones. Assumes seed data lists its default option first (true for
+ * DevCatalogSeeder's "Dose normal" today); this is a test convenience for
+ * items that merely *have* required modifiers, not a test of modifier
+ * pricing itself — see modifiers.spec.ts for that.
+ */
+export function defaultRequiredModifierIds(item: MenuItemDto): string[] {
+  return item.modifierGroups
+    .filter((g) => g.isRequired)
+    .map((g) => g.modifiers[0]?.id)
+    .filter((id): id is string => id !== undefined);
+}
+
 /** Fetches the live seeded floor plan. */
 export async function getFloor(request: APIRequestContext): Promise<RoomDto[]> {
   const response = await request.get(`${apiBaseUrl}/floor`);
@@ -70,15 +85,50 @@ export async function openOrder(
   return response.json();
 }
 
+/**
+ * Finds a free table and opens it, retrying against a different table on a
+ * 409 (`floor.table_not_free`). Playwright runs specs across multiple
+ * workers, so two sub-tests can both read the floor as "Mesa 5 is free" a
+ * moment before either's own POST /orders lands — the API correctly lets
+ * only one through and rejects the other. That rejection is the product
+ * working as designed (docs/architecture/module-boundaries.md), not a bug
+ * to work around by serializing tests; retrying with a fresh read is the
+ * correct client behaviour on either side of that race.
+ */
+export async function openOrderOnAnyFreeTable(
+  request: APIRequestContext,
+  coverCount: number,
+  attempts = 5,
+): Promise<{ order: OrderDto; table: TableDto }> {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    const table = findFreeTable(await getFloor(request));
+    const response = await request.post(`${apiBaseUrl}/orders`, {
+      headers: { 'Idempotency-Key': idempotencyKey() },
+      data: { tableId: table.id, coverCount },
+    });
+
+    if (response.ok()) {
+      return { order: await response.json(), table };
+    }
+
+    if (response.status() !== 409 || attempt === attempts) {
+      throw new Error(`POST /orders failed: ${response.status()} ${await response.text()}`);
+    }
+  }
+
+  throw new Error('unreachable');
+}
+
 export async function addLine(
   request: APIRequestContext,
   orderId: string,
   menuItemId: string,
   quantity: number,
+  selectedModifierIds: string[] = [],
 ): Promise<OrderDto> {
   const response = await request.post(`${apiBaseUrl}/orders/${orderId}/lines`, {
     headers: { 'Idempotency-Key': idempotencyKey() },
-    data: { menuItemId, quantity },
+    data: { menuItemId, quantity, selectedModifierIds },
   });
   if (!response.ok()) {
     throw new Error(`POST /orders/${orderId}/lines failed: ${response.status()} ${await response.text()}`);

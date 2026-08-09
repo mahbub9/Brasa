@@ -296,14 +296,25 @@ main {
 }
 
 .order-lines li {
+  font-size: 0.9rem;
+}
+
+.order-line-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 0.5rem;
-  font-size: 0.9rem;
 }
 
 .order-line-qty {
   color: var(--muted);
+}
+
+.order-line-modifiers {
+  list-style: none;
+  margin: 0.2rem 0 0;
+  padding: 0 0 0 1.4rem;
+  color: var(--muted);
+  font-size: 0.8rem;
 }
 
 .order-total {
@@ -442,4 +453,112 @@ main {
   background: var(--brasa);
   color: #fff;
   font-weight: 600;
+}
+
+/* Modifier picker */
+
+.modifier-picker-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(36, 28, 21, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  z-index: 10;
+}
+
+.modifier-picker {
+  width: 100%;
+  max-width: 440px;
+  max-height: 90svh;
+  overflow-y: auto;
+  background: var(--panel);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.modifier-group {
+  border: none;
+  padding: 0;
+  margin: 1.25rem 0 0;
+}
+
+.modifier-group legend {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  font-weight: 600;
+  padding: 0;
+  margin-bottom: 0.5rem;
+}
+
+.modifier-required {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--brasa);
+  text-transform: uppercase;
+}
+
+.modifier-hint {
+  font-size: 0.8rem;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.modifier-choices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.modifier-choice {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--paper);
+  text-align: left;
+}
+
+.modifier-choice.active {
+  border-color: var(--brasa);
+  background: #fdf1ea;
+}
+
+.modifier-price {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.modifier-picker-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.5rem;
+}
+
+.modifier-picker-actions button {
+  flex: 1;
+  padding: 0.75rem;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.modifier-picker-actions button:first-child {
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--ink);
+}
+
+.modifier-picker-actions button:last-child {
+  border: none;
+  background: var(--brasa);
+  color: #fff;
+}
+
+.modifier-picker-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }

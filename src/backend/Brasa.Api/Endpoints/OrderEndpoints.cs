@@ -1,4 +1,5 @@
 using Brasa.Api.Contracts;
+using Brasa.Modules.Catalog.Domain;
 using Brasa.Modules.Catalog.Persistence;
 using Brasa.Modules.Fiscal;
 using Brasa.Modules.Floor.Persistence;
@@ -78,18 +79,28 @@ public static class OrderEndpoints
             return occupyResult.Error.ToProblem();
         }
 
+        // Floor saves before Ordering here, deliberately — the reverse of
+        // CloseOrderAsync below. table.State is guarded by an xmin
+        // concurrency token (TableConfiguration.cs): two requests can both
+        // read this row as Free and both transition it in memory, but only
+        // one SaveChangesAsync can win — the loser's blind UPDATE-by-id now
+        // has "AND xmin = @original" in its WHERE clause, matches zero rows,
+        // and EF throws DbUpdateConcurrencyException instead of silently
+        // overwriting the winner. Saving Floor first means that failure
+        // happens before the Order is ever created, so a lost race leaves
+        // nothing behind to clean up — no orphan order, just a clean 409.
+        try
+        {
+            await floorDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Error.Conflict("floor.table_not_free", $"Table {table.Label} is not free.").ToProblem();
+        }
+
         var order = Order.Open(table.Id, table.Label, request.CoverCount, clock.UtcNow);
         orderingDb.Orders.Add(order);
-
-        // Ordering saves before Floor, deliberately. Two DbContexts means this
-        // isn't one transaction — if the second save fails, "an order exists
-        // but the table still shows Free" (fixable: it's just a stale floor
-        // view, the order itself works) is a much smaller problem than "the
-        // table is stuck Occupied with no order behind it" would be. Same
-        // I0/I1-scope trade-off CloseOrderAsync already makes below; real
-        // cross-module atomicity is outbox-based work for I5+.
         await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-        await floorDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.Created($"/api/v1/orders/{order.Id}", order.ToDto());
     }
@@ -121,6 +132,8 @@ public static class OrderEndpoints
         }
 
         var menuItem = await catalogDb.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
             .FirstOrDefaultAsync(i => i.Id == request.MenuItemId, cancellationToken)
             .ConfigureAwait(false);
 
@@ -134,9 +147,17 @@ public static class OrderEndpoints
             return Error.Conflict("catalog.item_unavailable", $"{menuItem.Name} is not currently available.").ToProblem();
         }
 
-        // The line snapshots price and VAT rate now — see docs/architecture/module-boundaries.md
-        // on why that is correctness, not denormalisation.
-        var addResult = order.AddLine(menuItem.Id, menuItem.Name, menuItem.Price, menuItem.VatRate.Fraction, request.Quantity);
+        var modifiersResult = ResolveModifiers(menuItem, request.SelectedModifierIds ?? []);
+        if (modifiersResult.IsFailure)
+        {
+            return modifiersResult.Error.ToProblem();
+        }
+
+        // The line snapshots price, VAT rate and modifiers now — see
+        // docs/architecture/module-boundaries.md on why that is correctness,
+        // not denormalisation.
+        var addResult = order.AddLine(
+            menuItem.Id, menuItem.Name, menuItem.Price, menuItem.VatRate.Fraction, request.Quantity, modifiersResult.Value);
         if (addResult.IsFailure)
         {
             return addResult.Error.ToProblem();
@@ -185,8 +206,14 @@ public static class OrderEndpoints
             return closeResult.Error.ToProblem();
         }
 
+        // ModifiersTotal is folded into the unit price handed to Fiscal — the
+        // guest's gross total must include selected modifiers, and the mock
+        // (and, later, real) engine only knows about one VAT-inclusive unit
+        // price per line. Itemising modifiers as their own fiscal lines is
+        // real fiscal-engine work (I7), not needed for I1's correctness bar:
+        // order.Total and document.GrossTotal must still agree to the cent.
         var fiscalLines = order.Lines
-            .Select(l => new FiscalDocumentLine(l.ItemName, l.Quantity, l.UnitPrice, l.VatRateFraction))
+            .Select(l => new FiscalDocumentLine(l.ItemName, l.Quantity, l.UnitPrice + l.ModifiersTotal, l.VatRateFraction))
             .ToArray();
 
         var fiscalRequest = new FiscalDocumentRequest(tenantContext.TenantId, order.Id, fiscalLines);
@@ -210,24 +237,74 @@ public static class OrderEndpoints
         // The order is now closed and fiscally issued — the part that must not
         // fail silently already succeeded. Marking the table dirty is
         // housekeeping on top of that: if it doesn't apply (table already
-        // moved on somehow, or this save fails), the close itself still stands
-        // and the response below is still correct. Staff can always clear a
-        // stuck table by hand; they can never recover a lost fiscal document.
+        // moved on somehow, this save fails, or another request wins the
+        // same xmin race Occupy uses — see OpenOrderAsync), the close itself
+        // still stands and the response below is still correct. Staff can
+        // always clear a stuck table by hand; they can never recover a lost
+        // fiscal document.
         var table = await floorDb.Tables
             .FirstOrDefaultAsync(t => t.Id == order.TableId, cancellationToken)
             .ConfigureAwait(false);
 
         if (table is not null && table.MarkDirty().IsSuccess)
         {
-            await floorDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            try
+            {
+                await floorDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                // Best-effort, as above — swallow and move on.
+            }
         }
 
         return Results.Ok(new CloseOrderResponse(order.ToDto(), fiscalResult.Value.ToDto()));
     }
 
     private static Task<Order?> FindOrderAsync(OrderingDbContext db, Guid orderId, CancellationToken cancellationToken)
-        => db.Orders.Include(o => o.Lines).FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
+        => db.Orders
+            .Include(o => o.Lines)
+            .ThenInclude(l => l.Modifiers)
+            .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken);
 
     private static Error OrderNotFound(Guid orderId)
         => Error.NotFound("order.not_found", $"Order {orderId} was not found.");
+
+    /// <summary>
+    /// Resolves the requested modifier ids against <paramref name="menuItem"/>'s
+    /// own modifier groups and enforces each group's min/max selection count.
+    /// Catalog never crosses into Ordering, and Ordering never resolves a
+    /// modifier id itself — this is the API layer doing exactly the
+    /// composition job it exists for.
+    /// </summary>
+    private static Result<IReadOnlyList<SelectedModifier>> ResolveModifiers(
+        MenuItem menuItem,
+        IReadOnlyList<Guid> selectedModifierIds)
+    {
+        var allModifiers = menuItem.ModifierGroups.SelectMany(g => g.Modifiers).ToDictionary(m => m.Id);
+
+        var unknownId = selectedModifierIds.FirstOrDefault(id => !allModifiers.ContainsKey(id));
+        if (unknownId != Guid.Empty)
+        {
+            return Result.Failure<IReadOnlyList<SelectedModifier>>(
+                Error.NotFound("catalog.modifier_not_found", $"Modifier {unknownId} was not found on {menuItem.Name}."));
+        }
+
+        foreach (var group in menuItem.ModifierGroups)
+        {
+            var selectedCount = group.Modifiers.Count(m => selectedModifierIds.Contains(m.Id));
+            if (selectedCount < group.MinSelect || selectedCount > group.MaxSelect)
+            {
+                return Result.Failure<IReadOnlyList<SelectedModifier>>(Error.Validation(
+                    "catalog.modifier_selection_invalid",
+                    $"\"{group.Name}\" needs between {group.MinSelect} and {group.MaxSelect} selection(s); got {selectedCount}."));
+            }
+        }
+
+        IReadOnlyList<SelectedModifier> resolved = [.. selectedModifierIds
+            .Select(id => allModifiers[id])
+            .Select(m => new SelectedModifier(m.Id, m.Name, m.PriceDelta))];
+
+        return Result.Success(resolved);
+    }
 }

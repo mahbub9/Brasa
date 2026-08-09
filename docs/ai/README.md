@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's opening slice (real rooms/tables — Floor module) proven live end-to-end
+**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end
 
 ---
 
@@ -60,19 +60,21 @@ Condensed:
 
 - ✅ **Built, tested, and proven live** (not just unit-tested — see §3a):
   `Money` (17 tests), `Result`/`Error`, tenancy + **real RLS** (DAT-01…06),
-  `Catalog` (categories/items, seeded, soft delete — CAT-18),
-  `Ordering` (open against a real table/add-line/split/close),
-  `Floor` (rooms, tables, full `Free ⇄ Occupied ⇄ Dirty ⇄ Free` lifecycle —
-  FLR-01/02/04), `Fiscal` contract + `Fiscal.Mock`, API layer (versioning,
-  ProblemDetails, idempotency, CORS, the full order flow composing all four
-  modules), the `pos` web shell (React 19 + Vite + TS, table-picker → order →
+  `Catalog` (categories/items, seeded, soft delete — CAT-18, modifier groups
+  — CAT-03/04), `Ordering` (open against a real table/add-line-with-modifiers/
+  split/close), `Floor` (rooms, tables, full `Free ⇄ Occupied ⇄ Dirty ⇄ Free`
+  lifecycle, `xmin` optimistic concurrency — FLR-01/02/04), `Fiscal` contract
+  + `Fiscal.Mock`, API layer (versioning, ProblemDetails, idempotency, CORS,
+  the full order flow composing all four modules), the `pos` web shell
+  (React 19 + Vite + TS, table-picker → order incl. a modifier picker →
   receipt, WEB-01/05, pt-PT default / en toggle behind a mobile-portable
   cookie seam — WEB-13, ADR 0011), a Playwright E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05, 9 tests green across 3 consecutive full
-  runs), `Brasa.Api.IntegrationTests` (DAT-11, QA-09/10 — real Testcontainers
-  Postgres proving tenant isolation by automated test, not just manual psql
-  anymore), Docker Compose (PostgreSQL 18 + Seq), full docs tree, CI
-  (including an `e2e` job — written, not yet run in CI).
+  UI (`src/web/e2e`, QA-01/03/05, 10 tests green across 4+ consecutive full
+  runs under real parallelism), `Brasa.Api.IntegrationTests` (DAT-11,
+  QA-09/10 — real Testcontainers Postgres proving tenant isolation by
+  automated test, not just manual psql anymore), Docker Compose
+  (PostgreSQL 18 + Seq), full docs tree, CI (including an `e2e` job —
+  written, not yet run in CI).
 - 📁 **Empty projects (structure only, zero logic):** `Modules.Identity`,
   `Modules.Payments`, `Modules.Reporting`, `Fiscal.Portugal`.
 - 🚧 **Stub:** `SiteAgent` starts and stops; nothing else.
@@ -85,12 +87,12 @@ status. Reference IDs in commits: `feat(identity): terminal pairing (IDN-07)`,
 and update the status in the same commit.
 
 **Current increment: I0 is done except deployment (OPS-11).** I1 ("Menu and
-floor," see roadmap) has started — its floor-plan slice (FLR-01/02/04,
-WEB-05) is done and proven; the rest of I1 (modifiers, price lists, the
-`admin` back-office shell) is not.
+floor," see roadmap) is well underway — floor plan (FLR-01/02/04, WEB-05) and
+modifiers (CAT-03/04) are both done and proven; price lists (CAT-05) and the
+`admin` back-office shell are not.
 
 Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/**11**/10 · API-01/03/05 ·
-CAT-01/02/07/18 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01/05/13 ·
+CAT-01/02/03/04/07/18 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01/05/13 ·
 QA-01/03/05/**09**/**10** · FLR-01/02/04.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
@@ -120,11 +122,21 @@ tests both missed:
 3. **VAT was computed backwards.** Menu prices are VAT-inclusive under
    Portuguese law; the fiscal document must derive net/VAT from gross, not add
    VAT on top. See §7 and `docs/fiscal/README.md`.
+4. **`Table.Occupy()` had no database-level concurrency guard.** Two
+   concurrent "open this table" requests could both read `Free`, both
+   transition in memory, and both successfully save — EF's default
+   `SaveChangesAsync` is a blind `UPDATE ... WHERE Id = @id` with nothing to
+   notice a second writer got there first. Found by E2E flakiness under
+   Playwright's 2-worker parallelism, not by inspection. Fixed with an
+   `xmin`-based concurrency token (`TableConfiguration.cs`) — see §7 and
+   [status.md](../product/status.md#a-real-concurrency-bug-found-by-running-the-suite-enough-times).
 
 **The lesson, not just the fix:** a clean build and green unit tests proved
-nothing about whether tenant isolation actually worked. If you build something
-that depends on database-level behaviour (RLS, triggers, constraints), run it
-against the real database and try to break it before calling it done.
+nothing about whether tenant isolation actually worked, and a single passing
+E2E run proved nothing about whether concurrent access was safe. If you build
+something that depends on database-level behaviour (RLS, triggers,
+constraints, concurrent writes), run it against the real database, under
+real concurrent load, and try to break it before calling it done.
 
 The `pos` web shell was first verified only at the wire level — `curl`
 reproducing the exact browser request sequence (CORS preflight, `Origin`
@@ -229,12 +241,23 @@ there is actually met.
   timestamp must not change format because staff switched their own
   interface language. See ADR 0011.
 - **`OpenOrderAsync`/`CloseOrderAsync` save two `DbContext`s sequentially, not
-  in one transaction.** Ordering saves first in both. That's deliberate: if
-  the second save (Floor) fails, "an order exists but the table's floor
-  state is stale" is recoverable; "a table stuck Occupied with no order
-  behind it" would not be. Don't "fix" this into a `TransactionScope` across
-  two Npgsql connections — read the comment at each call site first, and see
+  in one transaction — and each saves them in the OPPOSITE order on purpose.**
+  `OpenOrderAsync` saves Floor first: that's the row with the new `xmin`
+  concurrency check, so a lost race is caught *before* an `Order` exists,
+  leaving nothing to clean up. `CloseOrderAsync` saves Ordering first: the
+  closed-and-fiscally-issued order is the part that must never be silently
+  lost, so marking the table `Dirty` afterward is deliberately best-effort.
+  Don't "fix" either into a `TransactionScope` across two Npgsql connections,
+  and don't assume the other handler's ordering applies here too — read the
+  comment at each call site, and see
   [module-boundaries.md](../architecture/module-boundaries.md) rule 5.
+- **`Table` has an `xmin`-based optimistic concurrency token, and its
+  migration's `Up()`/`Down()` are deliberately empty.** `xmin` is a
+  PostgreSQL system column every row already has — `dotnet ef migrations add`
+  scaffolds an `ADD COLUMN xmin`, which Postgres rejects outright (the name is
+  reserved). The migration exists only so EF's model snapshot knows about the
+  shadow property; there is no DDL to run. If you regenerate this migration,
+  strip the `AddColumn`/`DropColumn` calls again.
 - **`Order.TableId` is a bare `Guid`, not a navigation property, and
   Ordering never queries `floor.tables`.** Same pattern as
   `OrderLine.MenuItemId` — a cross-module reference is an opaque id an
@@ -244,7 +267,11 @@ there is actually met.
 - **The seeded floor plan has only 8 tables, and the dev database is not
   reset between E2E runs.** Every spec that opens a table (`src/web/e2e`)
   must close the order and clear the table before finishing, or repeated
-  runs exhaust the free-table pool. See `tests/support/api.ts`.
+  runs exhaust the free-table pool — and because table state is real
+  contended state now (the `xmin` token above), specs pick a table via
+  `openOrderOnAnyFreeTable` / `openAnyFreeTable`, which retry on a 409
+  instead of assuming the first "free" table they see is still free by the
+  time the request lands. See `tests/support/api.ts` and `tests/support/ui.ts`.
 - **`Money.Format(culture)` is not called `ToString`.** Deliberate — it forces
   callers to name the culture, and keeps `ToString()` unambiguously invariant.
 - **`Fiscal.Mock` must never run in Production.** It produces structurally valid

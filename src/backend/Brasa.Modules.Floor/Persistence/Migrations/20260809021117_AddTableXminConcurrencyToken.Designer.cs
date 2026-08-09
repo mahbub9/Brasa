@@ -3,6 +3,7 @@ using System;
 using Brasa.Modules.Floor.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Brasa.Modules.Floor.Persistence.Migrations
 {
     [DbContext(typeof(FloorDbContext))]
-    partial class FloorDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260809021117_AddTableXminConcurrencyToken")]
+    partial class AddTableXminConcurrencyToken
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

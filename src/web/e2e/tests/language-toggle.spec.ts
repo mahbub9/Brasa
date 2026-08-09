@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { openAnyFreeTable } from './support/ui';
 
 // Covers the language toggle requested alongside the E2E harness: Portuguese
 // is the default (docs/architecture/decisions/0011-i18n.md), English is a
@@ -61,12 +62,15 @@ test.describe('language toggle', () => {
     await page.getByTestId('lang-en').click();
     await expect(page.getByRole('heading', { name: 'Choose a table' })).toBeVisible();
 
-    const freeTable = page.locator('.floor-tables button:not([disabled])').first();
-    const tableLabel = await freeTable.locator('.floor-table-label').textContent();
-    await freeTable.click();
-    await page.getByTestId('confirm-open-table').click();
+    const tableLabel = await openAnyFreeTable(page, 2);
 
+    // Frango na Brasa carries a required modifier group — the picker's own
+    // labels ("Add", "Required", ...) are translated too, but modifier names
+    // are seeded business data, never translated (ADR 0011), so the testid
+    // is the same in either language.
     await page.getByRole('button', { name: 'Frango na Brasa' }).click();
+    await page.getByTestId('modifier-Dose normal').click();
+    await page.getByTestId('confirm-modifiers').click();
     await expect(page.getByTestId('order-total')).toHaveText(/^9,50\s?€$/);
 
     // Cleanup: close and clear so the table returns to the free pool for

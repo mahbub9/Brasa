@@ -41,6 +41,8 @@ public static class CatalogEndpoints
 
         var items = await db.Items
             .Where(i => i.IsAvailable)
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 

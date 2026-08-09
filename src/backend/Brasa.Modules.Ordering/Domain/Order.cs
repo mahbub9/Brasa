@@ -110,7 +110,19 @@ public sealed class Order : Entity
     /// <param name="unitPrice">Unit price to snapshot onto the line.</param>
     /// <param name="vatRateFraction">VAT rate to snapshot onto the line, e.g. 0.13m.</param>
     /// <param name="quantity">How many. At least 1.</param>
-    public Result<OrderLine> AddLine(Guid menuItemId, string itemName, Money unitPrice, decimal vatRateFraction, int quantity)
+    /// <param name="modifiers">
+    /// Modifiers selected for this line, already resolved and validated
+    /// against the catalog by the caller (Ordering never resolves a modifier
+    /// id itself — see <see cref="SelectedModifier"/>). Empty when the item
+    /// has no modifier groups.
+    /// </param>
+    public Result<OrderLine> AddLine(
+        Guid menuItemId,
+        string itemName,
+        Money unitPrice,
+        decimal vatRateFraction,
+        int quantity,
+        IReadOnlyList<SelectedModifier>? modifiers = null)
     {
         if (Status != OrderStatus.Open)
         {
@@ -124,7 +136,7 @@ public sealed class Order : Entity
                 Error.Validation("order.invalid_quantity", "Quantity must be at least 1."));
         }
 
-        var line = new OrderLine(Id, menuItemId, itemName, unitPrice, vatRateFraction, quantity);
+        var line = new OrderLine(Id, menuItemId, itemName, unitPrice, vatRateFraction, quantity, modifiers ?? []);
         _lines.Add(line);
         return Result.Success(line);
     }

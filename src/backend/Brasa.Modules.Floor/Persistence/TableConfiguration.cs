@@ -22,5 +22,20 @@ internal sealed class TableConfiguration : IEntityTypeConfiguration<Table>
 
         builder.HasIndex(t => t.RoomId);
         builder.HasIndex(t => t.State);
+
+        // Table.Occupy() is a check-then-act on in-memory state with no
+        // database-level guard otherwise: two concurrent "open this table"
+        // requests can both read Free, both transition in memory, and both
+        // successfully UPDATE the same row — the second writer's save is a
+        // blind UPDATE-by-id with nothing in its WHERE clause to notice the
+        // first writer already got there. xmin (Postgres's built-in row
+        // version system column — no migration needed, it already exists on
+        // every row) turns that blind UPDATE into a compare-and-swap: EF
+        // adds "AND xmin = @original_xmin" to the WHERE clause, so the loser
+        // updates zero rows and throws DbUpdateConcurrencyException instead
+        // of silently overwriting the winner. See OrderEndpoints.cs for how
+        // that's caught and turned into the same 409 the in-memory check
+        // already returns for the non-concurrent case.
+        builder.Property<uint>("xmin").IsRowVersion();
     }
 }
