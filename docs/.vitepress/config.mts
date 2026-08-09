@@ -81,6 +81,7 @@ export default defineConfig({
         items: [
           { text: 'Overview', link: '/architecture/' },
           { text: 'API contract', link: '/architecture/api-contract' },
+          { text: 'Error code registry', link: '/architecture/error-codes' },
           { text: 'Money', link: '/architecture/money' },
           { text: 'Multi-tenancy', link: '/architecture/multi-tenancy' },
           { text: 'Module boundaries', link: '/architecture/module-boundaries' },

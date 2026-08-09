@@ -160,7 +160,11 @@ change to any calling code.
 `Error.Code` values such as `order.already_closed` are a **public contract**.
 
 **Once released, an error code never changes meaning.** A mobile client branches
-on it and cannot be patched quickly.
+on it and cannot be patched quickly. This is mechanically enforced, not just
+stated: [error-codes.md](error-codes.md) is the checked-in registry, and
+`ErrorCodeRegistryTests` (API-04) fails the build if source and registry
+ever disagree — a code removed, renamed, or one whose `ErrorType` (and so
+its HTTP status) changed underneath the same string.
 
 The server returns **codes, not display strings**. Clients localise. Mobile apps
 bundle their own translations and must not depend on server-side wording, which

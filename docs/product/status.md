@@ -65,7 +65,7 @@
 
 | Suite | State | Notes |
 |---|---|---|
-| `Brasa.Shared.Tests` | ✅ | 17 passing, incl. exhaustive allocation check |
+| `Brasa.Shared.Tests` | ✅ | 18 passing, incl. exhaustive allocation check and the error-code registry test (API-04) |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 5 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused. The automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | E2E (Playwright) | ✅ | `src/web/e2e` — 12 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), accessibility scans (QA-14), API-level split-math sweep (QA-03), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
@@ -206,6 +206,25 @@ Scope: `pos` only. There is no guest-facing UI yet to check (`order`/QR
 self-ordering is post-I8) — see the `QR` epic in
 [backlog.md](backlog.md#qr--qr-self-ordering) for when that arrives and
 needs the same treatment.
+
+## Error codes are now a mechanically enforced contract
+
+Hard rule 11 (`docs/ai/README.md`) always said `Error.Code` must never
+change meaning once released, but nothing checked that beyond a comment and
+good intentions. `docs/architecture/error-codes.md` is now the checked-in
+registry — every code, its `ErrorType` (which decides the HTTP status), and
+what triggers it — and `ErrorCodeRegistryTests` (API-04,
+`tests/Brasa.Shared.Tests`) scans every `Error.Validation/NotFound/Conflict/
+Forbidden/Failure(...)` call site under `src/` via a plain text-matching
+regex and fails on any disagreement: a code removed or renamed, a new code
+nobody documented, or — the actual meaning-change case — a code whose
+`ErrorType` changed, silently changing the HTTP status a client sees for the
+same string.
+
+Verified the same way the other regression tests this session were: broke it
+on purpose (renamed `order.already_closed` in source, left the registry
+alone) and confirmed the test fails with the code named in the message,
+before reverting. No Docker, no database — pure text scanning, ~0.2s.
 
 ## Mobile readiness
 

@@ -165,7 +165,7 @@ the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 
 | Project | State | Notes |
 |---|---|---|
-| `Brasa.Shared.Tests` | ✅ | `Primitives/MoneyTests.cs` — 17 tests, exhaustive allocation over ~12,000 combinations |
+| `Brasa.Shared.Tests` | ✅ | `Primitives/MoneyTests.cs` — 17 tests, exhaustive allocation over ~12,000 combinations. `ErrorCodeRegistryTests.cs` (API-04) — text-scans every `Error.*(...)` call site under `src/` against `docs/architecture/error-codes.md`, no Docker needed |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 tests: `FiscalDocumentLineTests` (gross→net VAT derivation, exhaustive per rate — the regression test for the I0 VAT bug), `MockFiscalProviderTests` (per-tenant sequential numbering, mock markers, mixed-rate reconciliation) |
 | `Brasa.Api.IntegrationTests` | ✅ | `TenantIsolationReflectionTests` (DAT-11 — every module's built EF model, no DB) + `TenantIsolationIntegrationTests` (QA-09/10 — real Testcontainers Postgres, queries as `brasa_app` via raw SQL so a disabled RLS policy can't hide behind the EF convenience filter). `Mvc.Testing` referenced, not yet used — no HTTP-level integration test exists yet |
 
@@ -193,6 +193,7 @@ rewrites them to site index pages, so one file serves both.
 | `architecture/api-contract.md` | **Rules every endpoint obeys** so Android/iOS ship with no backend change |
 | `architecture/money.md` | Why integer cents; allocation, rounding, formatting |
 | `architecture/multi-tenancy.md` | Query filters + RLS; the system context |
+| `architecture/error-codes.md` | The `Error.Code` registry (API-04) — every code, its `ErrorType`/HTTP status, and what it means. Enforced by `ErrorCodeRegistryTests` |
 | `architecture/module-boundaries.md` | The five rules modules obey |
 | `architecture/site-agent.md` | In-restaurant process design (stub status) |
 | `architecture/conventions.md` | Code conventions, build policy, suppression register |

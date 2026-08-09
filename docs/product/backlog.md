@@ -38,7 +38,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **FND** | Foundation & shared kernel | 10 | 12 | I0 |
 | **OPS** | Infrastructure, CI, observability | 6 | 16 | I0 → ongoing |
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
-| **API** | API platform & mobile readiness | 3 | 18 | I0 (rest: I3) |
+| **API** | API platform & mobile readiness | 4 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 6 | 18 | I0 (rest: I1) |
@@ -55,19 +55,21 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 6 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **64** | **291** | |
+| | **Total** | **65** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 64 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 65 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04) — is done and proven against a
 > live API, there is now a real automated regression test for tenant
 > isolation (QA-09/10, DAT-11) instead of only the manual verification that
-> first caught ADR 0010, and an accessibility scan (QA-14) that found and
-> fixed 5 real contrast failures on its first run (details:
+> first caught ADR 0010, an accessibility scan (QA-14) that found and fixed
+> 5 real contrast failures on its first run, and the error-code contract
+> (hard rule 11) is now mechanically enforced (API-04), not just stated
+> (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -117,7 +119,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | API-01 | `/api/v1` versioning via `Asp.Versioning` | ✅ literal prefix + `ApiVersionSet`, not a templated segment — see commit message for why |
 | API-02 | `/api/public/v1` consumer surface, separated from tenant API | ⬜ |
 | API-03 | ProblemDetails mapping from `ErrorType` → HTTP status | ✅ |
-| API-04 | Stable error-code registry + test that codes never change meaning | ⬜ codes exist (`order.already_closed` etc.); no stability test yet |
+| API-04 | Stable error-code registry + test that codes never change meaning | ✅ [error-codes.md](../architecture/error-codes.md), enforced by `ErrorCodeRegistryTests` — scans every `Error.*(...)` call site, fails on a removed/renamed code, an undocumented new one, or a code whose `Type` (and therefore HTTP status) changed. Verified it actually catches drift, not just that it compiles |
 | API-05 | `Idempotency-Key` middleware + store | ✅ **verified live**: replayed request returns identical order id; DB confirms one row. In-memory store — durable store needed before scaling out |
 | API-06 | `X-Brasa-Client` header parsing (id / version / platform) | ⬜ |
 | API-07 | `GET /client-requirements` — min & recommended version, sunset | ⬜ |

@@ -48,7 +48,7 @@ understand only one thing, understand that.
 | 8 | Signature chaining is **per-series**, never global | Two series advance independently |
 | 9 | **No cookie auth. No web-only assumptions in the API** | Android and iOS ship soon after web and must need *zero* backend change |
 | 10 | Every realtime message must have a **REST equivalent** | A platform with no usable SignalR client must still work, degraded but correct |
-| 11 | Error codes are a **public contract** — once released, the meaning never changes | Mobile clients branch on them and cannot be patched quickly |
+| 11 | Error codes are a **public contract** — once released, the meaning never changes | Mobile clients branch on them and cannot be patched quickly. Enforced, not just stated: [error-codes.md](../architecture/error-codes.md) + `ErrorCodeRegistryTests` (API-04) |
 
 ## 3. Where things stand
 
@@ -59,7 +59,9 @@ things look finished.
 Condensed:
 
 - ✅ **Built, tested, and proven live** (not just unit-tested — see §3a):
-  `Money` (17 tests), `Result`/`Error`, tenancy + **real RLS** (DAT-01…06),
+  `Money` (17 tests), `Result`/`Error` (18th test: the error-code registry,
+  API-04 — see [error-codes.md](../architecture/error-codes.md)), tenancy +
+  **real RLS** (DAT-01…06),
   `Catalog` (categories/items, seeded, soft delete — CAT-18, modifier groups
   — CAT-03/04), `Ordering` (open against a real table/add-line-with-modifiers/
   split/close), `Floor` (rooms, tables, full `Free ⇄ Occupied ⇄ Dirty ⇄ Free`
@@ -94,7 +96,7 @@ modifiers (CAT-03/04) are both done and proven; price lists (CAT-05) and the
 
 Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/**11**/10 · API-01/03/05 ·
 CAT-01/02/03/04/07/18 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01/05/13 ·
-QA-01/03/05/**09**/**10**/**14** · FLR-01/02/04.
+QA-01/03/05/**09**/**10**/**14** · FLR-01/02/04 · API-**04**.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 
