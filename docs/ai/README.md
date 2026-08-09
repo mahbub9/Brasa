@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1
+**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built) and a second web client — the `admin` back-office shell (WEB-09, one live screen, editors not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1
 
 ---
 
@@ -88,8 +88,11 @@ Condensed:
   the full order flow composing all four modules), the `pos` web shell
   (React 19 + Vite + TS, table-picker → order incl. a modifier picker →
   receipt, WEB-01/05, pt-PT default / en toggle behind a mobile-portable
-  cookie seam — WEB-13, ADR 0011), a Playwright E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 63
+  cookie seam — WEB-13, ADR 0011), the `admin` back-office shell (WEB-09 —
+  React 19 + Vite + TS on port 5174, "Visão geral" pulling real counts from
+  `GET /menu`/`GET /floor`; the shell's only live screen, no editors yet, no
+  i18n toggle yet), a Playwright E2E harness driving the real
+  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 65
   tests green on a clean run — the seeded floor plan was doubled to 16
   tables after back-to-back full runs started exhausting the original 8, a
   QA-02 scaling limitation, not a product bug; see
@@ -140,18 +143,19 @@ Condensed:
 - 📁 **Empty projects (structure only, zero logic):** `Modules.Identity`,
   `Modules.Payments`, `Modules.Reporting`, `Fiscal.Portugal`.
 - 🚧 **Stub:** `SiteAgent` starts and stops; nothing else.
-- ⬜ **Not started:** `kds`/`admin`/`order` web clients, deployment.
+- ⬜ **Not started:** `kds`/`order` web clients, deployment.
 
 **Delivery is incremental** — vertical slices, each ending in a runnable demo.
 **[../product/roadmap.md](../product/roadmap.md) says what to build next**;
-[../product/backlog.md](../product/backlog.md) holds the 291 tasks and their
+[../product/backlog.md](../product/backlog.md) holds the 292 tasks and their
 status. Reference IDs in commits: `feat(identity): terminal pairing (IDN-07)`,
 and update the status in the same commit.
 
 **Current increment: I0 is done except deployment (OPS-11).** I1 ("Menu and
-floor," see roadmap) is well underway — floor plan (FLR-01/02/04, WEB-05) and
-modifiers (CAT-03/04) are both done and proven; price lists (CAT-05) and the
-`admin` back-office shell are not.
+floor," see roadmap) is well underway — floor plan (FLR-01/02/04, WEB-05),
+modifiers (CAT-03/04) and the `admin` back-office shell (WEB-09 — one live
+screen, real counts from the API; Menu/Floor/Staff editors not built) are
+done and proven; price lists (CAT-05) and those editors (WEB-10/11) are not.
 
 Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/**11**/10 · API-01/03/05 ·
 CAT-**01**/02/03/04/07/**13**/**17**/18/**19** ·
@@ -235,6 +239,7 @@ src/agent/
   Brasa.SiteAgent         In-restaurant worker: signing, printing, LAN hub
 src/web/
   pos                     POS PWA (React + TS + Vite) — I0 shell, WEB-01
+  admin                   Back-office SPA (React + TS + Vite) — shell only, WEB-09
   e2e                     Playwright E2E harness — QA-01/03/05
 tests/                            Unit, fiscal golden-file, integration
 docs/                             This documentation tree
@@ -441,6 +446,14 @@ there is actually met.
 - **The solution file is `Brasa.slnx`**, the .NET 10 XML format — not `.sln`.
 - **PostgreSQL 18 mounts `/var/lib/postgresql`**, not `.../data`. Mounting
   `.../data` makes the container refuse to start.
+- **A new web client's origin must be added to `Cors:AllowedOrigins`
+  (`Brasa.Api/appsettings.Development.json`) before it can call the API at
+  all.** `admin` (port 5174) hit this directly: every fetch failed silently
+  from the app's own perspective — no server-side error, no visible
+  exception, just a hung `fetch` — because the browser blocks the response
+  at the CORS layer before JS ever sees it. Only visible in the browser's
+  network console, not in API logs. The list is read once at startup, not
+  live-reloaded, so a config edit needs the API restarted, not just saved.
 
 ## 8. Environment
 
@@ -457,7 +470,8 @@ dotnet test  tests/Brasa.Shared.Tests   # fast path
 dotnet run   --project src/backend/Brasa.Api
 docker compose -f infra/docker-compose.yml up -d
 cd src/web/pos ; npm install ; npm run dev   # http://localhost:5173
-cd src/web/e2e ; npm install ; npx playwright test   # starts API + pos itself
+cd src/web/admin ; npm install ; npm run dev -- --port 5174   # http://localhost:5174
+cd src/web/e2e ; npm install ; npx playwright test   # starts API + pos + admin itself
 ```
 
 ## 9. Open blockers

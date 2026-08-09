@@ -30,12 +30,15 @@ a service actually survives a Saturday night.**
 
 `src/web/e2e` (Playwright + TypeScript, chromium only for now):
 
-- **`playwright.config.ts`** — `webServer` starts both the API
-  (`dotnet run --no-build`) and the `pos` dev server itself, so
-  `npx playwright test` works standalone. **Docker (PostgreSQL) is a
-  prerequisite it does not start** — same as `dotnet run` locally. If Docker
-  isn't up, the API's `webServer` entry fails fast with a clear error instead
-  of hanging.
+- **`playwright.config.ts`** — `webServer` starts the API
+  (`dotnet run --no-build`), the `pos` dev server (port 5173) and the
+  `admin` dev server (port 5174, WEB-09), so `npx playwright test` works
+  standalone. **Docker (PostgreSQL) is a prerequisite it does not start** —
+  same as `dotnet run` locally. If Docker isn't up, the API's `webServer`
+  entry fails fast with a clear error instead of hanging. `admin`'s origin
+  needs its own entry in the API's `Cors:AllowedOrigins`
+  (`appsettings.Development.json`) — a second web client is what actually
+  exercises that config path for the first time.
 - **`tests/walking-skeleton.spec.ts`** (QA-05) — drives the real rendered
   `pos` UI in a real browser: pick a free table, ring up 2× Frango na Brasa
   (through the modifier picker) + 2× Imperial, preview a 3-way split, close,

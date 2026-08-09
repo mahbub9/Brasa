@@ -9,6 +9,7 @@ import { defineConfig, devices } from '@playwright/test';
 // webServer fails fast with a clear error rather than hanging.
 const apiBaseUrl = process.env.BRASA_API_BASE_URL ?? 'http://localhost:5216';
 const posBaseUrl = process.env.BRASA_POS_BASE_URL ?? 'http://localhost:5173';
+const adminBaseUrl = process.env.BRASA_ADMIN_BASE_URL ?? 'http://localhost:5174';
 
 export default defineConfig({
   testDir: './tests',
@@ -41,6 +42,13 @@ export default defineConfig({
       command: 'npm run dev -- --port 5173 --strictPort',
       cwd: '../pos',
       url: posBaseUrl,
+      reuseExistingServer: !process.env.CI,
+      timeout: 30_000,
+    },
+    {
+      command: 'npm run dev -- --port 5174 --strictPort',
+      cwd: '../admin',
+      url: adminBaseUrl,
       reuseExistingServer: !process.env.CI,
       timeout: 30_000,
     },

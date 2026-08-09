@@ -48,20 +48,20 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
 | **FIS** | Fiscal engine | 3 | 24 | I0 (rest: I7) |
-| **WEB** | Web clients | 4 | 13 | I0 (rest: I1–I8) |
+| **WEB** | Web clients | 5 | 13 | I0 (rest: I1–I8) |
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **87** | **292** | |
+| | **Total** | **88** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 87 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 88 of 292 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -123,7 +123,14 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > fourth, one level up: `MenuCategory.IsVisible` had no setter *at all*,
 > even though CAT-01's own title names "visibility" as in scope and the
 > row was already marked done. Hiding a category now removes it and every
-> item under it from the menu in one call
+> item under it from the menu in one call, and the OpenAPI document was
+> regenerated to catch up with all five of those endpoints, which had each
+> skipped the documented hand-regeneration step. I1's back-office shell
+> (WEB-09) now exists too — `src/web/admin`, a second web client — with one
+> live screen proving it, not just scaffolding: real category/item/room/table
+> counts pulled from `GET /menu` and `GET /floor`, while Menu/Floor/Staff are
+> labelled "Brevemente" rather than silently absent, since WEB-10/11 (the
+> actual editors) aren't built yet
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -380,7 +387,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | WEB-06 | `pos` — menu browsing with modifiers and courses | 🚧 Modifiers done — `ModifierPicker.tsx` (CAT-03/04), required single-select and optional multi-select groups both proven live in `modifiers.spec.ts`. Courses not built — deliberately deferred with ORD-07/08/09 (kitchen firing), which is what "courses" in a POS menu screen actually means; there is no KDS yet for a fired course to go to |
 | WEB-07 | `pos` — staff PIN login screen | ⬜ depends on IDN |
 | WEB-08 | `kds` shell — station view, bump, prep timers | ⬜ I4 |
-| WEB-09 | `admin` shell — back-office SPA scaffold | ⬜ I1 |
+| WEB-09 | `admin` shell — back-office SPA scaffold | ✅ `src/web/admin` — Vite + React + TS, same tooling as `pos`. One live screen ("Visão geral"): real counts from `GET /menu`/`GET /floor`, proving the shell is actually wired to the API rather than a static mock. Menu/Floor/Staff nav entries are labelled "Brevemente" (not silently missing) until WEB-10/11 build their editors. No i18n toggle yet (pt-only static copy) and no auth (depends on IDN) — both called out here, not silently inconsistent with `pos`. **Verified live**: `admin-shell.spec.ts` |
 | WEB-10 | `admin` — menu and floor-plan editors | ⬜ |
 | WEB-11 | `admin` — staff, roles and reporting screens | ⬜ |
 | WEB-12 | `order` shell — QR self-ordering PWA | ⬜ Post-I8 |
