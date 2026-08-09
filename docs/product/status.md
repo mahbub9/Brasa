@@ -67,7 +67,7 @@
 |---|---|---|
 | `Brasa.Shared.Tests` | ✅ | 17 passing, incl. exhaustive allocation check |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
-| `Brasa.Api.IntegrationTests` | 📁 | Testcontainers referenced and Docker available; no tests written yet |
+| `Brasa.Api.IntegrationTests` | ✅ | 5 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused. The automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | E2E (Playwright) | ✅ | `src/web/e2e` — 9 tests, all green across 3 consecutive full runs (proving the self-cleanup, not just a single pass): UI walking-skeleton through the real table picker (QA-05), API-level split-math sweep (QA-03), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested

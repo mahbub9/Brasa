@@ -162,7 +162,7 @@ QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 |---|---|---|
 | `Brasa.Shared.Tests` | ✅ | `Primitives/MoneyTests.cs` — 17 tests, exhaustive allocation over ~12,000 combinations |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 tests: `FiscalDocumentLineTests` (gross→net VAT derivation, exhaustive per rate — the regression test for the I0 VAT bug), `MockFiscalProviderTests` (per-tenant sequential numbering, mock markers, mixed-rate reconciliation) |
-| `Brasa.Api.IntegrationTests` | 📁 | Testcontainers + `Mvc.Testing` referenced; no tests yet |
+| `Brasa.Api.IntegrationTests` | ✅ | `TenantIsolationReflectionTests` (DAT-11 — every module's built EF model, no DB) + `TenantIsolationIntegrationTests` (QA-09/10 — real Testcontainers Postgres, queries as `brasa_app` via raw SQL so a disabled RLS policy can't hide behind the EF convenience filter). `Mvc.Testing` referenced, not yet used — no HTTP-level integration test exists yet |
 
 ## `infra/`
 

@@ -39,7 +39,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **OPS** | Infrastructure, CI, observability | 6 | 16 | I0 → ongoing |
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
 | **API** | API platform & mobile readiness | 3 | 18 | I0 (rest: I3) |
-| **DAT** | Persistence, tenancy, RLS | 9 | 11 | I0 |
+| **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 4 | 18 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
@@ -52,19 +52,21 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
-| **QA** | Automated testing | 3 | 14 | I0–I1 → ongoing |
+| **QA** | Automated testing | 5 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **58** | **291** | |
+| | **Total** | **61** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 58 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
-> harness) is done except deployment, and I1's opening slice — real rooms and
+> 61 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) replacing free-text table labels — is done and proven against
-> a live API (details:
+> a live API, and there is now a real automated regression test for tenant
+> isolation (QA-09/10, DAT-11), not just the manual verification that first
+> caught ADR 0010 (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -102,7 +104,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | DAT-08 | Audit interceptor — `CreatedAt/By`, `ModifiedAt/By` | ✅ `TenantAwareDbContext.StampEntities` |
 | DAT-09 | `AssignTenant` interceptor on insert | ✅ |
 | DAT-10 | Initial migration + migration-on-startup policy | ✅ migrate-on-startup, elevated role only |
-| DAT-11 | Reflection test: every entity is `ITenantOwned` or allow-listed | ⬜ |
+| DAT-11 | Reflection test: every entity is `ITenantOwned` or allow-listed | ✅ `TenantIsolationReflectionTests` — one per module's built EF model, no DB connection needed |
 
 ## API — API platform & mobile readiness
 
@@ -391,8 +393,8 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | QA-06 | E2E: offline mode — network killed mid-service | ⬜ blocked on WEB-04/SYN — no offline capability exists to test |
 | QA-07 | E2E: split-bill flows | 🚧 even split covered (`split-preview.spec.ts`, API-level, sweeps 1/2/3/5/7 ways); by-item/by-cover blocked on ORD-16/17 |
 | QA-08 | E2E: multi-terminal concurrency | ⬜ blocked on ORD-21 |
-| QA-09 | Testcontainers integration-test base fixture | ⬜ |
-| QA-10 | Tenant isolation test suite (RLS) | ⬜ |
+| QA-09 | Testcontainers integration-test base fixture | ✅ `TenantIsolationIntegrationTests` — real disposable Postgres per run, migrates for real, creates `brasa_app` the same way `initdb` does. One fixture so far; extract a shared base once a second test needs it |
+| QA-10 | Tenant isolation test suite (RLS) | ✅ Automated version of the manual verification that caught ADR 0010: zero rows with no/wrong tenant set, own rows only with the right one, DDL refused — queried as `brasa_app` via raw SQL, deliberately bypassing the EF convenience filter so a silently-disabled RLS policy can't hide behind it |
 | QA-11 | Idempotency replay test harness | ⬜ |
 | QA-12 | Fiscal golden-file infrastructure | ⬜ |
 | QA-13 | Load test — 50 sites × 5 terminals at service rates | ⬜ |

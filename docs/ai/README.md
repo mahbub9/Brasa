@@ -69,8 +69,10 @@ Condensed:
   receipt, WEB-01/05, pt-PT default / en toggle behind a mobile-portable
   cookie seam — WEB-13, ADR 0011), a Playwright E2E harness driving the real
   UI (`src/web/e2e`, QA-01/03/05, 9 tests green across 3 consecutive full
-  runs), Docker Compose (PostgreSQL 18 + Seq), full docs tree, CI (including
-  an `e2e` job — written, not yet run in CI).
+  runs), `Brasa.Api.IntegrationTests` (DAT-11, QA-09/10 — real Testcontainers
+  Postgres proving tenant isolation by automated test, not just manual psql
+  anymore), Docker Compose (PostgreSQL 18 + Seq), full docs tree, CI
+  (including an `e2e` job — written, not yet run in CI).
 - 📁 **Empty projects (structure only, zero logic):** `Modules.Identity`,
   `Modules.Payments`, `Modules.Reporting`, `Fiscal.Portugal`.
 - 🚧 **Stub:** `SiteAgent` starts and stops; nothing else.
@@ -87,9 +89,9 @@ floor," see roadmap) has started — its floor-plan slice (FLR-01/02/04,
 WEB-05) is done and proven; the rest of I1 (modifiers, price lists, the
 `admin` back-office shell) is not.
 
-Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/10 · API-01/03/05 ·
+Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/**11**/10 · API-01/03/05 ·
 CAT-01/02/07/18 · ORD-01/02/03/04/15 · FIS-01/02/03 · WEB-01/05/13 ·
-QA-01/03/05 · FLR-01/02/04.
+QA-01/03/05/**09**/**10** · FLR-01/02/04.
 
 **Not in I0:** auth, offline, printing, real fiscal, menu editing, KDS.
 

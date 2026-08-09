@@ -59,8 +59,17 @@ Run against **real PostgreSQL** via Testcontainers. No in-memory provider:
 row-level security is a core part of what we are testing, and it does not exist
 in-memory.
 
-Every module carries a **tenant isolation test** asserting that tenant A cannot
-read tenant B's rows.
+**Status:** built — `tests/Brasa.Api.IntegrationTests/TenantIsolationIntegrationTests.cs`
+(QA-09/10). It asserts, against `Catalog`, that tenant A cannot read tenant
+B's rows, that no tenant set returns nothing, and that the unprivileged role
+cannot run DDL — queried with raw SQL as `brasa_app`, deliberately bypassing
+the EF convenience filter, so a silently-disabled RLS policy (the ADR 0010
+bug) can't hide behind it. Every module shares the identical mechanism
+(`TenantAwareDbContext` + `RowLevelSecurity.EnableFor`), proven for every
+entity by the companion reflection test (DAT-11,
+`TenantIsolationReflectionTests`) — one thorough integration test against
+one module's table, not yet one per module. Extend to Ordering/Floor
+directly if a module-specific RLS bug is ever suspected.
 
 ## Load, before launch
 
