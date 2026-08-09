@@ -1,17 +1,59 @@
-// Mirrors src/backend/Brasa.Api/Contracts/*.cs — only the fields this shell's
-// Overview screen actually reads. See src/web/pos/src/api/types.ts for the
-// fuller shape; duplicated rather than shared until a second client makes
-// web/sdk (WEB-03/API-15) worth building — see that file's own comment.
+// Mirrors src/backend/Brasa.Api/Contracts/*.cs — only the fields the admin
+// shell actually reads or sends. See src/web/pos/src/api/types.ts for the
+// fuller shape; duplicated rather than shared until a change actually needs
+// sharing across clients — see that file's own comment (WEB-03/API-15).
+
+export interface MoneyDto {
+  amount: number;
+  currency: string;
+}
 
 export interface MenuItemDto {
   id: string;
+  name: string;
+  description: string | null;
+  price: MoneyDto;
+  vatRatePercent: number;
+  isAlcoholic: boolean;
+  isAvailable: boolean;
+  allergens: string[];
+}
+
+/**
+ * Unlike the POS-facing `MenuCategoryDto`, this carries `isVisible` — it
+ * only ever comes from `GET /menu/all`, which deliberately returns hidden
+ * categories and unavailable items too, so admin can show (and un-hide)
+ * what `GET /menu` would otherwise filter out entirely. See
+ * CatalogEndpoints.GetMenuAllAsync's own remarks.
+ */
+export interface AdminMenuCategoryDto {
+  id: string;
+  name: string;
+  displayOrder: number;
+  isVisible: boolean;
+  items: MenuItemDto[];
+}
+
+export interface UpdateMenuItemAvailabilityRequest {
   isAvailable: boolean;
 }
 
-export interface MenuCategoryDto {
-  id: string;
-  name: string;
-  items: MenuItemDto[];
+export interface UpdateMenuItemPriceRequest {
+  price: number;
+}
+
+export interface UpdateMenuCategoryVisibilityRequest {
+  isVisible: boolean;
+}
+
+export interface ImportMenuItemsRowError {
+  rowNumber: number;
+  message: string;
+}
+
+export interface ImportMenuItemsResponse {
+  created: number;
+  errors: ImportMenuItemsRowError[];
 }
 
 export type TableState = 'Free' | 'Occupied' | 'BillRequested' | 'Dirty';

@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built) and a second web client — the `admin` back-office shell (WEB-09, one live screen with its own pt/en toggle, editors not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1
+**Last verified:** 2026-08-09 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1
 
 ---
 
@@ -89,12 +89,15 @@ Condensed:
   (React 19 + Vite + TS, table-picker → order incl. a modifier picker →
   receipt, WEB-01/05, pt-PT default / en toggle behind a mobile-portable
   cookie seam — WEB-13, ADR 0011), the `admin` back-office shell (WEB-09 —
-  React 19 + Vite + TS on port 5174, "Visão geral"/"Overview" pulling real
-  counts from `GET /menu`/`GET /floor`; the shell's only live screen, no
-  editors yet, but its own full pt/en toggle sharing `pos`'s `brasa.lang`
-  cookie, genuinely English in English mode since not every staff member is
-  a Portuguese speaker), a Playwright E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 69
+  React 19 + Vite + TS on port 5174, own full pt/en toggle sharing `pos`'s
+  `brasa.lang` cookie, genuinely English in English mode since not every
+  staff member is a Portuguese speaker) with its first real editor
+  (WEB-10's menu slice — toggle category visibility, 86/reprice/delete an
+  item, bulk-import more via CAT-17's CSV pipeline, all backed by a new
+  `GET /menu/all` that deliberately doesn't filter the way the guest-facing
+  `GET /menu` does; floor-plan editing, FLR-03, isn't built), a Playwright
+  E2E harness driving the real
+  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 74
   tests green on a clean run — the seeded floor plan was doubled to 16
   tables after back-to-back full runs started exhausting the original 8, a
   QA-02 scaling limitation, not a product bug; see
@@ -155,9 +158,9 @@ and update the status in the same commit.
 
 **Current increment: I0 is done except deployment (OPS-11).** I1 ("Menu and
 floor," see roadmap) is well underway — floor plan (FLR-01/02/04, WEB-05),
-modifiers (CAT-03/04) and the `admin` back-office shell (WEB-09 — one live
-screen, real counts from the API; Menu/Floor/Staff editors not built) are
-done and proven; price lists (CAT-05) and those editors (WEB-10/11) are not.
+modifiers (CAT-03/04), the `admin` back-office shell (WEB-09) and its menu
+editor (WEB-10's menu slice) are done and proven; price lists (CAT-05), the
+floor-plan editor (FLR-03) and staff/reporting screens (WEB-11) are not.
 
 Backend/I0 tasks — **done**: DAT-01/03/04/**05**/06/**11**/10 · API-01/03/05 ·
 CAT-**01**/02/03/04/07/**13**/**17**/18/**19** ·
@@ -241,7 +244,7 @@ src/agent/
   Brasa.SiteAgent         In-restaurant worker: signing, printing, LAN hub
 src/web/
   pos                     POS PWA (React + TS + Vite) — I0 shell, WEB-01
-  admin                   Back-office SPA (React + TS + Vite) — shell only, WEB-09
+  admin                   Back-office SPA (React + TS + Vite) — shell + menu editor, WEB-09/10
   e2e                     Playwright E2E harness — QA-01/03/05
 tests/                            Unit, fiscal golden-file, integration
 docs/                             This documentation tree
@@ -429,6 +432,14 @@ there is actually met.
   whether it's scaffolding for a state or guard that already exists and is
   already enforced, just missing the one endpoint that would reach it — the
   same way CAT-02's fields shipped ahead of the UI that would set them.
+- **`GET /menu` and `GET /menu/all` are not interchangeable — `pos` must
+  never call the second one.** `GET /menu` filters to visible categories
+  and available items on purpose: it's what a guest may actually order.
+  `GET /menu/all` (WEB-10) deliberately skips both filters, because
+  `admin`'s menu editor needs to *see* a hidden category or an 86'd item to
+  turn it back on — but that only works because `pos` never reaches it. If
+  `pos` ever needs a second endpoint, that is a sign something about this
+  split needs rethinking, not a reason to point it at `/menu/all`.
 - **A test asserting `GET /menu`'s `ETag` is stable between two calls can
   break for a completely legitimate reason: another spec mutated the menu
   in the gap between them.** `menu-etag.spec.ts` assumed nothing changes

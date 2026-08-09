@@ -39,6 +39,19 @@ export interface MenuCategoryDto {
   items: MenuItemDto[];
 }
 
+/** From GET /menu/all — unlike MenuCategoryDto (always pre-filtered to visible), this carries isVisible and its items carry isAvailable. */
+export interface AdminMenuItemDto extends MenuItemDto {
+  isAvailable: boolean;
+}
+
+export interface AdminMenuCategoryDto {
+  id: string;
+  name: string;
+  displayOrder: number;
+  isVisible: boolean;
+  items: AdminMenuItemDto[];
+}
+
 export interface ImportMenuItemsRowError {
   rowNumber: number;
   message: string;

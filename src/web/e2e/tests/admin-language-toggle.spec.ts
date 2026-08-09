@@ -31,9 +31,10 @@ test.describe('admin language toggle', () => {
 
     await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
     await expect(page.getByTestId('nav-menu')).toContainText('Menu');
+    await expect(page.getByTestId('nav-menu')).not.toContainText('Coming soon');
     await expect(page.getByTestId('nav-floor')).toContainText('Floor plan');
     await expect(page.getByTestId('nav-staff')).toContainText('Staff');
-    await expect(page.getByTestId('nav-menu')).toContainText('Coming soon');
+    await expect(page.getByTestId('nav-floor')).toContainText('Coming soon');
     await expect(page.getByTestId('overview-cards')).toContainText('Menu categories');
     await expect(page.getByTestId('overview-cards')).toContainText('Rooms');
     await expect(page.getByTestId('overview-cards')).toContainText('Tables');

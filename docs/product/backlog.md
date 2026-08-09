@@ -126,11 +126,16 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > item under it from the menu in one call, and the OpenAPI document was
 > regenerated to catch up with all five of those endpoints, which had each
 > skipped the documented hand-regeneration step. I1's back-office shell
-> (WEB-09) now exists too — `src/web/admin`, a second web client — with one
-> live screen proving it, not just scaffolding: real category/item/room/table
-> counts pulled from `GET /menu` and `GET /floor`, while Menu/Floor/Staff are
-> labelled "Brevemente" rather than silently absent, since WEB-10/11 (the
-> actual editors) aren't built yet
+> (WEB-09) now exists too — `src/web/admin`, a second web client — with a
+> pt/en toggle of its own from day one (real staff here aren't all
+> Portuguese speakers), and its first real editor (WEB-10's menu slice):
+> a new `GET /menu/all` — `GET /menu` is guest-facing and filters to what a
+> guest may actually order, so it can never show a hidden category or an
+> 86'd item for staff to turn back on — backs a screen that toggles
+> category visibility, 86's/reprices/deletes an item, and bulk-imports more
+> via CAT-17's existing CSV pipeline. Floor plan/Staff stay labelled
+> "Brevemente" rather than silently absent, since FLR-03 and WEB-11 aren't
+> built yet
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -248,7 +253,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 |---|---|---|
 | FLR-01 | Rooms / areas (indoor, esplanada, bar) | ✅ `Room` — seeded (Salão, Esplanada), no editor UI yet |
 | FLR-02 | Tables — number, seats, position, shape | ✅ `Table` — position/shape stored for FLR-03 to use later; `pos` renders a static grid, not the coordinates |
-| FLR-03 | Drag-and-drop floor plan editor | ⬜ back-office feature (WEB-10), needs `admin` app |
+| FLR-03 | Drag-and-drop floor plan editor | ⬜ back-office feature (WEB-10) — `admin` (WEB-09) exists now with a menu editor, this piece of WEB-10 isn't built yet |
 | FLR-04 | Table states (free, occupied, bill requested, dirty) | ✅ all four wired end-to-end through `pos`, including `BillRequested` now: `POST /tables/{id}/request-bill` + a "Pedir conta" button, distinct from the pre-bill preview (ORD-18/19, "Ver conta") — that stays a read-only `GET`, this is the explicit floor-plan signal for staff. **Verified live** in a real browser: clicking it flags the table `BillRequested` on `GET /floor`; a free table 409s (`floor.table_not_occupied`), an unknown table 404s |
 | FLR-05 | Table merge / split for large parties | ⬜ |
 | FLR-06 | Section assignment to waiters | ⬜ depends on IDN |
@@ -387,8 +392,8 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | WEB-06 | `pos` — menu browsing with modifiers and courses | 🚧 Modifiers done — `ModifierPicker.tsx` (CAT-03/04), required single-select and optional multi-select groups both proven live in `modifiers.spec.ts`. Courses not built — deliberately deferred with ORD-07/08/09 (kitchen firing), which is what "courses" in a POS menu screen actually means; there is no KDS yet for a fired course to go to |
 | WEB-07 | `pos` — staff PIN login screen | ⬜ depends on IDN |
 | WEB-08 | `kds` shell — station view, bump, prep timers | ⬜ I4 |
-| WEB-09 | `admin` shell — back-office SPA scaffold | ✅ `src/web/admin` — Vite + React + TS, same tooling as `pos`. One live screen ("Visão geral"/"Overview"): real counts from `GET /menu`/`GET /floor`, proving the shell is actually wired to the API rather than a static mock. Menu/Floor/Staff nav entries are labelled "Brevemente"/"Coming soon" (not silently missing) until WEB-10/11 build their editors. Full pt/en i18n toggle (WEB-13's own ADR 0011 pattern, same `brasa.lang` cookie as `pos` so the preference carries across both apps) — genuine English words throughout, not just a token toggle, since not every staff member reading the English UI is a Portuguese speaker. No auth yet (depends on IDN). **Verified live**: `admin-shell.spec.ts`, `admin-language-toggle.spec.ts` |
-| WEB-10 | `admin` — menu and floor-plan editors | ⬜ |
+| WEB-09 | `admin` shell — back-office SPA scaffold | ✅ `src/web/admin` — Vite + React + TS, same tooling as `pos`. "Visão geral"/"Overview" shows real counts from `GET /menu/all`/`GET /floor`, proving the shell is actually wired to the API rather than a static mock. Floor plan/Staff nav entries stay labelled "Brevemente"/"Coming soon" (not silently missing) until WEB-11 and FLR-03 build their editors; Menu went live under WEB-10. Full pt/en i18n toggle (WEB-13's own ADR 0011 pattern, same `brasa.lang` cookie as `pos` so the preference carries across both apps) — genuine English words throughout, not just a token toggle, since not every staff member reading the English UI is a Portuguese speaker. No auth yet (depends on IDN). **Verified live**: `admin-shell.spec.ts`, `admin-language-toggle.spec.ts` |
+| WEB-10 | `admin` — menu and floor-plan editors | 🚧 Menu editor done; floor-plan editor (FLR-03) is a separate, larger task and not built. `GET /menu/all` (new — `GET /menu` is guest-facing and filters to visible categories/available items, so it can never be the data source for a screen that needs to *show* a hidden category to turn it back on) backs a screen that toggles category visibility, 86's/reprices/deletes an item, and bulk-imports more via the existing CSV pipeline (CAT-17). No "create category" or "create item" form — neither endpoint exists yet, so CSV import is the only way to add one, same real gap at the API layer, not a UI shortcut. Every mutation refetches rather than reconciling state by hand. **Verified live**: `admin-menu-management.spec.ts` |
 | WEB-11 | `admin` — staff, roles and reporting screens | ⬜ |
 | WEB-12 | `order` shell — QR self-ordering PWA | ⬜ Post-I8 |
 | WEB-13 | i18n — pt default / en toggle, cookie-persisted, mobile storage seam | ✅ i18next, `src/i18n/`. See [ADR 0011](../architecture/decisions/0011-i18n.md). Extended after real-world feedback (Brasa's actual floor/kitchen staff are not all Portuguese speakers): seeded table labels ("Mesa 1") now render as "Table 1" in English via `src/lib/tableLabel.ts`, and a blank takeaway ticket defaults to "Takeaway" instead of leaking the API's own Portuguese default ("Levantamento") — both are generic operational words, not identity-bearing content like a dish name, so they don't fall under the menu-item exception. **Verified live**: `language-toggle.spec.ts` |

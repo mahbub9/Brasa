@@ -9,12 +9,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Brasa.Api.Endpoints;
 
-/// <summary>Menu endpoints — read for the POS, a soft-delete for CAT-18.</summary>
+/// <summary>Menu endpoints — read for the POS, editing for <c>admin</c> (WEB-10).</summary>
 /// <remarks>
-/// No admin UI calls <c>DELETE /menu/items/{id}</c> yet — there is no
-/// back-office app (WEB-09) to call it from. It exists ahead of that UI the
-/// same way CAT-01/02 shipped ahead of a menu-editing UI: seeded data today,
-/// a real editor later. See <c>docs/product/roadmap.md</c>.
+/// <see cref="GetMenuAllAsync"/> is the one endpoint here <c>pos</c> never
+/// calls — it's <c>admin</c>'s management view, unfiltered on purpose. Every
+/// other endpoint is shared: <c>pos</c> only ever reads <c>GET /menu</c>,
+/// <c>admin</c> is the only caller of the mutations. See
+/// <c>docs/product/roadmap.md</c>.
 /// </remarks>
 public static class CatalogEndpoints
 {
@@ -26,6 +27,10 @@ public static class CatalogEndpoints
         group.MapGet("/menu", GetMenuAsync)
             .WithName("GetMenu")
             .WithSummary("Every visible category and its available items, for the POS to render.");
+
+        group.MapGet("/menu/all", GetMenuAllAsync)
+            .WithName("GetMenuAll")
+            .WithSummary("Every category and item, including hidden and unavailable ones, for management tooling.");
 
         group.MapDelete("/menu/items/{itemId:guid}", DeleteMenuItemAsync)
             .WithName("DeleteMenuItem")
@@ -82,6 +87,43 @@ public static class CatalogEndpoints
         // API-10: the menu changes rarely, so most POS pulls should come
         // back as a bodyless 304 rather than the same JSON every time.
         return ETagResults.OkWithETag(httpContext, dto);
+    }
+
+    /// <summary>
+    /// Every category and item, hidden/unavailable ones included (WEB-10).
+    /// <c>GET /menu</c> exists to render a guest-facing menu, so it filters
+    /// to what a guest may actually order — which means it can never be the
+    /// data source for a management screen that needs to *show* a hidden
+    /// category so staff can turn it back on. That's a real gap, not a
+    /// hypothetical one: without this endpoint, hiding a category or
+    /// 86'ing an item would be a one-way door once the admin UI's only view
+    /// of the catalog was the already-filtered one.
+    /// </summary>
+    private static async Task<IResult> GetMenuAllAsync(CatalogDbContext db, CancellationToken cancellationToken)
+    {
+        var categories = await db.Categories
+            .OrderBy(c => c.DisplayOrder)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var items = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        var itemsByCategory = items.ToLookup(i => i.CategoryId);
+
+        var dto = categories
+            .Select(c => new AdminMenuCategoryDto(
+                c.Id,
+                c.Name,
+                c.DisplayOrder,
+                c.IsVisible,
+                [.. itemsByCategory[c.Id].Select(i => i.ToDto())]))
+            .ToList();
+
+        return Results.Ok(dto);
     }
 
     private static async Task<IResult> DeleteMenuItemAsync(
@@ -146,11 +188,9 @@ public static class CatalogEndpoints
     /// <c>MarkUnavailable</c> have existed on the domain since I0 and are
     /// already enforced on the ordering side (<c>AddLine</c> rejects an
     /// unavailable item with <c>catalog.item_unavailable</c>) — but nothing
-    /// ever called either one, so <see cref="MenuItem.IsAvailable"/> could
-    /// never actually become <c>false</c>. Ships ahead of any UI that will
-    /// call it — neither the admin back-office (WEB-09) nor an in-order
-    /// 86 control in <c>pos</c> exists yet — the same way CAT-02/CAT-17/
-    /// CAT-18 shipped ahead of theirs.
+    /// called either one until now, so <see cref="MenuItem.IsAvailable"/>
+    /// could never actually become <c>false</c>. Called from <c>admin</c>'s
+    /// menu editor (WEB-10) today; <c>pos</c> has no in-order 86 control yet.
     /// </summary>
     private static async Task<IResult> UpdateMenuItemAvailabilityAsync(
         Guid itemId,
@@ -190,8 +230,7 @@ public static class CatalogEndpoints
     /// construction, not by convention: <c>OrderLine.UnitPrice</c> snapshots
     /// the price at the moment a line is added, so repricing an item never
     /// rewrites what a past order charged — see <c>MenuItem.Price</c>'s own
-    /// doc comment. Ships ahead of any UI that will call it, same as
-    /// CAT-02/CAT-13/CAT-17/CAT-18.
+    /// doc comment. Called from <c>admin</c>'s menu editor (WEB-10) today.
     /// </summary>
     private static async Task<IResult> UpdateMenuItemPriceAsync(
         Guid itemId,
@@ -230,8 +269,8 @@ public static class CatalogEndpoints
     /// Bulk-creates menu items from a CSV file (CAT-17). Rows import
     /// independently — one bad row (an unknown category, an unparsable
     /// price) is reported and skipped, it does not fail the whole request.
-    /// Ships ahead of any admin UI to upload a file from, the same way
-    /// CAT-02/CAT-18 shipped ahead of theirs.
+    /// Also the only way <c>admin</c>'s menu editor (WEB-10) can add a new
+    /// item at all — there is still no "create item" endpoint.
     /// </summary>
     private static async Task<IResult> ImportMenuItemsAsync(
         ImportMenuItemsRequest request,
@@ -336,8 +375,8 @@ public static class CatalogEndpoints
     /// epic was marked done, but <c>MenuCategory.IsVisible</c> had no
     /// setter at all: nothing could ever set it to anything but its
     /// default <c>true</c>. Same shape as FLR-04/CAT-13/CAT-19's gaps, one
-    /// level up — a category, not an item). Ships ahead of any UI that
-    /// will call it, same as the others.
+    /// level up — a category, not an item). Called from <c>admin</c>'s menu
+    /// editor (WEB-10) today.
     /// </summary>
     private static async Task<IResult> UpdateMenuCategoryVisibilityAsync(
         Guid categoryId,

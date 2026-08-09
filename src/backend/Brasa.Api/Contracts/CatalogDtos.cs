@@ -30,6 +30,15 @@ public sealed record MenuItemDto(
 public sealed record MenuCategoryDto(Guid Id, string Name, int DisplayOrder, IReadOnlyList<MenuItemDto> Items);
 
 /// <summary>
+/// A menu category for management tooling — unlike <see cref="MenuCategoryDto"/>
+/// (which only ever appears already-filtered to visible categories, so it
+/// has nothing to say on the point), this carries <c>IsVisible</c> because
+/// <c>GET /menu/all</c> deliberately returns hidden categories and
+/// unavailable items too. See that endpoint's own remarks.
+/// </summary>
+public sealed record AdminMenuCategoryDto(Guid Id, string Name, int DisplayOrder, bool IsVisible, IReadOnlyList<MenuItemDto> Items);
+
+/// <summary>
 /// Request body to set a menu item's description and declared allergens
 /// (CAT-02). Replaces the full allergen set — not additive — so correcting
 /// a wrongly-declared allergen is one call. <c>Allergens</c> entries are

@@ -1,5 +1,6 @@
 import type { APIRequestContext } from '@playwright/test';
 import type {
+  AdminMenuCategoryDto,
   CloseOrderResponse,
   MenuCategoryDto,
   MenuItemDto,
@@ -34,6 +35,15 @@ export async function getMenu(request: APIRequestContext): Promise<MenuCategoryD
   const response = await request.get(`${apiBaseUrl}/menu`);
   if (!response.ok()) {
     throw new Error(`GET /menu failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Every category and item, hidden/unavailable ones included — WEB-10's admin management view (GetMenuAllAsync). */
+export async function getMenuAll(request: APIRequestContext): Promise<AdminMenuCategoryDto[]> {
+  const response = await request.get(`${apiBaseUrl}/menu/all`);
+  if (!response.ok()) {
+    throw new Error(`GET /menu/all failed: ${response.status()} ${await response.text()}`);
   }
   return response.json();
 }

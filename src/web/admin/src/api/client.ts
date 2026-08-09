@@ -1,4 +1,13 @@
-import type { MenuCategoryDto, ProblemDetails, RoomDto } from './types';
+import type {
+  AdminMenuCategoryDto,
+  ImportMenuItemsResponse,
+  MenuItemDto,
+  ProblemDetails,
+  RoomDto,
+  UpdateMenuCategoryVisibilityRequest,
+  UpdateMenuItemAvailabilityRequest,
+  UpdateMenuItemPriceRequest,
+} from './types';
 
 // http://localhost:5216 is the "http" launch profile in
 // src/backend/Brasa.Api/Properties/launchSettings.json.
@@ -17,9 +26,14 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string): Promise<T> {
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
-    headers: { Accept: 'application/json' },
+    ...init,
+    headers: {
+      Accept: 'application/json',
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+    },
   });
 
   if (!response.ok) {
@@ -27,13 +41,56 @@ async function request<T>(path: string): Promise<T> {
     throw new ApiError(response.status, problem.code, problem.title ?? response.statusText);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return (await response.json()) as T;
 }
 
-// Read-only shell — no mutating calls yet, so no Idempotency-Key plumbing
-// (see pos's src/api/client.ts) is needed until WEB-10 adds real editors.
+/** Every mutating call gets its own key — see docs/architecture/api-contract.md (API-05). */
+function newIdempotencyKey(): string {
+  return crypto.randomUUID();
+}
+
+function put<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'PUT',
+    headers: { 'Idempotency-Key': newIdempotencyKey() },
+    body: JSON.stringify(body),
+  });
+}
+
+function post<T>(path: string, body?: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': newIdempotencyKey() },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+}
+
+function del<T>(path: string): Promise<T> {
+  return request<T>(path, {
+    method: 'DELETE',
+    headers: { 'Idempotency-Key': newIdempotencyKey() },
+  });
+}
+
 export const api = {
-  getMenu: () => request<MenuCategoryDto[]>('/menu'),
+  getMenu: () => request<AdminMenuCategoryDto[]>('/menu/all'),
 
   getFloor: () => request<RoomDto[]>('/floor'),
+
+  setItemAvailability: (itemId: string, body: UpdateMenuItemAvailabilityRequest) =>
+    put<MenuItemDto>(`/menu/items/${itemId}/availability`, body),
+
+  setItemPrice: (itemId: string, body: UpdateMenuItemPriceRequest) =>
+    put<MenuItemDto>(`/menu/items/${itemId}/price`, body),
+
+  setCategoryVisibility: (categoryId: string, body: UpdateMenuCategoryVisibilityRequest) =>
+    put(`/menu/categories/${categoryId}/visibility`, body),
+
+  deleteItem: (itemId: string) => del<void>(`/menu/items/${itemId}`),
+
+  importMenuItems: (csv: string) => post<ImportMenuItemsResponse>('/menu/items/import', { csv }),
 };

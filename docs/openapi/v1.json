@@ -33,6 +33,20 @@
         }
       }
     },
+    "/api/v1/menu/all": {
+      "get": {
+        "tags": [
+          "CatalogEndpoints"
+        ],
+        "summary": "Every category and item, including hidden and unavailable ones, for management tooling.",
+        "operationId": "GetMenuAll",
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/menu/items/{itemId}": {
       "delete": {
         "tags": [
