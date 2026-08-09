@@ -43,7 +43,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **IDN** | Identity & access | 0 | 16 | I3 |
 | **CAT** | Catalog & menu | 6 | 18 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
-| **ORD** | Ordering | 9 | 22 | I0 (rest: I2) |
+| **ORD** | Ordering | 10 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
@@ -55,13 +55,13 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 6 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **70** | **291** | |
+| | **Total** | **71** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 70 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 71 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -73,9 +73,10 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > (OPS-09) actually checks PostgreSQL instead of only proving the process
 > itself is alive, the pre-bill a table sees before paying (ORD-18/19)
 > is provably a *documento não fiscal* — no document number, ATCUD or QR
-> anywhere on the wire, and never issued through `IFiscalProvider` — and
+> anywhere on the wire, and never issued through `IFiscalProvider` —
 > `GET /orders` (ORD-22) gives history/search by status, table and
-> opened-date range (details:
+> opened-date range, and a line can now carry a free-text kitchen note
+> (ORD-06) added after it's rung up (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
 > single vertical slice the walking-skeleton demo needs, not a whole epic.
@@ -206,7 +207,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ORD-03 | Add / remove / edit order lines | 🚧 add only — remove/edit are I2 |
 | ORD-04 | Line snapshots — name, price, VAT rate at time of sale | ✅ |
 | ORD-05 | Apply modifiers to a line | ✅ shipped alongside CAT-03/04 — `AddLine`'s `selectedModifierIds` resolved and validated at the API layer (`ResolveModifiers`), folded into `OrderLine.ModifiersTotal`/`LineTotal` |
-| ORD-06 | Free-text kitchen notes | ⬜ |
+| ORD-06 | Free-text kitchen notes | ✅ `PUT /orders/{id}/lines/{lineId}/notes` — per-line, set after the line is rung up (editing a line itself is still I2/ORD-03); staff/kitchen visibility only, never a Fiscal concern |
 | ORD-07 | Courses and course firing | ⬜ |
 | ORD-08 | Send to kitchen (partial and full) | ⬜ |
 | ORD-09 | Order line status tracking | ⬜ |

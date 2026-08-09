@@ -35,12 +35,19 @@ export interface MenuCategoryDto {
   items: MenuItemDto[];
 }
 
+export interface OrderLineDto {
+  id: string;
+  itemName: string;
+  notes: string | null;
+}
+
 export interface OrderDto {
   id: string;
   tableId: string;
   tableLabel: string;
   status: string;
   total: MoneyDto;
+  lines: OrderLineDto[];
 }
 
 export interface OrderSummaryDto {

@@ -45,6 +45,10 @@ public static class OrderEndpoints
             .WithName("AddOrderLine")
             .WithSummary("Rings up a menu item onto an open order.");
 
+        group.MapPut("/orders/{orderId:guid}/lines/{lineId:guid}/notes", SetLineNotesAsync)
+            .WithName("SetOrderLineNotes")
+            .WithSummary("Sets or clears a line's free-text kitchen note (ORD-06).");
+
         group.MapGet("/orders/{orderId:guid}/split", PreviewSplitAsync)
             .WithName("PreviewOrderSplit")
             .WithSummary("Computes an even split of the current total, without changing order state.");
@@ -237,6 +241,29 @@ public static class OrderEndpoints
         }
 
         await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Ok(order.ToDto());
+    }
+
+    private static async Task<IResult> SetLineNotesAsync(
+        Guid orderId,
+        Guid lineId,
+        SetLineNotesRequest request,
+        OrderingDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
+        if (order is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        var result = order.SetLineNotes(lineId, request.Notes);
+        if (result.IsFailure)
+        {
+            return result.Error.ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Results.Ok(order.ToDto());
     }
 

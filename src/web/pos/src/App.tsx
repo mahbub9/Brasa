@@ -116,6 +116,19 @@ export default function App() {
     }
   }
 
+  async function handleSetLineNotes(lineId: string, notes: string | null) {
+    if (!order) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setOrder(await api.setLineNotes(order.id, lineId, { notes }));
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handlePreBill() {
     if (!order) return;
     setBusy(true);
@@ -173,6 +186,7 @@ export default function App() {
               onSplitPartsChange={setSplitParts}
               splitAmounts={splitAmounts}
               onPreviewSplit={handlePreviewSplit}
+              onSetLineNotes={handleSetLineNotes}
               onPreBill={handlePreBill}
               onClose={handleCloseOrder}
               busy={busy}

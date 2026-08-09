@@ -71,6 +71,10 @@ export interface AddLineRequest {
   selectedModifierIds?: string[];
 }
 
+export interface SetLineNotesRequest {
+  notes: string | null;
+}
+
 export interface OrderLineModifierDto {
   id: string;
   name: string;
@@ -85,6 +89,7 @@ export interface OrderLineDto {
   quantity: number;
   modifiers: OrderLineModifierDto[];
   lineTotal: MoneyDto;
+  notes: string | null;
 }
 
 export interface OrderDto {

@@ -17,6 +17,7 @@ internal sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLin
         builder.Property(l => l.ItemName).HasMaxLength(200).IsRequired();
         builder.Property(l => l.VatRateFraction).HasColumnType("numeric(4,2)").IsRequired();
         builder.Property(l => l.Quantity).IsRequired();
+        builder.Property(l => l.Notes).HasMaxLength(300);
 
         builder.MapMoney(l => l.UnitPrice, "unit_price");
 

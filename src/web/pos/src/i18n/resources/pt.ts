@@ -41,6 +41,11 @@ export const pt = {
     preBill: 'Ver conta',
     close: 'Fechar e emitir recibo',
     closing: 'A fechar…',
+    addNote: 'Adicionar nota',
+    notesLabel: 'Nota',
+    notesPlaceholder: 'ex.: sem cebola',
+    notesSave: 'Guardar',
+    notesCancel: 'Cancelar',
   },
   preBill: {
     title: 'Conta',

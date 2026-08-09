@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { MoneyDto, OrderDto } from '../api/types';
+import type { MoneyDto, OrderDto, OrderLineDto } from '../api/types';
 import { formatMoney } from '../lib/money';
 
 interface OrderSummaryProps {
@@ -8,6 +9,7 @@ interface OrderSummaryProps {
   onSplitPartsChange: (parts: number) => void;
   splitAmounts: MoneyDto[] | null;
   onPreviewSplit: () => void;
+  onSetLineNotes: (lineId: string, notes: string | null) => void;
   onPreBill: () => void;
   onClose: () => void;
   busy: boolean;
@@ -19,6 +21,7 @@ export function OrderSummary({
   onSplitPartsChange,
   splitAmounts,
   onPreviewSplit,
+  onSetLineNotes,
   onPreBill,
   onClose,
   busy,
@@ -51,6 +54,7 @@ export function OrderSummary({
                   ))}
                 </ul>
               )}
+              <OrderLineNotes line={line} busy={busy} onSave={onSetLineNotes} />
             </li>
           ))}
         </ul>
@@ -110,5 +114,69 @@ export function OrderSummary({
         {busy ? t('order.closing') : t('order.close')}
       </button>
     </aside>
+  );
+}
+
+interface OrderLineNotesProps {
+  line: OrderLineDto;
+  busy: boolean;
+  onSave: (lineId: string, notes: string | null) => void;
+}
+
+/**
+ * Free-text kitchen note per line (ORD-06), added after the line is already
+ * rung up — editing a line itself isn't built yet (ORD-03: add only until
+ * I2), so this is scoped narrowly to notes rather than general line editing.
+ */
+function OrderLineNotes({ line, busy, onSave }: OrderLineNotesProps) {
+  const { t } = useTranslation();
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(line.notes ?? '');
+
+  function startEditing() {
+    setDraft(line.notes ?? '');
+    setEditing(true);
+  }
+
+  function save() {
+    const trimmed = draft.trim();
+    onSave(line.id, trimmed === '' ? null : trimmed);
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <div className="order-line-notes-edit">
+        <input
+          type="text"
+          value={draft}
+          maxLength={300}
+          placeholder={t('order.notesPlaceholder')}
+          data-testid={`line-notes-input-${line.id}`}
+          onChange={(e) => setDraft(e.target.value)}
+        />
+        <button type="button" data-testid={`line-notes-save-${line.id}`} disabled={busy} onClick={save}>
+          {t('order.notesSave')}
+        </button>
+        <button type="button" disabled={busy} onClick={() => setEditing(false)}>
+          {t('order.notesCancel')}
+        </button>
+      </div>
+    );
+  }
+
+  return line.notes ? (
+    <button
+      type="button"
+      className="order-line-notes-display"
+      data-testid={`line-notes-${line.id}`}
+      onClick={startEditing}
+    >
+      {t('order.notesLabel')}: {line.notes}
+    </button>
+  ) : (
+    <button type="button" className="order-line-notes-add" data-testid={`add-note-${line.id}`} onClick={startEditing}>
+      + {t('order.addNote')}
+    </button>
   );
 }

@@ -7,6 +7,7 @@ import type {
   PreBillDto,
   ProblemDetails,
   RoomDto,
+  SetLineNotesRequest,
   TableDto,
 } from './types';
 
@@ -62,6 +63,15 @@ function post<T>(path: string, body?: unknown): Promise<T> {
   });
 }
 
+/** Every mutating call needs its own key too — PUT counts, same as POST (API-05). */
+function put<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: 'PUT',
+    headers: { 'Idempotency-Key': newIdempotencyKey() },
+    body: JSON.stringify(body),
+  });
+}
+
 export const api = {
   getMenu: () => request<MenuCategoryDto[]>('/menu'),
 
@@ -75,6 +85,9 @@ export const api = {
 
   addLine: (orderId: string, body: AddLineRequest) =>
     post<OrderDto>(`/orders/${orderId}/lines`, body),
+
+  setLineNotes: (orderId: string, lineId: string, body: SetLineNotesRequest) =>
+    put<OrderDto>(`/orders/${orderId}/lines/${lineId}/notes`, body),
 
   previewSplit: (orderId: string, parts: number) =>
     request<{ amount: number; currency: string }[]>(`/orders/${orderId}/split?parts=${parts}`),

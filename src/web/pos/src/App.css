@@ -322,6 +322,48 @@ main {
   font-size: 0.8rem;
 }
 
+.order-line-notes-add,
+.order-line-notes-display {
+  display: block;
+  margin-top: 0.3rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--brasa);
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-align: left;
+}
+
+.order-line-notes-display {
+  color: var(--ink);
+  font-weight: 400;
+  font-style: italic;
+}
+
+.order-line-notes-edit {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.3rem;
+}
+
+.order-line-notes-edit input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.8rem;
+}
+
+.order-line-notes-edit button {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: none;
+  font-size: 0.8rem;
+}
+
 .order-total {
   display: flex;
   justify-content: space-between;

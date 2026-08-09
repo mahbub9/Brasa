@@ -74,8 +74,8 @@ Depended on by every module; depends on no module. Deliberately small.
 | `ErrorMapping.cs` | ✅ | The only place `ErrorType` → HTTP status is decided |
 | `Endpoints/CatalogEndpoints.cs` | ✅ | `GET /menu`, `DELETE /menu/items/{id}` (CAT-18, soft delete) |
 | `Endpoints/FloorEndpoints.cs` | ✅ | `GET /floor`, `POST /tables/{id}/clear` |
-| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders` (against a real `tableId`; also resolves + validates `selectedModifierIds` — `ResolveModifiers`), `GET /orders` (history/search — ORD-22, filters + capped `take`), `GET /orders/{id}`, `POST /orders/{id}/lines`, `GET /orders/{id}/split`, `GET /orders/{id}/pre-bill` (ORD-18/19 — never calls `IFiscalProvider`), `POST /orders/{id}/close`. Composes Catalog + Ordering + Floor + Fiscal — see the module-boundaries note below |
-| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`/`ModifierGroupDto`/`ModifierDto`, `RoomDto`/`TableDto`, `OrderDto`/`OrderLineDto`/`OrderLineModifierDto`, `OrderSummaryDto` (ORD-22 — lighter than `OrderDto`, no line detail), `FiscalDocumentDto`, `PreBillDto`/`VatBreakdownDto` (ORD-18/19 — deliberately shaped nothing like `FiscalDocumentDto`) + mappings |
+| `Endpoints/OrderEndpoints.cs` | ✅ | `POST /orders` (against a real `tableId`; also resolves + validates `selectedModifierIds` — `ResolveModifiers`), `GET /orders` (history/search — ORD-22, filters + capped `take`), `GET /orders/{id}`, `POST /orders/{id}/lines`, `PUT /orders/{id}/lines/{lineId}/notes` (ORD-06), `GET /orders/{id}/split`, `GET /orders/{id}/pre-bill` (ORD-18/19 — never calls `IFiscalProvider`), `POST /orders/{id}/close`. Composes Catalog + Ordering + Floor + Fiscal — see the module-boundaries note below |
+| `Contracts/*.cs` | ✅ | `MoneyDto`, `MenuItemDto`/`MenuCategoryDto`/`ModifierGroupDto`/`ModifierDto`, `RoomDto`/`TableDto`, `OrderDto`/`OrderLineDto` (incl. `Notes`, ORD-06)/`OrderLineModifierDto`/`SetLineNotesRequest`, `OrderSummaryDto` (ORD-22 — lighter than `OrderDto`, no line detail), `FiscalDocumentDto`, `PreBillDto`/`VatBreakdownDto` (ORD-18/19 — deliberately shaped nothing like `FiscalDocumentDto`) + mappings |
 | `Seed/DevCatalogSeeder.cs` | ✅ | Seeds a Portuguese demo menu spanning both VAT bands, plus two items with modifier groups (Frango na Brasa's required "Tamanho", Água's required "Tipo"). Guarded the same way as the mock fiscal provider |
 | `Seed/DevFloorSeeder.cs` | ✅ | Seeds 2 rooms / 8 tables. Same guard |
 | `appsettings.json` | ✅ | **Two** connection strings — `Postgres` (runtime, `brasa_app`) and `PostgresMigrations` (`brasa`, superuser) |
@@ -131,7 +131,7 @@ browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
 | `src/components/TablePicker.tsx` | ✅ | WEB-05 — rooms/tables as a static grid (not `Table.PositionX/Y` — that's the future drag-and-drop editor, FLR-03), colour-coded by state, tap Free to open / tap Dirty to clear |
 | `src/components/ModifierPicker.tsx` | ✅ | CAT-03/04 — shown when a tapped menu item has modifier groups; single-select renders as radio-like buttons, multi-select as toggles capped at `maxSelect`. Validity mirrors the server's own min/max check exactly |
 | `src/components/PreBill.tsx` | ✅ | ORD-18/19 — "Ver conta" preview modal. Shaped nothing like `Receipt.tsx`: no document number, ATCUD or QR anywhere in its markup, a bold non-fiscal notice instead |
-| `src/components/*.tsx` | ✅ | `MenuGrid`, `OrderSummary`, `Receipt`, `ErrorBanner`, `LanguageToggle` |
+| `src/components/*.tsx` | ✅ | `MenuGrid`, `OrderSummary` (incl. its own `OrderLineNotes` sub-component, ORD-06 — add/edit/clear a line's kitchen note inline), `Receipt`, `ErrorBanner`, `LanguageToggle` |
 | `src/lib/money.ts` | ✅ | `Intl.NumberFormat('pt-PT', …)` — never formats `Money` by hand, and deliberately never follows the language toggle (see [ADR 0011](../architecture/decisions/0011-i18n.md)) |
 | `src/i18n/i18n.ts` | ✅ | i18next config — pt default, en toggle (WEB-13) |
 | `src/i18n/languageStorage.ts` | ✅ | `LanguageStore` interface + `cookieLanguageStore`; the seam a mobile client swaps for `AsyncStorage` |
@@ -149,7 +149,7 @@ itself — Docker (PostgreSQL) is the only thing it doesn't start. Verified
 locally from both a warm state and a hard cold start, and **several
 consecutive full runs** under real 2-worker parallelism — that repetition is
 what caught the `Table.Occupy()` concurrency bug (see the trap in
-[README.md](README.md)) and then proved the fix; 17/17 passing every time
+[README.md](README.md)) and then proved the fix; 20/20 passing every time
 since. See [../development/e2e-testing.md](../development/e2e-testing.md) for
 the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 
@@ -159,6 +159,7 @@ the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 | `tests/modifiers.spec.ts` | ✅ | CAT-03/04 — the modifier picker itself: required-group validation blocks "Add", Cancel adds nothing, price deltas sum correctly onto the line |
 | `tests/pre-bill.spec.ts` | ✅ | ORD-18/19 — no fiscal fields anywhere in the wire shape, VAT-band reconciliation, byte-for-byte matching reprints, 400/409 guards, WCAG scan on the dialog |
 | `tests/order-history.spec.ts` | ✅ | ORD-22 — `GET /orders` filtering by status/table, correct totals and line counts, invalid-filter 400s |
+| `tests/line-notes.spec.ts` | ✅ | ORD-06 — set/overwrite/clear a line's kitchen note via the API, unknown-line/too-long/closed-order guards, and the inline editor in `pos` (add → edit → clear, re-opening starts from the saved value not a stale draft) |
 | `tests/accessibility.spec.ts` | ✅ | QA-14 — axe-core against the table picker, ordering screen, modifier picker and receipt (WCAG 2.0/2.1 A+AA). Found 5 real `color-contrast` failures on its first run, all from dimming text via CSS `opacity` — see [status.md](../product/status.md#accessibility-first-scan-five-real-fixes) |
 | `tests/support/ui.ts` | ✅ | `openAnyFreeTable` — retries against a different table on a 409, the UI-side counterpart to `openOrderOnAnyFreeTable` below. See the concurrency trap in [README.md](README.md) |
 | `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |

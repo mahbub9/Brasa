@@ -14,6 +14,9 @@ public sealed record OpenOrderRequest(Guid TableId, int CoverCount);
 /// </summary>
 public sealed record AddLineRequest(Guid MenuItemId, int Quantity, IReadOnlyList<Guid>? SelectedModifierIds = null);
 
+/// <summary>Request body to set or clear a line's free-text kitchen note (ORD-06). Null/whitespace clears it.</summary>
+public sealed record SetLineNotesRequest(string? Notes);
+
 /// <summary>A modifier selected on an order line, as returned to clients.</summary>
 public sealed record OrderLineModifierDto(Guid Id, string Name, MoneyDto PriceDelta);
 
@@ -25,7 +28,8 @@ public sealed record OrderLineDto(
     MoneyDto UnitPrice,
     int Quantity,
     IReadOnlyList<OrderLineModifierDto> Modifiers,
-    MoneyDto LineTotal);
+    MoneyDto LineTotal,
+    string? Notes);
 
 /// <summary>An order, as returned to clients.</summary>
 public sealed record OrderDto(
@@ -122,7 +126,8 @@ public static class OrderDtoMappings
         line.UnitPrice.ToDto(),
         line.Quantity,
         [.. line.Modifiers.Select(m => new OrderLineModifierDto(m.Id, m.Name, m.PriceDelta.ToDto()))],
-        line.LineTotal.ToDto());
+        line.LineTotal.ToDto(),
+        line.Notes);
 
     /// <summary>Converts an issued fiscal document to its wire representation.</summary>
     public static FiscalDocumentDto ToDto(this FiscalDocument document) => new(

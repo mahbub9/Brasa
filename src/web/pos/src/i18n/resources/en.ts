@@ -39,6 +39,11 @@ export const en = {
     preBill: 'View bill',
     close: 'Close & issue receipt',
     closing: 'Closing…',
+    addNote: 'Add note',
+    notesLabel: 'Note',
+    notesPlaceholder: 'e.g. no onion',
+    notesSave: 'Save',
+    notesCancel: 'Cancel',
   },
   preBill: {
     title: 'Bill',

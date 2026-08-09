@@ -158,6 +158,41 @@ public sealed class Order : Entity
     }
 
     /// <summary>
+    /// Sets or clears a line's free-text kitchen note (ORD-06) — added after
+    /// the line was already rung up, since editing a line itself isn't built
+    /// yet (ORD-03: add only until I2). Notes are staff/kitchen visibility
+    /// only; they never appear on a fiscal document, and a pre-bill showing
+    /// them is incidental, not a Fiscal-module concern.
+    /// </summary>
+    /// <param name="lineId">The line to annotate.</param>
+    /// <param name="notes">
+    /// The note, or null/whitespace to clear it. Trimmed; rejected outright
+    /// past 300 characters rather than silently truncated.
+    /// </param>
+    public Result SetLineNotes(Guid lineId, string? notes)
+    {
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure(
+                Error.Conflict("order.not_open", "Cannot change a line's notes on an order that is not open."));
+        }
+
+        if (notes is { Length: > 300 })
+        {
+            return Result.Failure(Error.Validation("order.notes_too_long", "Notes must be 300 characters or fewer."));
+        }
+
+        var line = _lines.FirstOrDefault(l => l.Id == lineId);
+        if (line is null)
+        {
+            return Result.Failure(Error.NotFound("order.line_not_found", $"Line {lineId} was not found on this order."));
+        }
+
+        line.SetNotes(notes);
+        return Result.Success();
+    }
+
+    /// <summary>
     /// Guards generating a pre-bill preview for the table — a <em>documento não
     /// fiscal</em>, never an invoice (ORD-18). See
     /// <c>docs/fiscal/README.md</c>: issuing it as a fiscal document would

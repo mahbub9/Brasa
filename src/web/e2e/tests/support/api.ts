@@ -149,6 +149,34 @@ export async function searchOrders(request: APIRequestContext, query: string): P
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-06). */
+export function setLineNotesResponse(
+  request: APIRequestContext,
+  orderId: string,
+  lineId: string,
+  notes: string | null,
+) {
+  return request.put(`${apiBaseUrl}/orders/${orderId}/lines/${lineId}/notes`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { notes },
+  });
+}
+
+export async function setLineNotes(
+  request: APIRequestContext,
+  orderId: string,
+  lineId: string,
+  notes: string | null,
+): Promise<OrderDto> {
+  const response = await setLineNotesResponse(request, orderId, lineId, notes);
+  if (!response.ok()) {
+    throw new Error(
+      `PUT /orders/${orderId}/lines/${lineId}/notes failed: ${response.status()} ${await response.text()}`,
+    );
+  }
+  return response.json();
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (ORD-18/19). */
 export function getPreBillResponse(request: APIRequestContext, orderId: string) {
   return request.get(`${apiBaseUrl}/orders/${orderId}/pre-bill`);

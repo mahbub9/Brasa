@@ -79,6 +79,15 @@ public sealed class OrderLine : Entity
     /// <summary>Modifiers selected on this line, snapshotted at the time of sale. CAT-03/CAT-04.</summary>
     public IReadOnlyList<OrderLineModifier> Modifiers => _modifiers;
 
+    /// <summary>Free-text kitchen note, e.g. "sem cebola" (ORD-06). Null when none was added.</summary>
+    public string? Notes { get; private set; }
+
+    /// <summary>Sets or clears this line's kitchen note. Only <see cref="Order.SetLineNotes"/> calls this.</summary>
+    internal void SetNotes(string? notes)
+    {
+        Notes = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+    }
+
     /// <summary>
     /// Sum of every selected modifier's price delta, per unit — not yet
     /// multiplied by <see cref="Quantity"/>. Zero when no modifiers were
