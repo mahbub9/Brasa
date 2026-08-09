@@ -31,4 +31,10 @@ public sealed class MenuCategory : Entity
 
     /// <summary>Whether guests currently see this category.</summary>
     public bool IsVisible { get; private set; } = true;
+
+    /// <summary>Hides the category (and, by extension, every item under it) from <c>GET /menu</c> — e.g. a seasonal category out of season.</summary>
+    public void MarkHidden() => IsVisible = false;
+
+    /// <summary>Makes a hidden category visible again.</summary>
+    public void MarkVisible() => IsVisible = true;
 }

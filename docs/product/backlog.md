@@ -119,7 +119,11 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > newly minted): the domain method and its negative-price guard existed
 > since I0 with no caller either, and past order lines were already
 > immune to a future reprice by construction (they snapshot the price at
-> add-time), so the only missing piece really was the endpoint
+> add-time), so the only missing piece really was the endpoint — and a
+> fourth, one level up: `MenuCategory.IsVisible` had no setter *at all*,
+> even though CAT-01's own title names "visibility" as in scope and the
+> row was already marked done. Hiding a category now removes it and every
+> item under it from the menu in one call
 > (details:
 > [status.md](status.md#i0-demo-verified-live-not-just-unit-tested)). Every
 > epic marked "I0 (rest: …)" is intentionally partial: I0 builds only the
@@ -211,7 +215,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| CAT-01 | Menu categories, ordering, visibility | ✅ |
+| CAT-01 | Menu categories, ordering, visibility | ✅ `MenuCategory.IsVisible` had no setter at all until now — nothing could ever set it to anything but its default `true`, despite this row's own title naming "visibility" as in scope and being marked done. `PUT /menu/categories/{id}/visibility` (found by the same sweep as FLR-04/CAT-13/CAT-19 — a domain gap one level up, a category rather than an item) closes it: hiding a category removes it *and every item under it* from `GET /menu` in one call. Ships ahead of any UI. **Verified live**: hide → category and its items vanish from the menu; show → both restored; unknown category `404`s (`catalog.category_not_found`) |
 | CAT-02 | Menu items — name, description, image, allergens | 🚧 `PUT /menu/items/{id}/details` sets description + declared allergens (14 fixed EU-regulated allergens, Regulation (EU) No 1169/2011 — stable taxonomy, not a Portugal-specific figure needing an accountant's confirmation like `VatRate`); rendered on the `pos` menu screen. Image upload still not built — needs file storage infra |
 | CAT-03 | Modifier groups (required / optional, min / max) | ✅ `ModifierGroup` belongs to one `MenuItem` (not yet shared across items — see its doc comment); server enforces min/max on `POST /orders/{id}/lines`, not just the UI |
 | CAT-04 | Modifiers with price deltas | ✅ `Modifier.PriceDelta` (can be negative — e.g. "Meia dose"); snapshotted onto `OrderLineModifier` at the time of sale, folded into `LineTotal` and the fiscal document's gross total |

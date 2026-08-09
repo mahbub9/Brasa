@@ -109,6 +109,14 @@ export function updateMenuItemPriceResponse(request: APIRequestContext, itemId: 
   });
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-01). */
+export function updateMenuCategoryVisibilityResponse(request: APIRequestContext, categoryId: string, isVisible: boolean) {
+  return request.put(`${apiBaseUrl}/menu/categories/${categoryId}/visibility`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { isVisible },
+  });
+}
+
 export async function updateMenuItemDetails(
   request: APIRequestContext,
   itemId: string,

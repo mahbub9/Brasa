@@ -30,7 +30,7 @@
 | `Brasa.Shared` — time | ✅ | `IClock`, `PortugueseRegion`, business-day calculation. `PortugueseTimeZone` — 14 tests: IANA ids actually resolve on this runtime, Azores is 1h behind the mainland year-round, the rollover-hour boundary is inclusive, and the same UTC instant can land on two different business days in different regions (the exact scenario the type's own doc comment warns about) |
 | `Brasa.Shared` — persistence base | ✅ | `Entity` (UUIDv7), `ITenantOwned`, `IAuditable`, `ISoftDeletable` |
 | `Brasa.Shared` — outbox contracts | ✅ | Types defined; **no dispatcher implementation yet** |
-| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete, `/items/{id}/details` — CAT-02, `/items/import` — CAT-17, `/items/{id}/availability` — CAT-13, `/items/{id}/price` — CAT-19, `ETag`/`If-None-Match` caching — API-10), `/floor`, `/orders` (+`GET` search/history — ORD-22, cursor-paginated via `X-Next-Cursor` — API-09, `/takeaway` — ORD-20, `/lines`, `/lines/{id}/notes` — ORD-06, `/lines/{id}/transfer` — ORD-13, `/merge` — ORD-14, `/split`, `/split/by-item` — ORD-16, `/split/by-cover` — ORD-17, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/tables/{id}/request-bill` (FLR-04), `/client-requirements` (API-07), `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, `X-Brasa-Client` parsing (API-06), Brotli/gzip response compression incl. error bodies (API-11), CORS for web clients (`Cors:AllowedOrigins`, `ETag`/`X-Next-Cursor` exposed for browser reads) |
+| `Brasa.Api` | ✅ | `/api/v1/ping`, `/menu` (+ soft-delete, `/items/{id}/details` — CAT-02, `/items/import` — CAT-17, `/items/{id}/availability` — CAT-13, `/items/{id}/price` — CAT-19, `/categories/{id}/visibility` — CAT-01, `ETag`/`If-None-Match` caching — API-10), `/floor`, `/orders` (+`GET` search/history — ORD-22, cursor-paginated via `X-Next-Cursor` — API-09, `/takeaway` — ORD-20, `/lines`, `/lines/{id}/notes` — ORD-06, `/lines/{id}/transfer` — ORD-13, `/merge` — ORD-14, `/split`, `/split/by-item` — ORD-16, `/split/by-cover` — ORD-17, `/pre-bill`, `/transfer` — ORD-12, `/close`), `/tables/{id}/clear`, `/tables/{id}/request-bill` (FLR-04), `/client-requirements` (API-07), `/health` (liveness), `/health/ready` (PostgreSQL, OPS-09). Serilog, ProblemDetails, API versioning, idempotency, `X-Brasa-Client` parsing (API-06), Brotli/gzip response compression incl. error bodies (API-11), CORS for web clients (`Cors:AllowedOrigins`, `ETag`/`X-Next-Cursor` exposed for browser reads) |
 | EF Core + PostgreSQL + RLS | ✅ | **Verified live**, not just asserted: `brasa_app` (unprivileged runtime role) sees zero rows with no tenant set or the wrong tenant set, and cannot run DDL. Re-verified against the new `floor` schema too. See [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md) |
 | `Modules.Identity` | 📁 | I3 (auth) |
 | `Modules.Catalog` | ✅ | `MenuCategory`, `MenuItem` (incl. optional `Description` and declared `Allergens` — CAT-02), seeded demo menu spanning both VAT bands, soft delete (CAT-18), modifier groups (CAT-03/04) |
@@ -68,7 +68,7 @@
 | `Brasa.Shared.Tests` | ✅ | 50 passing, incl. exhaustive allocation check, the error-code registry test (API-04), `PortugueseTimeZoneTests` (previously zero coverage on code CLAUDE.md itself flags as easy to get wrong), and `ResultTests`/`ErrorTests` (previously zero direct coverage on the hard-rule-5 types themselves) |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 20 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused (the automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)) — plus `CsvParserTests` (CAT-17, no DB) and `ErrorMappingTests` (no DB): pins all 5 `ErrorType`→HTTP status mappings directly, since `ErrorMapping.ToProblem()` is, by its own doc comment, "the only place `ErrorType` is translated to an HTTP status" |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 61 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). That same repeated-run discipline is what caught the API-10 JSON-casing regression below before it reached a commit, and shaped the API-09 pagination test itself: a first version asserting exact page sizes flaked under concurrent specs sharing the dev database, fixed by walking the full cursor chain and asserting only what must hold regardless of noise from other tests. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), menu bulk CSV import (CAT-17), request-bill floor-plan signal (FLR-04), 86-ing a menu item (CAT-13), menu item repricing incl. the past-order-lines-immune-to-a-reprice invariant (CAT-19), menu `ETag`/304 caching (API-10), idempotency replay — a retried close never double-issues a fiscal document (QA-11), client version negotiation (API-06/07), order-history cursor pagination (API-09), response compression incl. error bodies (API-11), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 63 tests, all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). That same repeated-run discipline is what caught the API-10 JSON-casing regression below before it reached a commit, and shaped the API-09 pagination test itself: a first version asserting exact page sizes flaked under concurrent specs sharing the dev database, fixed by walking the full cursor chain and asserting only what must hold regardless of noise from other tests. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), menu bulk CSV import (CAT-17), request-bill floor-plan signal (FLR-04), 86-ing a menu item (CAT-13), menu item repricing incl. the past-order-lines-immune-to-a-reprice invariant (CAT-19), menu category visibility (CAT-01), menu `ETag`/304 caching (API-10, now retry-tolerant of legitimate concurrent catalog mutations from sibling specs), idempotency replay — a retried close never double-issues a fiscal document (QA-11), client version negotiation (API-06/07), order-history cursor pagination (API-09), response compression incl. error bodies (API-11), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -475,6 +475,34 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > still 3.50 while `GET /menu` showed 5.00 — confirming the invariant holds
 > under the real code path, not just in theory. Negative price and unknown
 > item both rejected (`catalog.invalid_price`/`catalog.item_not_found`).
+
+> **Update (menu category visibility, CAT-01):** a fourth instance of the
+> FLR-04/CAT-13/CAT-19 shape, one level up — a whole category, not a
+> single item. `MenuCategory.IsVisible` has gated `GET /menu`'s query
+> since I0 (`.Where(c => c.IsVisible)`), but the class had no setter for
+> it at all — not even an unreachable one, unlike the other three cases.
+> CAT-01's own backlog title names "visibility" as in scope and the row
+> was already marked done, which made this the clearest case yet of a
+> claimed-done feature that had never actually been reachable.
+> `PUT /menu/categories/{id}/visibility` (`MarkHidden`/`MarkVisible`,
+> mirroring `MenuItem`'s `MarkAvailable`/`MarkUnavailable` pattern exactly)
+> closes it — hiding a category removes it *and every item under it* from
+> `GET /menu` in one call, verified live against the real seeded menu:
+> hide "Sobremesas" → both it and its two items vanish; show → both
+> restored; unknown category id → `404 catalog.category_not_found`.
+>
+> This one also surfaced a genuine test-suite gap, not a product bug:
+> `menu-etag.spec.ts` assumed nothing mutates `GET /menu` between its own
+> two back-to-back calls, which was true when it was written but stopped
+> being true once CAT-01/13/19 all landed sibling specs that legitimately
+> change the menu's content (and therefore its ETag) as part of what
+> *they're* testing. Under real parallel workers one of those can land in
+> the gap and turn the expected `304` into a genuine `200` — the ETag
+> mechanism working correctly on content that actually changed, not a
+> broken cache. Fixed by retrying the whole round trip (fresh `ETag`,
+> immediate reuse) up to 5 times rather than weakening the assertion,
+> matching the API-09 pagination test's own precedent for handling
+> legitimate cross-spec interference under `fullyParallel`.
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:

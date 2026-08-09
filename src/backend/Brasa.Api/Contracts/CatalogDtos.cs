@@ -48,6 +48,17 @@ public sealed record UpdateMenuItemAvailabilityRequest(bool IsAvailable);
 /// </summary>
 public sealed record UpdateMenuItemPriceRequest(decimal Price);
 
+/// <summary>Request body to hide a menu category from <c>GET /menu</c>, or show it again (CAT-01).</summary>
+public sealed record UpdateMenuCategoryVisibilityRequest(bool IsVisible);
+
+/// <summary>
+/// Response for the category-visibility endpoint — deliberately lighter
+/// than <see cref="MenuCategoryDto"/>, which never carries <c>IsVisible</c>
+/// at all: <c>GET /menu</c> only ever returns visible categories, so a
+/// category present in that response has nothing to say on the point.
+/// </summary>
+public sealed record MenuCategoryVisibilityDto(Guid Id, string Name, bool IsVisible);
+
 /// <summary>
 /// Bulk menu import request (CAT-17). <c>Csv</c> is the raw file content,
 /// header row required: <c>CategoryName,Name,Description,Price,VatRate,IsAlcoholic</c>.

@@ -47,6 +47,10 @@ public static class CatalogEndpoints
             .WithName("UpdateMenuItemPrice")
             .WithSummary("Changes a menu item's price for future orders. Past order lines keep their own snapshot.");
 
+        group.MapPut("/menu/categories/{categoryId:guid}/visibility", UpdateMenuCategoryVisibilityAsync)
+            .WithName("UpdateMenuCategoryVisibility")
+            .WithSummary("Hides a whole category (and every item under it) from GET /menu, or shows it again (CAT-01).");
+
         return group;
     }
 
@@ -324,5 +328,43 @@ public static class CatalogEndpoints
         }
 
         return Results.Ok(new ImportMenuItemsResponse(created.Count, errors));
+    }
+
+    /// <summary>
+    /// Hides a whole category from <c>GET /menu</c>, or shows it again
+    /// (CAT-01 — its own title names "visibility" as in scope, and the
+    /// epic was marked done, but <c>MenuCategory.IsVisible</c> had no
+    /// setter at all: nothing could ever set it to anything but its
+    /// default <c>true</c>. Same shape as FLR-04/CAT-13/CAT-19's gaps, one
+    /// level up — a category, not an item). Ships ahead of any UI that
+    /// will call it, same as the others.
+    /// </summary>
+    private static async Task<IResult> UpdateMenuCategoryVisibilityAsync(
+        Guid categoryId,
+        UpdateMenuCategoryVisibilityRequest request,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var category = await db.Categories
+            .FirstOrDefaultAsync(c => c.Id == categoryId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (category is null)
+        {
+            return Error.NotFound("catalog.category_not_found", $"Menu category {categoryId} was not found.").ToProblem();
+        }
+
+        if (request.IsVisible)
+        {
+            category.MarkVisible();
+        }
+        else
+        {
+            category.MarkHidden();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(new MenuCategoryVisibilityDto(category.Id, category.Name, category.IsVisible));
     }
 }

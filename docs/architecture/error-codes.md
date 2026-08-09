@@ -18,6 +18,7 @@ as any change to an error code, the same rule as everything else in
 
 | Code | Type | HTTP | Meaning |
 |---|---|---|---|
+| `catalog.category_not_found` | NotFound | 404 | `PUT /menu/categories/{id}/visibility`'s category id doesn't exist. |
 | `catalog.import_empty` | Validation | 400 | `POST /menu/items/import`'s `csv` has no rows at all (not even a header). |
 | `catalog.import_invalid_header` | Validation | 400 | `POST /menu/items/import`'s CSV header is missing a required column (`CategoryName`, `Name`, `Price`, `VatRate`). |
 | `catalog.invalid_allergen` | Validation | 400 | `PUT /menu/items/{id}/details`'s `allergens` contains a name that isn't a recognised `Allergen`. |
