@@ -48,20 +48,20 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
 | **FIS** | Fiscal engine | 3 | 24 | I0 (rest: I7) |
-| **WEB** | Web clients | 3 | 13 | I0 (rest: I1–I8) |
+| **WEB** | Web clients | 4 | 13 | I0 (rest: I1–I8) |
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
 | **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **85** | **291** | |
+| | **Total** | **86** | **291** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
 > [ADR 0009](../architecture/decisions/0009-incremental-delivery.md).
 >
-> 85 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
+> 86 of 291 — I0 (backend, `pos` shell with pt/en i18n, a first Playwright
 > harness) is done except deployment, I1's opening slice — real rooms and
 > tables (FLR) and menu modifiers (CAT-03/04, which turned out to already
 > cover ORD-05 too) — is done and proven against a live API, there is now a
@@ -361,7 +361,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | WEB-03 | Shared `web/sdk` — OpenAPI-generated typed client | ⬜ replaces `pos`'s hand-written `src/api/` (I0 placeholder) |
 | WEB-04 | `pos` — Dexie local store and offline-first data layer | ⬜ I2, depends on SYN |
 | WEB-05 | `pos` — floor plan / table selection screen | ✅ `TablePicker` — static grid per room, colour-coded by state, tap Free to open / tap Dirty to clear. Not the drag-and-drop layout (FLR-03) |
-| WEB-06 | `pos` — menu browsing with modifiers and courses | ⬜ |
+| WEB-06 | `pos` — menu browsing with modifiers and courses | 🚧 Modifiers done — `ModifierPicker.tsx` (CAT-03/04), required single-select and optional multi-select groups both proven live in `modifiers.spec.ts`. Courses not built — deliberately deferred with ORD-07/08/09 (kitchen firing), which is what "courses" in a POS menu screen actually means; there is no KDS yet for a fired course to go to |
 | WEB-07 | `pos` — staff PIN login screen | ⬜ depends on IDN |
 | WEB-08 | `kds` shell — station view, bump, prep timers | ⬜ I4 |
 | WEB-09 | `admin` shell — back-office SPA scaffold | ⬜ I1 |
