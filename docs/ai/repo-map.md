@@ -152,18 +152,17 @@ slice — see the `WEB` epic in [backlog.md](../product/backlog.md).
 ## `src/web/admin` 🚧 WEB-09 shell only
 
 React 19 + Vite 8 + TypeScript, same tooling as `pos`, own `node_modules`
-(not a workspace), dev server pinned to port 5174. No auth, no i18n toggle
-yet (pt-only static copy — a real gap, not silently inconsistent with `pos`,
-called out in [status.md](../product/status.md)). Exists to host the WEB-10
-menu/floor editors and WEB-11 staff/reporting screens; today it hosts one
-live screen and three placeholders.
+(not a workspace), dev server pinned to port 5174. No auth yet. Exists to
+host the WEB-10 menu/floor editors and WEB-11 staff/reporting screens;
+today it hosts one live screen and three placeholders.
 
 | File | State | Contents |
 |---|---|---|
-| `src/App.tsx` | ✅ | "Visão geral" — real category/item/room/table counts from `GET /menu`/`GET /floor`, proving the shell is wired to the API rather than a static mock. Menu/Floor/Staff nav entries render "Brevemente", not silently nothing |
+| `src/App.tsx` | ✅ | "Visão geral"/"Overview" — real category/item/room/table counts from `GET /menu`/`GET /floor`, proving the shell is wired to the API rather than a static mock. Menu/Floor/Staff nav entries render "Brevemente"/"Coming soon", not silently nothing |
 | `src/api/client.ts`, `src/api/types.ts` | ✅ | Read-only subset of `pos`'s own hand-written client — no `Idempotency-Key` plumbing yet since there are no mutating calls until WEB-10. Duplicated rather than shared with `pos`, same reasoning as `pos`'s own `api/types.ts` comment: `web/sdk` (WEB-03) is worth building once a change actually needs sharing across clients, not preemptively for a second client that only reads two `GET` endpoints so far |
+| `src/i18n/` | ✅ | Same ADR 0011 shape as `pos` (`i18n.ts`, `languageStorage.ts`, `resources/{pt,en}.ts`) — deliberately duplicated, not shared, same reasoning as the API client above. Reuses `pos`'s exact `brasa.lang` cookie name on purpose: it's a preference for the *staff member*, not siloed per client app, so switching language in one carries into the other on the same host. English copy is genuinely English throughout (not just menu-item names left untranslated, which is correct — see the trap in [README.md](README.md)) because not every staff member reading it is a Portuguese speaker |
 
-⬜ **Missing:** i18n, auth, everything WEB-10/11 will add.
+⬜ **Missing:** auth, everything else WEB-10/11 will add.
 
 ## `src/web/e2e` ✅ I0 + I1 harness, plus a first slice of I2
 
@@ -174,7 +173,7 @@ thing it doesn't start. Verified locally from both a warm state and a hard
 cold start, and **several consecutive full runs** under real 2-worker
 parallelism — that repetition is what caught the `Table.Occupy()`
 concurrency bug (see the trap in [README.md](README.md)) and then proved the
-fix; 65/65 passing on a clean run. At twenty-plus tests, back-to-back full
+fix; 67/67 passing on a clean run. At twenty-plus tests, back-to-back full
 runs with no pause between them had started occasionally exhausting the
 original 8-table pool (QA-02's known limitation showing up in practice, not
 a product bug); mitigated by doubling `DevFloorSeeder` to 16 tables — see
@@ -206,6 +205,7 @@ for the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 | `tests/request-bill.spec.ts` | ✅ | FLR-04 — drives a real Chromium browser: open a table, ring up an item, click "Pedir conta", confirm `BillRequested` on the very next `GET /floor`. Plus the API-level guards: a free table `409`s, an unknown table `404`s |
 | `tests/accessibility.spec.ts` | ✅ | QA-14 — axe-core against the table picker, ordering screen, modifier picker and receipt (WCAG 2.0/2.1 A+AA). Found 5 real `color-contrast` failures on its first run, all from dimming text via CSS `opacity` — see [status.md](../product/status.md#accessibility-first-scan-five-real-fixes) |
 | `tests/admin-shell.spec.ts` | ✅ | WEB-09 — loads `admin` (port 5174) and checks "Visão geral" shows real, non-zero counts from `GET /menu`/`GET /floor` (not a static mock), and that Menu/Floor/Staff are labelled "Brevemente" rather than silently missing |
+| `tests/admin-language-toggle.spec.ts` | ✅ | WEB-09 — mirrors `pos`'s own `language-toggle.spec.ts`: pt default, switching to `en` translates every nav label and overview card to genuine English (not just some token string), and persists in the same `brasa.lang` cookie `pos` uses |
 | `tests/support/ui.ts` | ✅ | `openAnyFreeTable` — retries against a different table on a 409, the UI-side counterpart to `openOrderOnAnyFreeTable` below. See the concurrency trap in [README.md](README.md) |
 | `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |
 | `tests/language-toggle.spec.ts` | ✅ | WEB-13 — default language, the pt→en toggle, cookie attributes (`Path`, `SameSite`, not `httpOnly`) surviving a reload, and money staying `pt-PT` in English mode |

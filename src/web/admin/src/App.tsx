@@ -1,29 +1,23 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api, ApiError } from './api/client';
 import type { MenuCategoryDto, RoomDto } from './api/types';
+import { LanguageToggle } from './components/LanguageToggle';
+import i18n from './i18n/i18n';
 import './App.css';
 
-interface NavSection {
-  key: string;
-  label: string;
-}
-
-const NAV_SECTIONS: NavSection[] = [
-  { key: 'overview', label: 'Visão geral' },
-  { key: 'menu', label: 'Menu' },
-  { key: 'floor', label: 'Sala' },
-  { key: 'staff', label: 'Equipa' },
-];
+const NAV_KEYS = ['overview', 'menu', 'floor', 'staff'] as const;
 
 /**
  * The back-office shell (WEB-09) — scaffolding for the editors WEB-10/11
  * will add, not an editor itself. The only screen that's live today,
- * "Visão geral", is read-only: it proves the shell is really wired to the
+ * "Overview", is read-only: it proves the shell is really wired to the
  * API (not a static mock) by rendering real counts from GET /menu and
  * GET /floor. Every other nav entry is a labelled placeholder until its
  * own task lands — see docs/product/backlog.md (WEB-10/11).
  */
 export default function App() {
+  const { t } = useTranslation();
   const [categories, setCategories] = useState<MenuCategoryDto[] | null>(null);
   const [rooms, setRooms] = useState<RoomDto[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,7 +29,7 @@ export default function App() {
         setRooms(floor);
       })
       .catch((err: unknown) => {
-        setError(err instanceof ApiError ? err.message : 'Something went wrong.');
+        setError(err instanceof ApiError ? err.message : i18n.t('error.generic'));
       });
   }, []);
 
@@ -43,25 +37,26 @@ export default function App() {
     <div className="admin">
       <header className="admin-header">
         <span className="admin-brand">Brasa</span>
-        <span className="admin-tagline">Back office</span>
+        <span className="admin-tagline">{t('app.tagline')}</span>
+        <LanguageToggle />
       </header>
 
       <div className="admin-layout">
-        <nav className="admin-nav" aria-label="Secções">
-          {NAV_SECTIONS.map((section) => (
+        <nav className="admin-nav" aria-label={t('nav.overview')}>
+          {NAV_KEYS.map((key) => (
             <span
-              key={section.key}
-              className={section.key === 'overview' ? 'admin-nav-item active' : 'admin-nav-item disabled'}
-              data-testid={`nav-${section.key}`}
+              key={key}
+              className={key === 'overview' ? 'admin-nav-item active' : 'admin-nav-item disabled'}
+              data-testid={`nav-${key}`}
             >
-              {section.label}
-              {section.key !== 'overview' && <span className="admin-nav-soon">Brevemente</span>}
+              {t(`nav.${key}`)}
+              {key !== 'overview' && <span className="admin-nav-soon">{t('nav.comingSoon')}</span>}
             </span>
           ))}
         </nav>
 
         <main className="admin-main">
-          <h1>Visão geral</h1>
+          <h1>{t('nav.overview')}</h1>
 
           {error && (
             <p className="admin-error" role="alert" data-testid="overview-error">
@@ -69,7 +64,7 @@ export default function App() {
             </p>
           )}
 
-          {!error && (!categories || !rooms) && <p className="admin-loading">A carregar…</p>}
+          {!error && (!categories || !rooms) && <p className="admin-loading">{t('app.loading')}</p>}
 
           {categories && rooms && <Overview categories={categories} rooms={rooms} />}
         </main>
@@ -84,6 +79,7 @@ interface OverviewProps {
 }
 
 function Overview({ categories, rooms }: OverviewProps) {
+  const { t } = useTranslation();
   const itemCount = categories.reduce((sum, category) => sum + category.items.length, 0);
   const unavailableCount = categories.reduce(
     (sum, category) => sum + category.items.filter((item) => !item.isAvailable).length,
@@ -98,7 +94,7 @@ function Overview({ categories, rooms }: OverviewProps) {
         <span className="overview-card-value" data-testid="overview-categories">
           {categories.length}
         </span>
-        <span className="overview-card-label">Categorias de menu</span>
+        <span className="overview-card-label">{t('overview.categories')}</span>
       </article>
 
       <article className="overview-card">
@@ -106,8 +102,8 @@ function Overview({ categories, rooms }: OverviewProps) {
           {itemCount}
         </span>
         <span className="overview-card-label">
-          Itens no menu
-          {unavailableCount > 0 && ` · ${unavailableCount} indisponíveis`}
+          {t('overview.items')}
+          {unavailableCount > 0 && ` · ${t('overview.itemsUnavailable', { count: unavailableCount })}`}
         </span>
       </article>
 
@@ -115,7 +111,7 @@ function Overview({ categories, rooms }: OverviewProps) {
         <span className="overview-card-value" data-testid="overview-rooms">
           {rooms.length}
         </span>
-        <span className="overview-card-label">Salas</span>
+        <span className="overview-card-label">{t('overview.rooms')}</span>
       </article>
 
       <article className="overview-card">
@@ -123,8 +119,8 @@ function Overview({ categories, rooms }: OverviewProps) {
           {tables.length}
         </span>
         <span className="overview-card-label">
-          Mesas
-          {tables.length > 0 && ` · ${occupiedCount} ocupadas`}
+          {t('overview.tables')}
+          {tables.length > 0 && ` · ${t('overview.tablesOccupied', { count: occupiedCount })}`}
         </span>
       </article>
     </div>

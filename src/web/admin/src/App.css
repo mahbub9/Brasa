@@ -26,6 +26,28 @@
   color: #fff;
 }
 
+.language-toggle {
+  margin-left: auto;
+  display: flex;
+  gap: 0.25rem;
+}
+
+.language-toggle button {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  background: none;
+  /* Full-opacity white, not dimmed — same QA-14 contrast fix as .admin-tagline. */
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.language-toggle button.active {
+  background: #fff;
+  color: var(--brasa-dark);
+}
+
 .admin-layout {
   display: flex;
   flex: 1;
