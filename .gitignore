@@ -78,3 +78,10 @@ logs/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Local machine automation — not part of this project, never committed.
+#  A Windows Scheduled Task poller that resumes a paused Claude Code session;
+#  see the task itself ("ClaudeCodeAutoResume-BrasaPOS") for what it does.
+# ─────────────────────────────────────────────────────────────────────────────
+.claude-autopilot/
