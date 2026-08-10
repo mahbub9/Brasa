@@ -1,8 +1,8 @@
+import { formatMoney } from '@brasa/ui/lib/money';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
 import type { AdminMenuCategoryDto, ImportMenuItemsResponse, MenuItemDto } from '../api/types';
-import { formatMoney } from '../lib/money';
 
 interface MenuManagerProps {
   categories: AdminMenuCategoryDto[];

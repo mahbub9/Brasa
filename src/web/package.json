@@ -1,0 +1,10 @@
+{
+  "name": "@brasa/web",
+  "private": true,
+  "workspaces": [
+    "pos",
+    "admin",
+    "e2e",
+    "ui"
+  ]
+}

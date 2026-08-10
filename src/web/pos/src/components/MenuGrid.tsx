@@ -1,6 +1,6 @@
+import { formatMoney } from '@brasa/ui/lib/money';
 import { useTranslation } from 'react-i18next';
 import type { MenuCategoryDto, MenuItemDto } from '../api/types';
-import { formatMoney } from '../lib/money';
 
 interface MenuGridProps {
   categories: MenuCategoryDto[];

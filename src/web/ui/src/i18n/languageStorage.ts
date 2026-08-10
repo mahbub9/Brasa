@@ -1,13 +1,20 @@
 export type SupportedLanguage = 'pt' | 'en';
 
 /**
- * Where the chosen UI language is persisted.
+ * Where the chosen UI language is persisted (WEB-02, shared by `pos` and
+ * `admin`).
  *
  * This is the seam for mobile: a React Native client implements the same
  * shape backed by AsyncStorage/SecureStore instead of document.cookie, and
- * nothing else — i18n.ts, the translation resources, every component — has
- * to change. Keep language *storage* and language *configuration*
- * (i18n.ts) separate for exactly this reason.
+ * nothing else -- i18n.ts, the translation resources, every component --
+ * has to change. Keep language *storage* and language *configuration*
+ * (each app's own i18n.ts) separate for exactly this reason.
+ *
+ * Deliberately the same cookie name across every web client (`brasa.lang`,
+ * no `Domain` attribute, so scoped to the host but not the port -- shared
+ * across `pos` and `admin` on `localhost` in dev). A staff member's
+ * language choice is a preference for *them*, not for whichever client app
+ * they happened to open first.
  */
 export interface LanguageStore {
   get(): SupportedLanguage | null;
@@ -22,7 +29,7 @@ function isSupportedLanguage(value: string): value is SupportedLanguage {
 }
 
 /**
- * Web implementation. This is a UI-preference cookie, not an auth cookie —
+ * Web implementation. This is a UI-preference cookie, not an auth cookie --
  * it is never sent to or read by the API (nothing attaches it to a fetch,
  * and the API has no code path that reads cookies at all). It does not
  * conflict with ADR 0008 (token auth, no cookies): that ADR is about

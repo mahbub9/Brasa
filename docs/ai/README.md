@@ -5,7 +5,7 @@
 > without scanning the tree. It is maintained deliberately; if it is wrong, fix
 > it in the same commit as whatever proved it wrong.
 
-**Last verified:** 2026-08-10 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built), course assignment per item (CAT-14) and kitchen station routing per item (CAT-15, independent tags on the same greenfield shape) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), line and order discounts (ORD-11, percentage or fixed, composing, no manager-authorisation gate yet), voiding a line (ORD-10, still 🚧 — same no-authorisation-gate-yet shape, its own row title names manager authorisation as in scope), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), per-tenant-and-client rate limiting (API-12, a sixth `ErrorType.RateLimited` → 429), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1; every request now logs with `TenantId` attached (OPS-07, still 🚧 — doesn't yet reach the HTTP completion-summary line, a known pipeline-ordering gap not a silent one); the two deep-link verification documents exist too (API-18, honestly empty — no bundle id/package name exists to put in either until a native app does); real distributed traces and metrics now exist too (OPS-08, OTLP-exported to Seq), after finding Seq itself had been silently crash-looping (fixed, see §7); `SplitByItem` (ORD-16) was made discount/void-aware, closing a gap ORD-11/ORD-10 had each explicitly left open; the first feature-docs pages exist (DOC-10 — `docs/features/{discounts,void-a-line,menu-item-classification}.md`); and `pos`'s server error messages are now localized by error code (closes the "Server-sent error text" gap ADR 0011 named), not just the raw English `ProblemDetails.title`; and editing an order line's quantity (ORD-03) is built — `PUT /orders/{id}/lines/{lineId}/quantity` plus a +/− stepper in `pos` — deliberately not how a wrong line is undone, which stays void (ORD-10); channel pricing for dine-in/takeaway (CAT-06, delivery out of scope — no delivery order path exists at all yet) is built too, with real UI on both `pos` (the menu button shows whichever price the order in progress would charge) and `admin` (inline add/edit/clear next to the dine-in price); and `admin`'s "Plano de sala" is live for the first time too — FLR-03's table CRUD via plain add/edit/delete forms, then extended the same day to room CRUD too (create/rename/delete, guarded to zero tables), not yet the drag-and-drop canvas that row's own title names; both web clients also got client-side error tracking (OPS-14, `@sentry/react`) — neither had any error boundary before, so a render-phase throw took the whole screen to blank white — with `Sentry.init()` config-bound and empty by default (same "no real collector yet" shape as OPS-08), a translated fallback screen instead of a blank one, and a dev-only crash trigger (confirmed stripped from both production bundles) proving the boundary genuinely catches a thrown error, not just that the component exists in the tree; and a database backup + restore drill exists too (OPS-12, still 🚧 — the mechanism and the drill are both proven live, "automated" scheduling is the open half since there's nothing to schedule it in yet), which is also where a real `.ps1`-encoding trap got found and written down (see §7); and a load test exists too (QA-13, still 🚧 and deliberately scoped down from its own title's "50 sites" — no multi-tenant seed data exists to drive that, and `Reporting` is empty so there's nothing to test isolation against), which is where a real ~40x `Debug`-logging latency trap got found and written down (see §7)
+**Last verified:** 2026-08-10 · **Phase:** I0 complete except deployment (OPS-11); I1's floor plan and menu modifiers proven live end-to-end, plus menu item description/allergens (CAT-02, still 🚧 — image upload not built), course assignment per item (CAT-14) and kitchen station routing per item (CAT-15, independent tags on the same greenfield shape) and a second web client — the `admin` back-office shell (WEB-09, its own pt/en toggle) with its first real editor, menu management (WEB-10, still 🚧 — floor-plan editing not built); I2's pre-bill preview (ORD-18/19), order history/search (ORD-22), kitchen notes (ORD-06), line and order discounts (ORD-11, percentage or fixed, composing, no manager-authorisation gate yet), voiding a line (ORD-10, still 🚧 — same no-authorisation-gate-yet shape, its own row title names manager authorisation as in scope), table transfer (ORD-12), line transfer (ORD-13), order merge (ORD-14), split by item/cover (ORD-16/17) and takeaway orders (ORD-20) pulled forward and done; I3's `ETag`/304 caching on `GET /menu` (API-10), client version negotiation (`X-Brasa-Client` parsing + `GET /client-requirements` — API-06/07), RFC 8594 `Deprecation`/`Sunset` headers (API-08, a no-op until a real `/api/v2` exists), per-tenant-and-client rate limiting (API-12, a sixth `ErrorType.RateLimited` → 429), cursor pagination on `GET /orders` (API-09), Brotli/gzip response compression (API-11) and a committed OpenAPI document (API-13) pulled forward and done; the idempotency replay guarantee (API-05) now has an automated test harness (QA-11); menu bulk CSV import (CAT-17, still 🚧 — Excel not built) pulled forward from I1; every request now logs with `TenantId` attached (OPS-07, still 🚧 — doesn't yet reach the HTTP completion-summary line, a known pipeline-ordering gap not a silent one); the two deep-link verification documents exist too (API-18, honestly empty — no bundle id/package name exists to put in either until a native app does); real distributed traces and metrics now exist too (OPS-08, OTLP-exported to Seq), after finding Seq itself had been silently crash-looping (fixed, see §7); `SplitByItem` (ORD-16) was made discount/void-aware, closing a gap ORD-11/ORD-10 had each explicitly left open; the first feature-docs pages exist (DOC-10 — `docs/features/{discounts,void-a-line,menu-item-classification}.md`); and `pos`'s server error messages are now localized by error code (closes the "Server-sent error text" gap ADR 0011 named), not just the raw English `ProblemDetails.title`; and editing an order line's quantity (ORD-03) is built — `PUT /orders/{id}/lines/{lineId}/quantity` plus a +/− stepper in `pos` — deliberately not how a wrong line is undone, which stays void (ORD-10); channel pricing for dine-in/takeaway (CAT-06, delivery out of scope — no delivery order path exists at all yet) is built too, with real UI on both `pos` (the menu button shows whichever price the order in progress would charge) and `admin` (inline add/edit/clear next to the dine-in price); and `admin`'s "Plano de sala" is live for the first time too — FLR-03's table CRUD via plain add/edit/delete forms, then extended the same day to room CRUD too (create/rename/delete, guarded to zero tables), not yet the drag-and-drop canvas that row's own title names; both web clients also got client-side error tracking (OPS-14, `@sentry/react`) — neither had any error boundary before, so a render-phase throw took the whole screen to blank white — with `Sentry.init()` config-bound and empty by default (same "no real collector yet" shape as OPS-08), a translated fallback screen instead of a blank one, and a dev-only crash trigger (confirmed stripped from both production bundles) proving the boundary genuinely catches a thrown error, not just that the component exists in the tree; and a database backup + restore drill exists too (OPS-12, still 🚧 — the mechanism and the drill are both proven live, "automated" scheduling is the open half since there's nothing to schedule it in yet), which is also where a real `.ps1`-encoding trap got found and written down (see §7); and a load test exists too (QA-13, still 🚧 and deliberately scoped down from its own title's "50 sites" — no multi-tenant seed data exists to drive that, and `Reporting` is empty so there's nothing to test isolation against), which is where a real ~40x `Debug`-logging latency trap got found and written down (see §7); and a shared `web/ui` component library exists too (WEB-02) — `formatMoney`, the `brasa.lang` cookie store and `LanguageToggle` deduplicated out of `pos`/`admin`'s own identical copies, consumed by a Vite `resolve.alias` + matching TS `paths` entry in each app (never through `node_modules`) plus a new npm workspace root (`src/web/package.json`) that exists solely to hoist the shared package's own `react`/`react-i18next` imports to a reachable `node_modules`; both apps' duplicate files deleted, both re-verified clean (`tsc -b`, `vite build`, `oxlint`), full suite green (64 backend, 109 E2E, one confirmed pre-existing flake)
 
 ---
 
@@ -99,7 +99,7 @@ Condensed:
   `GET /menu/all` that deliberately doesn't filter the way the guest-facing
   `GET /menu` does; floor-plan editing, FLR-03, isn't built), a Playwright
   E2E harness driving the real
-  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 113
+  UI (`src/web/e2e`, QA-01/03/05/14 incl. axe-core accessibility scans, 109
   tests green on a clean run — the seeded floor plan was doubled to 16
   tables after back-to-back full runs started exhausting the original 8, a
   QA-02 scaling limitation, not a product bug; see
@@ -254,6 +254,7 @@ src/backend/
 src/agent/
   Brasa.SiteAgent         In-restaurant worker: signing, printing, LAN hub
 src/web/
+  ui                      Shared source for pos/admin, alias-consumed, no build step — WEB-02
   pos                     POS PWA (React + TS + Vite) — I0 shell, WEB-01
   admin                   Back-office SPA (React + TS + Vite) — shell + menu editor, WEB-09/10
   e2e                     Playwright E2E harness — QA-01/03/05
@@ -636,6 +637,30 @@ there is actually met.
   against a `dotnet run`-started instance of this API — see
   [load-testing.md](../development/load-testing.md).
 
+- **`src/web/ui` (WEB-02) needs *both* a Vite/TS path alias *and* an npm
+  workspace — either alone is insufficient, for two different reasons.**
+  The alias (`resolve.alias` in each app's `vite.config.ts` + a matching
+  `paths` entry in its `tsconfig.app.json`) makes `ui`'s own `.ts`/`.tsx`
+  files resolve as that app's own source, so Vite transforms them directly
+  instead of trying to pre-bundle them as an opaque `node_modules`
+  dependency (which assumes pre-compiled JS and breaks on raw TSX). But
+  the alias only resolves `ui`'s *own* files — it does nothing for *that
+  package's own bare imports* (`ui/src/components/LanguageToggle.tsx`
+  importing `react-i18next`), which Node/TypeScript resolution still walks
+  up the directory tree from `ui/src/` to find, and `ui` has no
+  `node_modules` of its own. Fixed with an npm workspace root
+  (`src/web/package.json`, `"workspaces": ["pos", "admin", "e2e", "ui"]`)
+  that hoists `react`/`react-i18next` to a shared ancestor `node_modules`.
+  If a third file type ever moves into `ui` with a new bare dependency,
+  add it to `ui/package.json`'s `peerDependencies` and re-run `npm
+  install` from `src/web/` — adding the import alone will resolve at the
+  alias level and still fail at the dependency level.
+- **TypeScript 6+ deprecates `"baseUrl"` — use `"paths"` alone.** Pairing
+  `"baseUrl": "."` with `"paths"` in a `tsconfig.app.json` (the pattern
+  many older examples use) now errors with TS5101. `"paths"` alone
+  resolves relative to the tsconfig file's own directory in modern
+  TypeScript; no `baseUrl` needed.
+
 ## 8. Environment
 
 - Windows 10 Home. Shell is **PowerShell 5.1** — no `&&`, no ternary, no
@@ -650,9 +675,10 @@ dotnet test  Brasa.slnx
 dotnet test  tests/Brasa.Shared.Tests   # fast path
 dotnet run   --project src/backend/Brasa.Api
 docker compose -f infra/docker-compose.yml up -d
-cd src/web/pos ; npm install ; npm run dev   # http://localhost:5173
-cd src/web/admin ; npm install ; npm run dev -- --port 5174   # http://localhost:5174
-cd src/web/e2e ; npm install ; npx playwright test   # starts API + pos + admin itself
+cd src/web ; npm install                     # workspace root (WEB-02) -- hoists shared deps once for pos/admin/e2e/ui
+cd src/web/pos ; npm run dev                 # http://localhost:5173
+cd src/web/admin ; npm run dev -- --port 5174   # http://localhost:5174
+cd src/web/e2e ; npx playwright test         # starts API + pos + admin itself
 ```
 
 ## 9. Open blockers

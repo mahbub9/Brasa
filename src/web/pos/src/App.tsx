@@ -1,3 +1,4 @@
+import { LanguageToggle } from '@brasa/ui/components/LanguageToggle';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from './api/client';
@@ -12,7 +13,6 @@ import type {
 } from './api/types';
 import { ErrorBanner } from './components/ErrorBanner';
 import i18n from './i18n/i18n';
-import { LanguageToggle } from './components/LanguageToggle';
 import { MenuGrid } from './components/MenuGrid';
 import { ModifierPicker } from './components/ModifierPicker';
 import { OrderSummary } from './components/OrderSummary';

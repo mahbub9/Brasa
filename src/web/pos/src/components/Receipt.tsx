@@ -1,6 +1,6 @@
+import { formatMoney } from '@brasa/ui/lib/money';
 import { useTranslation } from 'react-i18next';
 import type { CloseOrderResponse } from '../api/types';
-import { formatMoney } from '../lib/money';
 import { formatTableLabel } from '../lib/tableLabel';
 
 interface ReceiptProps {

@@ -1,9 +1,9 @@
+import { LanguageToggle } from '@brasa/ui/components/LanguageToggle';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from './api/client';
 import type { AdminMenuCategoryDto, RoomDto } from './api/types';
 import { FloorManager } from './components/FloorManager';
-import { LanguageToggle } from './components/LanguageToggle';
 import { MenuManager } from './components/MenuManager';
 import i18n from './i18n/i18n';
 import './App.css';

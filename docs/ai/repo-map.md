@@ -128,6 +128,32 @@ something the modules do to each other. See
 ⬜ **Missing (Month 3):** SQLite store, fiscal signing, ESC/POS printing, LAN
 REST + SignalR hub, cloud outbox sync.
 
+## `src/web/ui` ✅ WEB-02 — shared source for `pos`/`admin`
+
+No build step and no `node_modules` of its own beyond what the workspace
+root hoists in. Consumed by a Vite `resolve.alias` (`@brasa/ui` →
+`../ui/src`) plus a matching TypeScript `paths` entry in each app's own
+`vite.config.ts`/`tsconfig.app.json` — the alias treats these files as
+that app's own source, never as an installed `node_modules` package (which
+would hand Vite's dependency pre-bundler raw TSX and break). `src/web/`
+itself gained a workspace-root `package.json` (`"workspaces": ["pos",
+"admin", "e2e", "ui"]`) purely to hoist `react`/`react-i18next` to a
+shared ancestor `node_modules` — the alias alone resolves this package's
+*own* files, not its own bare imports, which still need a real
+`node_modules` reachable by walking up from `ui/src/`.
+
+| File | State | Contents |
+|---|---|---|
+| `package.json` | ✅ | `react`/`react-i18next` as `peerDependencies`, not `dependencies` — supplied by whichever app imports this package, never installed twice |
+| `src/lib/money.ts` | ✅ | `formatMoney`, moved from `pos`/`admin`'s own duplicate copies. Takes a locally-defined `MoneyLike` structural type (`{ amount, currency }`), not either app's own `MoneyDto` import — TypeScript's structural typing makes both apps' DTOs compatible with no cast |
+| `src/i18n/languageStorage.ts` | ✅ | `SupportedLanguage` type + `cookieLanguageStore`, moved from `pos`/`admin`'s own duplicate copies. Same `brasa.lang` cookie both apps already shared on purpose (ADR 0011) — now one implementation instead of two |
+| `src/components/LanguageToggle.tsx` | ✅ | The pt/en toggle button group, moved from `pos`/`admin`'s own duplicate copies |
+
+⬜ **Deliberately not shared:** `errorReporting.ts`/`ErrorFallback.tsx`/
+`DevCrashTrigger.tsx` (OPS-14) and `i18n.ts` itself stay per-app — Sentry
+init and each app's own translation resources differ enough that sharing
+them would trade real duplication for a worse abstraction.
+
 ## `src/web/pos` ✅ I0 + I1's first slice
 
 React 19 + Vite 8 + TypeScript. No auth, no offline — proves the API in a
@@ -143,11 +169,9 @@ browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
 | `src/components/ModifierPicker.tsx` | ✅ | CAT-03/04 — shown when a tapped menu item has modifier groups; single-select renders as radio-like buttons, multi-select as toggles capped at `maxSelect`. Validity mirrors the server's own min/max check exactly |
 | `src/components/PreBill.tsx` | ✅ | ORD-18/19 — "Ver conta" preview modal. Shaped nothing like `Receipt.tsx`: no document number, ATCUD or QR anywhere in its markup, a bold non-fiscal notice instead |
 | `src/components/TransferTablePicker.tsx` | ✅ | ORD-12 — "Transferir mesa" modal listing only currently-`Free` tables; the floor snapshot is re-fetched right before it opens, but the API is still the final word on a race |
-| `src/components/*.tsx` | ✅ | `MenuGrid` (renders `Description`/`Allergens` when declared, CAT-02, full contrast — never dimmed, same reasoning as QA-14; shows `takeawayPrice` instead of `price` when the current order `isTakeaway` and one is set, CAT-06 — the button a waiter taps must show what the order actually charges, not always the dine-in figure), `OrderSummary` (incl. its own `OrderLineNotes` sub-component, ORD-06 — add/edit/clear a line's kitchen note inline; a +/− quantity stepper per line, ORD-03, disabled at 1 since dropping to zero is what void is for, not an edit; and a "Pedir conta" button, FLR-04 — hidden for takeaway orders, `!order.isTakeaway`, since there's no physical table to flag), `Receipt`, `ErrorBanner`, `LanguageToggle` |
-| `src/lib/money.ts` | ✅ | `Intl.NumberFormat('pt-PT', …)` — never formats `Money` by hand, and deliberately never follows the language toggle (see [ADR 0011](../architecture/decisions/0011-i18n.md)) |
-| `src/lib/tableLabel.ts` | ✅ | The opposite call from `money.ts` on the same axis: renders seeded `"Mesa N"` labels as `"Table N"` in English — display-only, `Table.Label` itself untouched. Unlike money/timestamps, a table label isn't a fiscal-correctness concern, and unlike a menu item's name it isn't identity-bearing content either — floor/kitchen staff who don't read Portuguese still need it. Anything not matching the seeded shape passes through unchanged. See ADR 0011 |
-| `src/i18n/i18n.ts` | ✅ | i18next config — pt default, en toggle (WEB-13) |
-| `src/i18n/languageStorage.ts` | ✅ | `LanguageStore` interface + `cookieLanguageStore`; the seam a mobile client swaps for `AsyncStorage` |
+| `src/components/*.tsx` | ✅ | `MenuGrid` (renders `Description`/`Allergens` when declared, CAT-02, full contrast — never dimmed, same reasoning as QA-14; shows `takeawayPrice` instead of `price` when the current order `isTakeaway` and one is set, CAT-06 — the button a waiter taps must show what the order actually charges, not always the dine-in figure), `OrderSummary` (incl. its own `OrderLineNotes` sub-component, ORD-06 — add/edit/clear a line's kitchen note inline; a +/− quantity stepper per line, ORD-03, disabled at 1 since dropping to zero is what void is for, not an edit; and a "Pedir conta" button, FLR-04 — hidden for takeaway orders, `!order.isTakeaway`, since there's no physical table to flag), `Receipt`, `ErrorBanner`. `LanguageToggle` moved to `@brasa/ui` (WEB-02), imported not local |
+| `src/lib/tableLabel.ts` | ✅ | The opposite call from `@brasa/ui`'s `money.ts` on the same axis: renders seeded `"Mesa N"` labels as `"Table N"` in English — display-only, `Table.Label` itself untouched. Unlike money/timestamps, a table label isn't a fiscal-correctness concern, and unlike a menu item's name it isn't identity-bearing content either — floor/kitchen staff who don't read Portuguese still need it. Anything not matching the seeded shape passes through unchanged. Stays local, not shared — `admin` has no table labels to render. See ADR 0011 |
+| `src/i18n/i18n.ts` | ✅ | i18next config — pt default, en toggle (WEB-13). Imports `cookieLanguageStore`/`SupportedLanguage` from `@brasa/ui` (WEB-02), not a local file |
 | `src/i18n/resources/{pt,en}.ts` | ✅ | UI copy, incl. `floor.*`. Menu item names and money are **not** here — see the ADR. `error.code.*` is nested to match a server error code's own dots (e.g. `error.code.floor.table_not_dirty`), which i18next resolves with no special config |
 | `src/main.tsx` | ✅ | OPS-14 — calls `initErrorReporting()` then wraps `<App />` in `Sentry.ErrorBoundary` (fallback: `ErrorFallback`) plus `DevCrashTrigger`, a dev-only sibling that can throw a real error for E2E to catch |
 | `src/lib/errorReporting.ts` | ✅ | OPS-14 — `Sentry.init({ dsn: VITE_SENTRY_DSN \|\| undefined, ... })`, same "empty by default, no real collector yet" shape as OPS-08's OTel wiring; sets `window.__errorReportingInitialized` so E2E can confirm init completed without relying on a Sentry-internal global |
@@ -160,8 +184,11 @@ slice — see the `WEB` epic in [backlog.md](../product/backlog.md).
 
 ## `src/web/admin` 🚧 WEB-09 shell + WEB-10's menu editor slice
 
-React 19 + Vite 8 + TypeScript, same tooling as `pos`, own `node_modules`
-(not a workspace), dev server pinned to port 5174. No auth yet. "Overview"
+React 19 + Vite 8 + TypeScript, same tooling as `pos`. Both are now npm
+workspace members under `src/web/package.json` (WEB-02, added to hoist
+`@brasa/ui`'s dependencies to a shared `node_modules` — see that
+package's own section), not independent `node_modules` trees. Dev server
+pinned to port 5174. No auth yet. "Overview"
 and "Menu" are both live; a floor-plan editor (FLR-03) and staff/reporting
 screens (WEB-11) are the remaining placeholders.
 
@@ -171,8 +198,7 @@ screens (WEB-11) are the remaining placeholders.
 | `src/components/FloorManager.tsx` | ✅ | FLR-03 — per room: table list with inline edit (label/seats/shape/position, plain inputs, no drag canvas) and delete (two-step confirm, disabled unless the table is `Free`); an "add table" form per room; a room heading with inline rename and delete (two-step confirm, disabled unless the room has no tables left); an "add room" form. No drag-and-drop canvas for either — that's this row's own still-open gap |
 | `src/components/MenuManager.tsx` | ✅ | WEB-10 — per category: visibility toggle; per item: availability toggle, inline price edit, two-step delete confirm, inline takeaway-price add/edit/clear (CAT-06, next to the dine-in price field). A CSV file input reusing CAT-17's existing import pipeline is the *only* way to add a new item — there's no "create item" endpoint, admin or otherwise. Every mutation refetches `GET /menu/all` rather than reconciling local state by hand |
 | `src/api/client.ts`, `src/api/types.ts` | ✅ | `getMenu` calls `GET /menu/all`, not `GET /menu` — see that endpoint's own remarks. Mutating calls now carry `Idempotency-Key`, same as `pos`. Duplicated from `pos`'s own client rather than shared, same reasoning as `pos`'s `api/types.ts` comment: `web/sdk` (WEB-03) is worth building once a change actually needs sharing across clients |
-| `src/lib/money.ts` | ✅ | Same `Intl.NumberFormat('pt-PT', …)` as `pos`'s, same reasoning (ADR 0011) |
-| `src/i18n/` | ✅ | Same ADR 0011 shape as `pos` (`i18n.ts`, `languageStorage.ts`, `resources/{pt,en}.ts`) — deliberately duplicated, not shared, same reasoning as the API client above. Reuses `pos`'s exact `brasa.lang` cookie name on purpose: it's a preference for the *staff member*, not siloed per client app, so switching language in one carries into the other on the same host. English copy is genuinely English throughout (not just menu-item names left untranslated, which is correct — see the trap in [README.md](README.md)) because not every staff member reading it is a Portuguese speaker |
+| `src/i18n/i18n.ts`, `src/i18n/resources/{pt,en}.ts` | ✅ | Same ADR 0011 shape as `pos`'s `i18n.ts` — deliberately duplicated, not shared: each app's translation resources differ enough that sharing them would trade real duplication for a worse abstraction. `i18n.ts` imports `cookieLanguageStore`/`SupportedLanguage` from `@brasa/ui` (WEB-02) rather than a local `languageStorage.ts` — reuses `pos`'s exact `brasa.lang` cookie name on purpose: it's a preference for the *staff member*, not siloed per client app, so switching language in one carries into the other on the same host. English copy is genuinely English throughout (not just menu-item names left untranslated, which is correct — see the trap in [README.md](README.md)) because not every staff member reading it is a Portuguese speaker |
 | `src/main.tsx`, `src/lib/errorReporting.ts`, `src/components/ErrorFallback.tsx`, `src/components/DevCrashTrigger.tsx` | ✅ | OPS-14 — same shape as `pos`'s own (see that app's row for the detail), duplicated rather than shared |
 | `.env.example` | ✅ | Documents `VITE_API_BASE_URL` and `VITE_SENTRY_DSN` (OPS-14, empty — no real Sentry project exists yet); previously didn't exist at all |
 

@@ -68,7 +68,7 @@
 | `Brasa.Shared.Tests` | ✅ | 51 passing, incl. exhaustive allocation check, the error-code registry test (API-04, now scanning six `Error.*` factories, not five — `RateLimited` joined in API-12), `PortugueseTimeZoneTests` (previously zero coverage on code CLAUDE.md itself flags as easy to get wrong), and `ResultTests`/`ErrorTests` (previously zero direct coverage on the hard-rule-5 types themselves) |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 31 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused (the automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)) — plus `CsvParserTests` (CAT-17, no DB), `ErrorMappingTests` (no DB, pins all 6 `ErrorType`→HTTP status mappings directly, since `ErrorMapping.ToProblem()` is, by its own doc comment, "the only place `ErrorType` is translated to an HTTP status"), `ApiDeprecationMiddlewareTests` (API-08, no DB) and `ApiRateLimitingTests` (API-12, no DB — partition-key logic; the real 429/`Retry-After` behaviour was verified live instead, see below) |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 74 tests (incl. `admin-shell.spec.ts`/`admin-language-toggle.spec.ts`/`admin-menu-management.spec.ts`, WEB-09/10, and table-label/takeaway-default English assertions in `language-toggle.spec.ts`), all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). That same repeated-run discipline is what caught the API-10 JSON-casing regression below before it reached a commit, and shaped the API-09 pagination test itself: a first version asserting exact page sizes flaked under concurrent specs sharing the dev database, fixed by walking the full cursor chain and asserting only what must hold regardless of noise from other tests. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), menu bulk CSV import (CAT-17), request-bill floor-plan signal (FLR-04), 86-ing a menu item (CAT-13), menu item repricing incl. the past-order-lines-immune-to-a-reprice invariant (CAT-19), menu category visibility (CAT-01), menu `ETag`/304 caching (API-10, now retry-tolerant of legitimate concurrent catalog mutations from sibling specs), idempotency replay — a retried close never double-issues a fiscal document (QA-11), client version negotiation (API-06/07), order-history cursor pagination (API-09), response compression incl. error bodies (API-11), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 109 tests (incl. `admin-shell.spec.ts`/`admin-language-toggle.spec.ts`/`admin-menu-management.spec.ts`, WEB-09/10, and table-label/takeaway-default English assertions in `language-toggle.spec.ts`), all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). That same repeated-run discipline is what caught the API-10 JSON-casing regression below before it reached a commit, and shaped the API-09 pagination test itself: a first version asserting exact page sizes flaked under concurrent specs sharing the dev database, fixed by walking the full cursor chain and asserting only what must hold regardless of noise from other tests. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), menu bulk CSV import (CAT-17), request-bill floor-plan signal (FLR-04), 86-ing a menu item (CAT-13), menu item repricing incl. the past-order-lines-immune-to-a-reprice invariant (CAT-19), menu category visibility (CAT-01), menu `ETag`/304 caching (API-10, now retry-tolerant of legitimate concurrent catalog mutations from sibling specs), idempotency replay — a retried close never double-issues a fiscal document (QA-11), client version negotiation (API-06/07), order-history cursor pagination (API-09), response compression incl. error bodies (API-11), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -821,6 +821,33 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > mismatch and a table present in only one were each correctly flagged
 > (`FAIL`, `MISSING`) using the same comparison the drill itself runs,
 > before this page was written.
+
+> **Update (shared `web/ui` component library, WEB-02):** `pos` and `admin`
+> had grown three genuinely identical files each — `formatMoney` (fiscal
+> money formatting, always `pt-PT` regardless of the UI language toggle,
+> ADR 0011), the `brasa.lang` cookie store, and the `LanguageToggle`
+> component itself. `src/web/ui` now holds one copy of each, consumed by
+> both apps via a Vite `resolve.alias` (`@brasa/ui` → `../ui/src`) plus a
+> matching TypeScript `paths` entry, so the shared files are transformed as
+> plain project source — never routed through `node_modules` resolution,
+> which would hand Vite's dependency pre-bundler raw, untranspiled TSX and
+> break in exactly the way an installed package never would. That alias
+> only resolves the shared package's *own* files, though — it does nothing
+> for that package's *own* bare imports (`react-i18next`), which still need
+> a real `node_modules` reachable by walking up from `ui/src/`. Fixed by
+> adding an npm workspace root (`src/web/package.json`, listing `pos`,
+> `admin`, `e2e`, `ui`) so `react`/`react-i18next` hoist to a shared
+> ancestor `node_modules` — confirmed by `ui`'s own bare imports resolving
+> only once that hoist ran, not before. Deliberately narrow scope:
+> `errorReporting.ts`/`i18n.ts` themselves stay per-app — Sentry
+> initialisation and each app's translation resources differ enough that
+> sharing them would trade real duplication for a worse abstraction, not a
+> better one. **Verified live**: both apps' `tsc -b`, `vite build` (Rollup,
+> not just the dev server) and `oxlint` pass clean; full backend suite (64
+> tests) and the full E2E suite (109 tests, 108 passing — the one
+> `merge-orders.spec.ts` failure reproduced as a pre-existing table-pool
+> contention flake under parallel load, confirmed by re-running it alone,
+> where it passed).
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:

@@ -1,6 +1,6 @@
+import { cookieLanguageStore, type SupportedLanguage } from '@brasa/ui/i18n/languageStorage';
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';
-import { cookieLanguageStore, type SupportedLanguage } from './languageStorage';
 import { en } from './resources/en';
 import { pt } from './resources/pt';
 

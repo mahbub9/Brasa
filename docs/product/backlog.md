@@ -48,7 +48,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
 | **FIS** | Fiscal engine | 3 | 24 | I0 (rest: I7) |
-| **WEB** | Web clients | 4 | 13 | I0 (rest: I1–I8) |
+| **WEB** | Web clients | 5 | 13 | I0 (rest: I1–I8) |
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
@@ -536,7 +536,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ID | Task | Status |
 |---|---|---|
 | WEB-01 | `pos` minimal shell — open table, ring up, split preview, close | ✅ I0: one screen, no auth, no offline. See [status.md](status.md#web-clients) |
-| WEB-02 | Shared `web/ui` component library | ⬜ |
+| WEB-02 | Shared `web/ui` component library | ✅ `src/web/ui` — no build step, consumed by `pos`/`admin` via a Vite `resolve.alias` + matching TS `paths` (source treated as each app's own, never a `node_modules` package); an npm workspace root (`src/web/package.json`) hoists `react`/`react-i18next` so the shared source's own imports resolve. Scoped to the three genuinely duplicated, low-risk files — `formatMoney` (`lib/money.ts`), the pt/en cookie store (`i18n/languageStorage.ts`), and `LanguageToggle.tsx` — deliberately not `errorReporting.ts`/`i18n.ts` themselves, which stay per-app (Sentry init and translation resources differ enough that sharing them would trade real duplication for a worse abstraction). Both apps' duplicate copies deleted; both typecheck, build and lint clean post-refactor. **Verified live**: full E2E suite, 108/109 (one `merge-orders.spec.ts` flake, confirmed pre-existing table-pool contention under parallel load, not a regression — passes in isolation) |
 | WEB-03 | Shared `web/sdk` — OpenAPI-generated typed client | ⬜ replaces `pos`'s hand-written `src/api/` (I0 placeholder) |
 | WEB-04 | `pos` — Dexie local store and offline-first data layer | ⬜ I2, depends on SYN |
 | WEB-05 | `pos` — floor plan / table selection screen | ✅ `TablePicker` — static grid per room, colour-coded by state, tap Free to open / tap Dirty to clear. Not the drag-and-drop layout (FLR-03) |

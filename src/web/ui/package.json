@@ -1,0 +1,15 @@
+{
+  "name": "@brasa/ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Shared source (WEB-02) for pos/admin -- consumed by path alias (see each app's vite.config.ts/tsconfig.app.json), never imported by package name through node_modules. No build step: Vite transforms these .ts/.tsx files exactly like each app's own src/.",
+  "peerDependencies": {
+    "react": "^19.2.8",
+    "react-i18next": "^17.0.11"
+  },
+  "devDependencies": {
+    "@types/react": "^19.2.17",
+    "typescript": "~6.0.2"
+  }
+}

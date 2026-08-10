@@ -20,7 +20,15 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
-    "noFallthroughCasesInSwitch": true
+    "noFallthroughCasesInSwitch": true,
+
+    /* @brasa/ui (WEB-02) -- mirrors vite.config.ts's resolve.alias so
+       tsc -b resolves the same path Vite does. Source, not a built
+       package -- see that file's own comment. Resolved relative to this
+       file, no baseUrl needed (TypeScript 6+ deprecates it). */
+    "paths": {
+      "@brasa/ui/*": ["../ui/src/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "../ui/src"]
 }

@@ -1,7 +1,7 @@
+import { formatMoney } from '@brasa/ui/lib/money';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { MoneyDto, OrderDto, OrderLineDto } from '../api/types';
-import { formatMoney } from '../lib/money';
 import { formatTableLabel } from '../lib/tableLabel';
 
 interface OrderSummaryProps {
