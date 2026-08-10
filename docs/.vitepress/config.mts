@@ -124,6 +124,7 @@ export default defineConfig({
           { text: 'Testing', link: '/development/testing' },
           { text: 'End-to-end testing', link: '/development/e2e-testing' },
           { text: 'Backup and restore', link: '/development/backup-and-restore' },
+          { text: 'Load testing', link: '/development/load-testing' },
           { text: 'Documentation contract', link: '/development/documentation' },
           { text: 'OpenAPI document', link: '/openapi/' },
         ],

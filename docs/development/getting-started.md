@@ -102,6 +102,11 @@ with a visible browser window. See
 [../development/e2e-testing.md](../development/e2e-testing.md) for what's
 covered and what's deliberately not yet.
 
+**Load testing:** `npm run load` in the same `src/web/e2e` directory —
+see [load-testing.md](load-testing.md), including a real ~40× latency trap
+around `Debug`-level logging worth reading before trusting any number it
+prints.
+
 ## Local infrastructure
 
 ```powershell
