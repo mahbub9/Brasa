@@ -129,6 +129,10 @@ The app connects as `brasa_app` (`ConnectionStrings:Postgres`) for everything;
 If RLS ever appears to "not work" locally, check which role the query actually
 ran as before suspecting the policy.
 
+**Backups:** `infra/scripts/restore-drill.ps1` backs up this database, restores
+it into a scratch copy, and verifies every table's row count matches — see
+[backup-and-restore.md](backup-and-restore.md).
+
 ## Adding a migration
 
 Each module owns its EF Core migrations under its own `Persistence/Migrations/`

@@ -785,6 +785,43 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > chrome) in both `pos` and `admin`; and that fallback screen passes the
 > same WCAG A/AA axe scan (QA-14) as every other screen.
 
+> **Update (database backup + restore drill, OPS-12):** three PowerShell
+> scripts (`infra/scripts/`) — `backup-database.ps1` (`pg_dump`, custom
+> format), `restore-database.ps1` (`pg_restore` into a target database,
+> defaulting to a scratch `_restore_drill`-suffixed name rather than the
+> real one, so overwriting live data takes an explicit, deliberate
+> override rather than being the default), and `restore-drill.ps1`, which
+> chains both together and then does the part that actually makes this a
+> *drill* rather than just a backup: enumerates every table across every
+> schema and compares row counts, source vs. restored, reporting PASS/FAIL
+> per table before cleaning up. Neither script ever pipes the dump through
+> a PowerShell text redirect — `pg_dump`'s custom format is binary, and
+> Windows PowerShell 5.1's `>`/`Out-File` default to UTF-16LE or
+> UTF-8-with-BOM for anything treated as text, which would silently
+> corrupt it; both scripts round-trip the file through the container's own
+> filesystem via `docker cp` instead, which copies bytes exactly. Found
+> this the hard way in the same session, for a different reason: the
+> scripts' own doc comments originally used a typographic em dash, and
+> Windows PowerShell 5.1 reads a `.ps1` file with no BOM using the system
+> codepage, not UTF-8 — the em dash's UTF-8 bytes decoded into three wrong
+> characters, one of which broke the string it was inside, and the rest of
+> the file printed as literal text instead of running. Fixed by treating
+> "no non-ASCII characters in a `.ps1` file" as a hard rule, not a style
+> preference, and writing that down in `backup-and-restore.md` so it isn't
+> rediscovered later. "Automated" (the scheduling half of this task's own
+> title) stays open: there is nothing to schedule it *in* yet — no
+> production deployment (OPS-11) and no job runner (OPS-10), so this runs
+> on demand today, the same shape as OPS-08/OPS-14 above. **Verified
+> live**, not just read for correctness: a real drill against the dev
+> database (`brasa-postgres`) passed cleanly — 12 tables across 3 schemas,
+> every row count matched (`ordering.orders`: 3508/3508,
+> `ordering.order_lines`: 4497/4497, `catalog.menu_items`: 505/505, and so
+> on). Both failure paths were deliberately exercised too, not assumed
+> correct from the code: two scratch databases seeded with a 3-vs-2 row
+> mismatch and a table present in only one were each correctly flagged
+> (`FAIL`, `MISSING`) using the same comparison the drill itself runs,
+> before this page was written.
+
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
 
@@ -939,6 +976,7 @@ or native Kotlin/Swift remains open.
 | OpenTelemetry (OPS-08) | ✅ | ASP.NET Core, outbound `HttpClient` and Npgsql tracing + ASP.NET Core/HTTP/.NET runtime metrics, OTLP-exported to Seq — config-bound (`Otel:OtlpEndpoint`), empty by default (no real collector exists for a production deployment, OPS-11), set only in `appsettings.Development.json`. Npgsql tracing goes through `AddSource("Npgsql")` rather than a dedicated package — Npgsql has emitted spans on an ActivitySource literally named `"Npgsql"` since v7, and subscribing to it by name is what turns emission on, independent of whatever exact extension-method surface the separate `Npgsql.OpenTelemetry` package exposes (never actually needed it). Caught a real, silent bug before it shipped: `AddOtlpExporter`'s `Endpoint` is posted to exactly as configured — no automatic `/v1/traces`/`/v1/metrics` suffix, unlike the *different*, unified `UseOtlpExporter()` helper — so the first attempt 404'd against Seq with **no exception anywhere in the app** (export failures are an OpenTelemetry SDK-internal concern by design). Found by temporarily attaching a raw `System.Diagnostics.ActivityListener` to inspect the exporter's own outbound HTTP spans directly — nothing short of that would have surfaced it. **Verified live**: a real request's `Microsoft.AspNetCore` span and its child `Npgsql` query span both land in Seq with correct `ParentId` parent/child linkage and `service.name=brasa-api`, and a periodic metrics export lands too (confirmed via Seq's own `/api/diagnostics/ingestion`-adjacent event stream, not just "the process didn't throw") |
 | CI (GitHub Actions) | ✅ | Build gate, tests, vulnerability scan, docs link check. `e2e` job added this session — written and locally-equivalent to what passed on this machine, but not yet exercised by an actual CI run |
 | Client-side error tracking, `pos`/`admin` (OPS-14) | ✅ | `@sentry/react`, same "ship the seam, no real collector yet" shape as OpenTelemetry (OPS-08) above: `Sentry.init()` runs unconditionally at startup with `dsn` read from `VITE_SENTRY_DSN` — empty/unset in every committed `.env.example`, since no real Sentry project exists yet (OPS-11's "no infra credentials" gap) — so it never sends anything anywhere, but automatic `window.onerror`/`unhandledrejection` capture and the render-tree `Sentry.ErrorBoundary` both still work locally. Each app's `main.tsx` wraps `<App />` in the boundary with a translated `ErrorFallback` (a friendly "something broke, reload" screen, not a blank one) — both apps duplicate this the same way they duplicate `LanguageToggle`/`money.ts` today. **Verified live**: `window.__errorReportingInitialized` confirms `Sentry.init()` completes without throwing on a normal load in both apps; a dev-only `DevCrashTrigger` (`?__crashTest=1`, `import.meta.env.DEV`-gated — confirmed absent from both apps' production bundles by grepping the built JS) proves the boundary catches a genuine thrown error and renders the fallback instead of a blank screen, in a real browser, in both `pos` and `admin`; the fallback screen itself passes the same WCAG A/AA axe scan (QA-14) as every other screen |
+| Database backup + restore drill (OPS-12) | 🚧 | `infra/scripts/{backup-database,restore-database,restore-drill}.ps1` — `pg_dump`/`pg_restore` via `docker exec`+`docker cp` (never a PowerShell text redirect, which would corrupt the binary dump format), restoring into a scratch database and comparing every table's row count across every schema. "Automated" (the scheduling half) is the open gap — nothing to schedule it in yet, no production deployment (OPS-11) and no job runner (OPS-10). See [backup-and-restore.md](../development/backup-and-restore.md). **Verified live**: a real drill against the dev database passed (12 tables, all row counts matched); both failure paths (a count mismatch, a table missing entirely) were deliberately reproduced against scratch databases and correctly flagged, not just assumed correct from the code |
 
 ## Blockers
 
