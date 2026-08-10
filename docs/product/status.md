@@ -757,6 +757,34 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > still has tables 409s (`floor.room_not_empty`); and the `admin` UI
 > round trip (add → rename → delete) works in a real browser end to end.
 
+> **Update (client-side error tracking, OPS-14):** neither `pos` nor
+> `admin` had a React error boundary or any global error handler before
+> this — a render-phase exception anywhere in the tree took the whole
+> screen to blank white with zero record of what happened, on a POS
+> terminal mid-service. `@sentry/react`'s `Sentry.init()` now runs
+> unconditionally at startup in both apps, `dsn` read from
+> `VITE_SENTRY_DSN` — empty in every committed `.env.example`, the same
+> "no real collector/project exists yet" shape OPS-08's OpenTelemetry
+> wiring already established — so it never actually sends anything
+> anywhere yet, but automatic `window.onerror`/`unhandledrejection`
+> capture and a `Sentry.ErrorBoundary` wrapping `<App />` both still work
+> locally. The boundary's fallback (`ErrorFallback`, translated) shows a
+> plain "something broke, reload" screen instead of a blank one. Proven
+> against a genuine thrown error, not just "the boundary component
+> exists in the tree": a `DevCrashTrigger` component throws for real when
+> the URL carries `?__crashTest=1`, but only inside
+> `if (import.meta.env.DEV && ...)` — a literal `false` in a production
+> build, so the whole branch is dead-code-eliminated; confirmed by
+> grepping both apps' built `dist/assets/*.js` for the trigger's own
+> error string and finding nothing. **Verified live**:
+> `window.__errorReportingInitialized` (set by this app's own code after
+> `Sentry.init()` returns, not a Sentry-internal global relied on as a
+> proxy) confirms initialisation completes without throwing on a normal
+> page load in both apps; navigating to `?__crashTest=1` in a real
+> browser shows the translated fallback screen (not the real app's
+> chrome) in both `pos` and `admin`; and that fallback screen passes the
+> same WCAG A/AA axe scan (QA-14) as every other screen.
+
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
 
@@ -910,6 +938,7 @@ or native Kotlin/Swift remains open.
 | Seq (log viewer + traces) | ✅ | `http://localhost:5341` — every log line during a request now carries `TenantId` (OPS-07, `TenantLoggingMiddleware`), verified by reading a real request's events straight from the console/Seq sink. Was actually crash-looping until this session: `datalust/seq:latest` now requires an explicit first-run admin password or `SEQ_FIRSTRUN_NOAUTHENTICATION`, and `infra/docker-compose.yml` set neither — the container reported `Up` for a few seconds after every restart before crashing again, easy to miss without actually querying it. Fixed with the no-auth opt-out (fine here: localhost-only, same trust level as Postgres's own dev credentials); re-verified the container stays up and a real request's log line actually lands in Seq, not just that the process didn't exit. Now also receives real distributed traces and metrics (OPS-08, below) via its native OTLP ingestion |
 | OpenTelemetry (OPS-08) | ✅ | ASP.NET Core, outbound `HttpClient` and Npgsql tracing + ASP.NET Core/HTTP/.NET runtime metrics, OTLP-exported to Seq — config-bound (`Otel:OtlpEndpoint`), empty by default (no real collector exists for a production deployment, OPS-11), set only in `appsettings.Development.json`. Npgsql tracing goes through `AddSource("Npgsql")` rather than a dedicated package — Npgsql has emitted spans on an ActivitySource literally named `"Npgsql"` since v7, and subscribing to it by name is what turns emission on, independent of whatever exact extension-method surface the separate `Npgsql.OpenTelemetry` package exposes (never actually needed it). Caught a real, silent bug before it shipped: `AddOtlpExporter`'s `Endpoint` is posted to exactly as configured — no automatic `/v1/traces`/`/v1/metrics` suffix, unlike the *different*, unified `UseOtlpExporter()` helper — so the first attempt 404'd against Seq with **no exception anywhere in the app** (export failures are an OpenTelemetry SDK-internal concern by design). Found by temporarily attaching a raw `System.Diagnostics.ActivityListener` to inspect the exporter's own outbound HTTP spans directly — nothing short of that would have surfaced it. **Verified live**: a real request's `Microsoft.AspNetCore` span and its child `Npgsql` query span both land in Seq with correct `ParentId` parent/child linkage and `service.name=brasa-api`, and a periodic metrics export lands too (confirmed via Seq's own `/api/diagnostics/ingestion`-adjacent event stream, not just "the process didn't throw") |
 | CI (GitHub Actions) | ✅ | Build gate, tests, vulnerability scan, docs link check. `e2e` job added this session — written and locally-equivalent to what passed on this machine, but not yet exercised by an actual CI run |
+| Client-side error tracking, `pos`/`admin` (OPS-14) | ✅ | `@sentry/react`, same "ship the seam, no real collector yet" shape as OpenTelemetry (OPS-08) above: `Sentry.init()` runs unconditionally at startup with `dsn` read from `VITE_SENTRY_DSN` — empty/unset in every committed `.env.example`, since no real Sentry project exists yet (OPS-11's "no infra credentials" gap) — so it never sends anything anywhere, but automatic `window.onerror`/`unhandledrejection` capture and the render-tree `Sentry.ErrorBoundary` both still work locally. Each app's `main.tsx` wraps `<App />` in the boundary with a translated `ErrorFallback` (a friendly "something broke, reload" screen, not a blank one) — both apps duplicate this the same way they duplicate `LanguageToggle`/`money.ts` today. **Verified live**: `window.__errorReportingInitialized` confirms `Sentry.init()` completes without throwing on a normal load in both apps; a dev-only `DevCrashTrigger` (`?__crashTest=1`, `import.meta.env.DEV`-gated — confirmed absent from both apps' production bundles by grepping the built JS) proves the boundary catches a genuine thrown error and renders the fallback instead of a blank screen, in a real browser, in both `pos` and `admin`; the fallback screen itself passes the same WCAG A/AA axe scan (QA-14) as every other screen |
 
 ## Blockers
 

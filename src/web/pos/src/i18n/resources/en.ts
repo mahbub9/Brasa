@@ -97,6 +97,9 @@ export const en = {
   error: {
     dismiss: 'Dismiss',
     generic: 'Something went wrong.',
+    crashedTitle: 'Something went wrong',
+    crashedBody: 'This screen ran into a problem. Reloading should fix it — nothing you were doing has been lost on the server.',
+    reload: 'Reload',
     // Keyed by the server's stable error code (docs/architecture/error-codes.md),
     // nested to match its dots — see the matching comment in resources/pt.ts.
     code: {

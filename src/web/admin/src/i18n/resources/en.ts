@@ -85,6 +85,9 @@ export const en = {
   },
   error: {
     generic: 'Something went wrong.',
+    crashedTitle: 'Something went wrong',
+    crashedBody: 'This screen ran into a problem. Reloading should fix it — nothing you were doing has been lost on the server.',
+    reload: 'Reload',
   },
   language: {
     label: 'Language',

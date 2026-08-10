@@ -102,6 +102,9 @@ export const pt = {
   error: {
     dismiss: 'Fechar',
     generic: 'Ocorreu um erro.',
+    crashedTitle: 'Ocorreu um problema',
+    crashedBody: 'Este ecrã encontrou um problema. Recarregar deve resolver — nada do que estava a fazer foi perdido no servidor.',
+    reload: 'Recarregar',
     // Keyed by the server's stable error code (docs/architecture/error-codes.md),
     // nested to match its dots — "floor.table_not_dirty" resolves as
     // error.code.floor.table_not_dirty, no special i18next config needed.

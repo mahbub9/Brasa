@@ -36,7 +36,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | Epic | Area | Done | Total | Phase |
 |---|---|---:|---:|---|
 | **FND** | Foundation & shared kernel | 10 | 12 | I0 |
-| **OPS** | Infrastructure, CI, observability | 8 | 16 | I0 → ongoing |
+| **OPS** | Infrastructure, CI, observability | 9 | 16 | I0 → ongoing |
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
 | **API** | API platform & mobile readiness | 13 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
@@ -55,7 +55,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 8 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **93** | **292** | |
+| | **Total** | **94** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -639,7 +639,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | OPS-11 | Production deployment (Hetzner + Caddy) | ⬜ |
 | OPS-12 | Automated database backup and a tested restore drill | ⬜ |
 | OPS-13 | Secret management | ⬜ |
-| OPS-14 | Error tracking (Sentry) for web clients | ⬜ |
+| OPS-14 | Error tracking (Sentry) for web clients | ✅ `@sentry/react` in both `pos` and `admin` — `Sentry.init()` runs unconditionally with `dsn` from `VITE_SENTRY_DSN` (empty in every committed `.env.example`, no real Sentry project exists yet — same "ship the seam, no real collector" shape as OPS-08), so it never sends anywhere yet, but automatic `window.onerror`/`unhandledrejection` capture and a `Sentry.ErrorBoundary` around `<App />` both work locally. Neither app had any error boundary before — a render-phase throw took the whole screen to blank white. Fallback UI is a translated "something broke, reload" screen, not a blank one. **Verified live**: `window.__errorReportingInitialized` confirms init completes on a normal load; a dev-only, build-stripped crash trigger (`?__crashTest=1`) proves the boundary catches a real thrown error and shows the fallback, in a real browser, in both apps; the fallback passes the same WCAG A/AA scan (QA-14) as every other screen |
 | OPS-15 | Uptime and SAF-T submission alerting | ⬜ |
 | OPS-16 | Staging environment | ⬜ |
 

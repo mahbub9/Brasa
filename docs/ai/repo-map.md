@@ -149,7 +149,11 @@ browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
 | `src/i18n/i18n.ts` | ✅ | i18next config — pt default, en toggle (WEB-13) |
 | `src/i18n/languageStorage.ts` | ✅ | `LanguageStore` interface + `cookieLanguageStore`; the seam a mobile client swaps for `AsyncStorage` |
 | `src/i18n/resources/{pt,en}.ts` | ✅ | UI copy, incl. `floor.*`. Menu item names and money are **not** here — see the ADR. `error.code.*` is nested to match a server error code's own dots (e.g. `error.code.floor.table_not_dirty`), which i18next resolves with no special config |
-| `.env.example` | ✅ | Documents `VITE_API_BASE_URL`; defaults to the API's `http` launch profile |
+| `src/main.tsx` | ✅ | OPS-14 — calls `initErrorReporting()` then wraps `<App />` in `Sentry.ErrorBoundary` (fallback: `ErrorFallback`) plus `DevCrashTrigger`, a dev-only sibling that can throw a real error for E2E to catch |
+| `src/lib/errorReporting.ts` | ✅ | OPS-14 — `Sentry.init({ dsn: VITE_SENTRY_DSN \|\| undefined, ... })`, same "empty by default, no real collector yet" shape as OPS-08's OTel wiring; sets `window.__errorReportingInitialized` so E2E can confirm init completed without relying on a Sentry-internal global |
+| `src/components/ErrorFallback.tsx` | ✅ | OPS-14 — the `Sentry.ErrorBoundary` fallback: translated "something broke, reload" screen instead of a blank one |
+| `src/components/DevCrashTrigger.tsx` | ✅ | OPS-14 — throws for real when `?__crashTest=1` is present, but only inside `if (import.meta.env.DEV && ...)`; a literal `false` in a production build, so dead-code-eliminated there (confirmed by grepping the built bundle) |
+| `.env.example` | ✅ | Documents `VITE_API_BASE_URL` and `VITE_SENTRY_DSN` (OPS-14, empty — no real Sentry project exists yet); defaults to the API's `http` launch profile |
 
 ⬜ **Missing:** auth, offline (Dexie), everything else past I0/I1's first
 slice — see the `WEB` epic in [backlog.md](../product/backlog.md).
@@ -169,8 +173,10 @@ screens (WEB-11) are the remaining placeholders.
 | `src/api/client.ts`, `src/api/types.ts` | ✅ | `getMenu` calls `GET /menu/all`, not `GET /menu` — see that endpoint's own remarks. Mutating calls now carry `Idempotency-Key`, same as `pos`. Duplicated from `pos`'s own client rather than shared, same reasoning as `pos`'s `api/types.ts` comment: `web/sdk` (WEB-03) is worth building once a change actually needs sharing across clients |
 | `src/lib/money.ts` | ✅ | Same `Intl.NumberFormat('pt-PT', …)` as `pos`'s, same reasoning (ADR 0011) |
 | `src/i18n/` | ✅ | Same ADR 0011 shape as `pos` (`i18n.ts`, `languageStorage.ts`, `resources/{pt,en}.ts`) — deliberately duplicated, not shared, same reasoning as the API client above. Reuses `pos`'s exact `brasa.lang` cookie name on purpose: it's a preference for the *staff member*, not siloed per client app, so switching language in one carries into the other on the same host. English copy is genuinely English throughout (not just menu-item names left untranslated, which is correct — see the trap in [README.md](README.md)) because not every staff member reading it is a Portuguese speaker |
+| `src/main.tsx`, `src/lib/errorReporting.ts`, `src/components/ErrorFallback.tsx`, `src/components/DevCrashTrigger.tsx` | ✅ | OPS-14 — same shape as `pos`'s own (see that app's row for the detail), duplicated rather than shared |
+| `.env.example` | ✅ | Documents `VITE_API_BASE_URL` and `VITE_SENTRY_DSN` (OPS-14, empty — no real Sentry project exists yet); previously didn't exist at all |
 
-⬜ **Missing:** auth, floor-plan editor (FLR-03), WEB-11.
+⬜ **Missing:** auth, the drag-and-drop canvas half of the floor-plan editor (FLR-03 — table/room CRUD itself is done), WEB-11.
 
 ## `src/web/e2e` ✅ I0 + I1 harness, plus a first slice of I2
 
@@ -226,6 +232,7 @@ for the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 | `tests/split-preview.spec.ts` | ✅ | API-level (no browser); sweeps `Money.Allocate` across 1/2/3/5/7-way splits |
 | `tests/language-toggle.spec.ts` | ✅ | WEB-13 — default language, the pt→en toggle, cookie attributes (`Path`, `SameSite`, not `httpOnly`) surviving a reload, money staying `pt-PT` in English mode, a seeded table label reading "Table N" (not "Mesa N") on the picker, order heading and receipt alike, and a blank takeaway ticket defaulting to "Takeaway" rather than the API's own "Levantamento" |
 | `tests/error-localization.spec.ts` | ✅ | ADR 0011's "Server-sent error text" gap — triggers a genuine `409 catalog.item_unavailable` (86ing a freshly-imported item after the menu already rendered) and asserts the error banner shows the real translated string in both pt and en, not the raw English `ProblemDetails.title` |
+| `tests/error-tracking.spec.ts` | ✅ | OPS-14 — `window.__errorReportingInitialized` confirms `Sentry.init()` completes on a normal load in both `pos` and `admin`; a dev-only, build-stripped crash trigger (`?__crashTest=1`) proves `Sentry.ErrorBoundary` catches a genuine thrown error and renders the translated fallback (not a blank screen) in both apps; the fallback passes the same WCAG A/AA axe scan (QA-14) as every other screen |
 | `tests/support/api.ts` | ✅ | QA-03 test-data builders. Looks menu items and tables up **by name/state**, never by id (ids are UUIDv7, not stable across a fresh database). `clearTable` returns a table to the free pool directly — 16 are seeded and the dev database persists across runs; `closeOrderAndClearTable` is `closeOrder` + `clearTable` for the common case, factored apart (ORD-11) so a spec that needs the `CloseOrderResponse` itself (e.g. to check `document.GrossTotal`) isn't forced to throw it away. `openOrderOnAnyFreeTable` retries on a 409 — see the concurrency trap in [README.md](README.md) |
 
 ## `tests/`

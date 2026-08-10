@@ -82,6 +82,9 @@ export const pt = {
   },
   error: {
     generic: 'Ocorreu um erro.',
+    crashedTitle: 'Ocorreu um problema',
+    crashedBody: 'Este ecrã encontrou um problema. Recarregar deve resolver — nada do que estava a fazer foi perdido no servidor.',
+    reload: 'Recarregar',
   },
   language: {
     label: 'Idioma',
