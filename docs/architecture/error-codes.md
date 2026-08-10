@@ -33,9 +33,11 @@ as any change to an error code, the same rule as everything else in
 | `client.unknown_client_id` | NotFound | 404 | `GET /client-requirements`'s `X-Brasa-Client` header names a client id with no configured version policy. |
 | `fiscal.no_lines` | Validation | 400 | `IssueSimplifiedInvoiceAsync` was called with an empty line list. |
 | `floor.invalid_label` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `label` is missing, empty or whitespace. |
+| `floor.invalid_room_name` | Validation | 400 | `POST /rooms` or `PUT /rooms/{id}`'s (FLR-03) `name` is missing, empty or whitespace. |
 | `floor.invalid_seats` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `seats` is less than 1. |
 | `floor.invalid_shape` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `shape` isn't a recognised `TableShape` name. |
-| `floor.room_not_found` | NotFound | 404 | `POST /rooms/{id}/tables`'s (FLR-03) room id doesn't exist. |
+| `floor.room_not_empty` | Conflict | 409 | `DELETE /rooms/{id}`'s (FLR-03) target room still has at least one table. |
+| `floor.room_not_found` | NotFound | 404 | `POST /rooms/{id}/tables`, `PUT /rooms/{id}` or `DELETE /rooms/{id}`'s (FLR-03) room id doesn't exist. |
 | `floor.table_concurrently_modified` | Conflict | 409 | `PUT /tables/{id}`'s (FLR-03) `xmin` concurrency token was stale — someone else edited the same table between the read and the write. Distinct from `floor.table_not_free`: editing has no `TableState` precondition to re-affirm, so this is a genuine lost-update race, not a stale-state check. |
 | `floor.table_not_dirty` | Conflict | 409 | `POST /tables/{id}/clear` was called on a table that isn't `Dirty`. |
 | `floor.table_not_free` | Conflict | 409 | `POST /orders` or `POST /orders/{id}/transfer` targeted a table that isn't `Free` — including the `xmin` concurrency-token case where two requests raced for it; or `DELETE /tables/{id}` (FLR-03) targeted a table that isn't `Free`, initially or via the same concurrency race. |

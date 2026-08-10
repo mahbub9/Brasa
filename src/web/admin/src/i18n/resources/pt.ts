@@ -57,6 +57,10 @@ export const pt = {
     positionY: 'Posição Y',
     deleteTable: 'Eliminar',
     cannotDeleteNotFree: 'Só é possível eliminar uma mesa livre.',
+    addRoom: 'Adicionar sala',
+    roomNamePlaceholder: 'Nome da sala, ex.: "Esplanada"',
+    deleteRoom: 'Eliminar sala',
+    cannotDeleteRoomNotEmpty: 'Remova primeiro todas as mesas desta sala.',
     shapeOption: {
       Round: 'Redonda',
       Square: 'Quadrada',

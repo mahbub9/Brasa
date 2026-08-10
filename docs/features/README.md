@@ -7,7 +7,7 @@ does when things go wrong, and which rules constrain it. Signatures and types
 live in the source; **behaviour, edge cases and intent live here.**
 
 > **Looking for what to build next, or whether something is done?**
-> That is [../product/backlog.md](../product/backlog.md) — 278 tasks with stable
+> That is [../product/backlog.md](../product/backlog.md) — 292 tasks with stable
 > IDs and statuses. This page is only an index of *written documentation*, not a
 > tracker. Keeping them separate stops two lists disagreeing about reality.
 
@@ -37,3 +37,4 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | [Edit a line's quantity](edit-line-quantity.md) | ORD-03 | Ordering |
 | [Menu item classification: course and station](menu-item-classification.md) | CAT-14, CAT-15 | Catalog |
 | [Channel pricing — dine-in vs takeaway](channel-pricing.md) | CAT-06 | Catalog |
+| [Floor-plan editor: table and room CRUD](floor-plan-editor.md) | FLR-03 | Floor |

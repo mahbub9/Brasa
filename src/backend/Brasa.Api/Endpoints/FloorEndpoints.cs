@@ -38,6 +38,18 @@ public static class FloorEndpoints
             .WithName("DeleteTable")
             .WithSummary("Removes a table from the floor plan. Requires the table to be free (FLR-03).");
 
+        group.MapPost("/rooms", CreateRoomAsync)
+            .WithName("CreateRoom")
+            .WithSummary("Creates a room (FLR-03's room-CRUD follow-up).");
+
+        group.MapPut("/rooms/{roomId:guid}", UpdateRoomAsync)
+            .WithName("UpdateRoom")
+            .WithSummary("Renames or reorders a room (FLR-03's room-CRUD follow-up).");
+
+        group.MapDelete("/rooms/{roomId:guid}", DeleteRoomAsync)
+            .WithName("DeleteRoom")
+            .WithSummary("Removes a room. Requires it to have no tables (FLR-03's room-CRUD follow-up).");
+
         return group;
     }
 
@@ -246,6 +258,73 @@ public static class FloorEndpoints
             // ClearTableAsync/RequestBillAsync.
             return Error.Conflict("floor.table_not_free", $"Table {table.Label} is not free.").ToProblem();
         }
+
+        return Results.NoContent();
+    }
+
+    /// <summary>Creates a room (FLR-03's room-CRUD follow-up) — closes the gap the table-CRUD slice deliberately left open.</summary>
+    private static async Task<IResult> CreateRoomAsync(CreateRoomRequest request, FloorDbContext db, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return Error.Validation("floor.invalid_room_name", "Room name must not be empty.").ToProblem();
+        }
+
+        var room = new Room(request.Name.Trim(), request.DisplayOrder);
+        db.Rooms.Add(room);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(new RoomDto(room.Id, room.Name, room.DisplayOrder, []));
+    }
+
+    /// <summary>Renames or reorders a room. Independent of its tables — see <see cref="Room.Update"/>.</summary>
+    private static async Task<IResult> UpdateRoomAsync(
+        Guid roomId,
+        UpdateRoomRequest request,
+        FloorDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var room = await db.Rooms.FirstOrDefaultAsync(r => r.Id == roomId, cancellationToken).ConfigureAwait(false);
+        if (room is null)
+        {
+            return Error.NotFound("floor.room_not_found", $"Room {roomId} was not found.").ToProblem();
+        }
+
+        var updateResult = room.Update(request.Name, request.DisplayOrder);
+        if (updateResult.IsFailure)
+        {
+            return updateResult.Error.ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var tables = await db.Tables.Where(t => t.RoomId == room.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Ok(new RoomDto(room.Id, room.Name, room.DisplayOrder, [.. tables.Select(t => t.ToDto())]));
+    }
+
+    /// <summary>
+    /// Removes a room. Requires it to have no tables — <c>Room</c> has no
+    /// navigation to <c>Table</c> (the same sibling-entity shape as every
+    /// other Floor pair), so this checks directly against <c>Tables</c>
+    /// rather than a domain-side guard. Delete the tables first (FLR-03's
+    /// existing <c>DELETE /tables/{id}</c>), then the empty room.
+    /// </summary>
+    private static async Task<IResult> DeleteRoomAsync(Guid roomId, FloorDbContext db, CancellationToken cancellationToken)
+    {
+        var room = await db.Rooms.FirstOrDefaultAsync(r => r.Id == roomId, cancellationToken).ConfigureAwait(false);
+        if (room is null)
+        {
+            return Error.NotFound("floor.room_not_found", $"Room {roomId} was not found.").ToProblem();
+        }
+
+        var hasTables = await db.Tables.AnyAsync(t => t.RoomId == roomId, cancellationToken).ConfigureAwait(false);
+        if (hasTables)
+        {
+            return Error.Conflict("floor.room_not_empty", $"Room {room.Name} still has tables — remove them first.").ToProblem();
+        }
+
+        db.Rooms.Remove(room);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.NoContent();
     }

@@ -2,24 +2,26 @@ import { expect, test } from '@playwright/test';
 import {
   addLine,
   closeOrder,
+  createRoom,
+  createRoomResponse,
   createTable,
   createTableResponse,
+  deleteRoomResponse,
   deleteTableResponse,
   getFloor,
   getMenu,
   openOrderOnAnyFreeTable,
+  updateRoomResponse,
   updateTable,
   updateTableResponse,
 } from './support/api';
 
 const adminBaseUrl = process.env.BRASA_ADMIN_BASE_URL ?? 'http://localhost:5174';
 
-// FLR-03's first slice — table CRUD (add/edit/delete), not yet the
-// drag-and-drop canvas this backlog row's own title names. Position/shape
-// were seeded onto Table since I1 for exactly this (see that type's own
-// remarks); admin submits plain numeric position fields today, no visual
-// editor. Room creation stays a deliberate, separate gap — tables can only
-// be added to a room that already exists (seeded, FLR-01).
+// FLR-03's first slice — table and room CRUD, not yet the drag-and-drop
+// canvas this backlog row's own title names. Position/shape were seeded
+// onto Table since I1 for exactly this (see that type's own remarks);
+// admin submits plain numeric position fields today, no visual editor.
 
 test.describe('table CRUD (FLR-03)', () => {
   test('creates, edits and deletes a table via the API', async ({ request }) => {
@@ -145,5 +147,87 @@ test.describe('table CRUD (FLR-03)', () => {
     await row.getByTestId(`table-delete-${label}`).click();
     await row.getByTestId(`table-delete-confirm-${label}`).click();
     await expect(row).toHaveCount(0);
+  });
+});
+
+test.describe("room CRUD (FLR-03's room-CRUD follow-up)", () => {
+  test('creates, renames and deletes an empty room via the API', async ({ request }) => {
+    const name = `CRUD Room Test ${Date.now()}`;
+    const created = await createRoom(request, { name, displayOrder: 99 });
+    expect(created.name).toBe(name);
+    expect(created.tables).toEqual([]);
+
+    const afterCreate = await getFloor(request);
+    expect(afterCreate.some((r) => r.id === created.id)).toBe(true);
+
+    const renamedName = `${name} Renamed`;
+    const renamed = await updateRoomResponse(request, created.id, { name: renamedName, displayOrder: 50 });
+    expect(renamed.status()).toBe(200);
+    expect((await renamed.json()).name).toBe(renamedName);
+
+    const deleteResponse = await deleteRoomResponse(request, created.id);
+    expect(deleteResponse.status()).toBe(204);
+
+    const afterDelete = await getFloor(request);
+    expect(afterDelete.some((r) => r.id === created.id)).toBe(false);
+  });
+
+  test('rejects an empty name on create or rename, and an unknown room on update or delete', async ({ request }) => {
+    const emptyName = await createRoomResponse(request, { name: '', displayOrder: 0 });
+    expect(emptyName.status()).toBe(400);
+    expect((await emptyName.json()).code).toBe('floor.invalid_room_name');
+
+    const created = await createRoom(request, { name: `CRUD Room Rename Test ${Date.now()}`, displayOrder: 99 });
+    const emptyRename = await updateRoomResponse(request, created.id, { name: '', displayOrder: 0 });
+    expect(emptyRename.status()).toBe(400);
+    expect((await emptyRename.json()).code).toBe('floor.invalid_room_name');
+
+    const unknownUpdate = await updateRoomResponse(request, crypto.randomUUID(), { name: 'X', displayOrder: 0 });
+    expect(unknownUpdate.status()).toBe(404);
+    expect((await unknownUpdate.json()).code).toBe('floor.room_not_found');
+
+    const unknownDelete = await deleteRoomResponse(request, crypto.randomUUID());
+    expect(unknownDelete.status()).toBe(404);
+    expect((await unknownDelete.json()).code).toBe('floor.room_not_found');
+
+    await deleteRoomResponse(request, created.id);
+  });
+
+  test('rejects deleting a room that still has tables', async ({ request }) => {
+    const rooms = await getFloor(request);
+    const roomWithTables = rooms.find((r) => r.tables.length > 0);
+    if (!roomWithTables) throw new Error('No seeded room with tables found for this test.');
+
+    const guarded = await deleteRoomResponse(request, roomWithTables.id);
+    expect(guarded.status()).toBe(409);
+    expect((await guarded.json()).code).toBe('floor.room_not_empty');
+  });
+
+  test('the admin editor adds, renames and deletes a room', async ({ page }) => {
+    const name = `Admin Room UI Test ${Date.now()}`;
+    const renamedName = `${name} Renamed`;
+
+    await page.goto(adminBaseUrl);
+    await page.getByTestId('nav-floor').click();
+    await page.waitForSelector('.floor-manager');
+
+    await page.getByTestId('add-room').click();
+    await page.getByTestId('new-room-name').fill(name);
+    await page.getByTestId('new-room-save').click();
+
+    const room = page.getByTestId(`room-${name}`);
+    await expect(room).toBeVisible();
+    await room.scrollIntoViewIfNeeded();
+
+    await room.getByTestId(`room-name-edit-${name}`).click();
+    await room.getByTestId(`room-name-input-${name}`).fill(renamedName);
+    await room.getByTestId(`room-name-save-${name}`).click();
+
+    const renamedRoom = page.getByTestId(`room-${renamedName}`);
+    await expect(renamedRoom).toBeVisible();
+
+    await renamedRoom.getByTestId(`room-delete-${renamedName}`).click();
+    await renamedRoom.getByTestId(`room-delete-confirm-${renamedName}`).click();
+    await expect(page.getByTestId(`room-${renamedName}`)).toHaveCount(0);
   });
 });

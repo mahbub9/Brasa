@@ -253,6 +253,42 @@ export function deleteTableResponse(request: APIRequestContext, tableId: string)
   });
 }
 
+interface RoomFields {
+  name: string;
+  displayOrder: number;
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (FLR-03's room-CRUD follow-up). */
+export function createRoomResponse(request: APIRequestContext, fields: RoomFields) {
+  return request.post(`${apiBaseUrl}/rooms`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: fields,
+  });
+}
+
+export async function createRoom(request: APIRequestContext, fields: RoomFields): Promise<RoomDto> {
+  const response = await createRoomResponse(request, fields);
+  if (!response.ok()) {
+    throw new Error(`POST /rooms failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (FLR-03's room-CRUD follow-up). */
+export function updateRoomResponse(request: APIRequestContext, roomId: string, fields: RoomFields) {
+  return request.put(`${apiBaseUrl}/rooms/${roomId}`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: fields,
+  });
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (FLR-03's room-CRUD follow-up). */
+export function deleteRoomResponse(request: APIRequestContext, roomId: string) {
+  return request.delete(`${apiBaseUrl}/rooms/${roomId}`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+  });
+}
+
 export async function openOrder(
   request: APIRequestContext,
   tableId: string,

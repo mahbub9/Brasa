@@ -742,6 +742,21 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > and the `admin` UI round trip (add → edit → delete) works in a real
 > browser end to end.
 
+> **Update (room CRUD, FLR-03's room-CRUD follow-up):** the "Room creation
+> is a deliberate, separate gap" caveat named directly above is closed.
+> `POST /rooms`, `PUT /rooms/{id}` (`Room.Update` — name/display order,
+> independent of the room's tables) and `DELETE /rooms/{id}` (guarded to
+> zero tables, checked at the API layer since `Room` has no navigation to
+> `Table` — the same sibling-entity shape as every other Floor pair, so
+> there's nothing to check from the domain side). `admin`'s "Plano de
+> sala" gets an "Add room" form and, per room, an inline rename and a
+> delete button disabled (with an explanatory `title`) unless the room
+> has no tables left. **Verified live**: create/rename/delete round-trip
+> through `GET /floor`; an empty name is rejected on both create and
+> rename; an unknown room 404s on update/delete; deleting a room that
+> still has tables 409s (`floor.room_not_empty`); and the `admin` UI
+> round trip (add → rename → delete) works in a real browser end to end.
+
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
 

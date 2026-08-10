@@ -16,6 +16,12 @@ public sealed record TableDto(
 /// <summary>A room with its tables, as returned to clients.</summary>
 public sealed record RoomDto(Guid Id, string Name, int DisplayOrder, IReadOnlyList<TableDto> Tables);
 
+/// <summary>Request body to create a room (FLR-03's room-CRUD follow-up).</summary>
+public sealed record CreateRoomRequest(string Name, int DisplayOrder);
+
+/// <summary>Request body to rename or reorder a room (FLR-03's room-CRUD follow-up).</summary>
+public sealed record UpdateRoomRequest(string Name, int DisplayOrder);
+
 /// <summary>
 /// Request body to add a table to a room (FLR-03). <c>Shape</c> is a
 /// <see cref="Domain.TableShape"/> name, e.g. <c>"Round"</c>

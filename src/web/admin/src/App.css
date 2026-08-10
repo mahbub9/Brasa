@@ -312,11 +312,6 @@
   border-radius: 10px;
 }
 
-.floor-manager-room h2 {
-  font-size: 1.05rem;
-  margin: 0 0 0.75rem;
-}
-
 .floor-manager-tables {
   list-style: none;
   margin: 0 0 0.75rem;
@@ -401,4 +396,65 @@
 
 .floor-manager-add-table-form input[type='number'] {
   width: 4rem;
+}
+
+.floor-manager-room-heading,
+.floor-manager-room-heading-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.75rem;
+}
+
+.floor-manager-room-name {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.floor-manager-room-name h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.floor-manager-room-heading button:not(.floor-manager-room-name) {
+  margin-left: auto;
+}
+
+.floor-manager-room-heading-edit input {
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.floor-manager-room-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.floor-manager-add-room {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--brasa);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.floor-manager-add-room-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.floor-manager-add-room-form input {
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
 }

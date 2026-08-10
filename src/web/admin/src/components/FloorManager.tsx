@@ -12,11 +12,10 @@ interface FloorManagerProps {
 const SHAPES: TableShape[] = ['Round', 'Square', 'Rectangle'];
 
 /**
- * FLR-03's first slice — table CRUD, not the drag-and-drop canvas its own
- * backlog title names. Position and shape are plain number/select inputs
- * here, the same "mechanism before the visual affordance" call WEB-10 made
- * for the menu editor. Room creation is a deliberate, separate gap: tables
- * can only be added to a room that already exists (seeded, FLR-01).
+ * FLR-03's first slice — table and room CRUD, not the drag-and-drop canvas
+ * its own backlog title names. Position and shape are plain number/select
+ * inputs here, the same "mechanism before the visual affordance" call
+ * WEB-10 made for the menu editor.
  */
 export function FloorManager({ rooms, onReload, onErrorChange }: FloorManagerProps) {
   const { t } = useTranslation();
@@ -27,7 +26,7 @@ export function FloorManager({ rooms, onReload, onErrorChange }: FloorManagerPro
 
       {rooms.map((room) => (
         <section key={room.id} className="floor-manager-room" data-testid={`room-${room.name}`}>
-          <h2>{room.name}</h2>
+          <FloorManagerRoomHeading room={room} onReload={onReload} onErrorChange={onErrorChange} />
 
           {room.tables.length === 0 ? (
             <p className="empty-state">{t('floor.noTables')}</p>
@@ -42,6 +41,174 @@ export function FloorManager({ rooms, onReload, onErrorChange }: FloorManagerPro
           <AddTableForm roomId={room.id} onReload={onReload} onErrorChange={onErrorChange} />
         </section>
       ))}
+
+      <AddRoomForm nextDisplayOrder={rooms.length} onReload={onReload} onErrorChange={onErrorChange} />
+    </div>
+  );
+}
+
+interface FloorManagerRoomHeadingProps {
+  room: RoomDto;
+  onReload: () => void;
+  onErrorChange: (message: string | null) => void;
+}
+
+function FloorManagerRoomHeading({ room, onReload, onErrorChange }: FloorManagerRoomHeadingProps) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [nameDraft, setNameDraft] = useState(room.name);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const canDelete = room.tables.length === 0;
+
+  async function run(action: () => Promise<void>) {
+    setBusy(true);
+    onErrorChange(null);
+    try {
+      await action();
+    } catch (err) {
+      onErrorChange(err instanceof ApiError ? err.message : t('error.generic'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function saveRename() {
+    void run(async () => {
+      await api.updateRoom(room.id, { name: nameDraft, displayOrder: room.displayOrder });
+      setEditing(false);
+      onReload();
+    });
+  }
+
+  function confirmDelete() {
+    void run(async () => {
+      await api.deleteRoom(room.id);
+      onReload();
+    });
+  }
+
+  if (editing) {
+    return (
+      <div className="floor-manager-room-heading-edit">
+        <input
+          type="text"
+          value={nameDraft}
+          data-testid={`room-name-input-${room.name}`}
+          disabled={busy}
+          onChange={(e) => setNameDraft(e.target.value)}
+        />
+        <button type="button" data-testid={`room-name-save-${room.name}`} disabled={busy} onClick={saveRename}>
+          {t('common.save')}
+        </button>
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            setNameDraft(room.name);
+            setEditing(false);
+          }}
+        >
+          {t('common.cancel')}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="floor-manager-room-heading">
+      <button
+        type="button"
+        className="floor-manager-room-name"
+        data-testid={`room-name-edit-${room.name}`}
+        disabled={busy}
+        onClick={() => {
+          setNameDraft(room.name);
+          setEditing(true);
+        }}
+      >
+        <h2>{room.name}</h2>
+      </button>
+
+      {confirmingDelete ? (
+        <span className="floor-manager-room-delete-confirm">
+          {t('menu.deleteConfirm')}
+          <button type="button" data-testid={`room-delete-confirm-${room.name}`} disabled={busy} onClick={confirmDelete}>
+            {t('common.yes')}
+          </button>
+          <button type="button" disabled={busy} onClick={() => setConfirmingDelete(false)}>
+            {t('common.no')}
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          data-testid={`room-delete-${room.name}`}
+          disabled={busy || !canDelete}
+          title={canDelete ? undefined : t('floor.cannotDeleteRoomNotEmpty')}
+          onClick={() => setConfirmingDelete(true)}
+        >
+          {t('floor.deleteRoom')}
+        </button>
+      )}
+    </div>
+  );
+}
+
+interface AddRoomFormProps {
+  nextDisplayOrder: number;
+  onReload: () => void;
+  onErrorChange: (message: string | null) => void;
+}
+
+function AddRoomForm({ nextDisplayOrder, onReload, onErrorChange }: AddRoomFormProps) {
+  const { t } = useTranslation();
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [name, setName] = useState('');
+
+  function reset() {
+    setName('');
+    setAdding(false);
+  }
+
+  function submit() {
+    setBusy(true);
+    onErrorChange(null);
+    api
+      .createRoom({ name, displayOrder: nextDisplayOrder })
+      .then(() => {
+        reset();
+        onReload();
+      })
+      .catch((err: unknown) => onErrorChange(err instanceof ApiError ? err.message : t('error.generic')))
+      .finally(() => setBusy(false));
+  }
+
+  if (!adding) {
+    return (
+      <button type="button" className="floor-manager-add-room" data-testid="add-room" onClick={() => setAdding(true)}>
+        + {t('floor.addRoom')}
+      </button>
+    );
+  }
+
+  return (
+    <div className="floor-manager-add-room-form">
+      <input
+        type="text"
+        placeholder={t('floor.roomNamePlaceholder')}
+        value={name}
+        data-testid="new-room-name"
+        disabled={busy}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <button type="button" data-testid="new-room-save" disabled={busy || name.trim() === ''} onClick={submit}>
+        {t('common.save')}
+      </button>
+      <button type="button" disabled={busy} onClick={reset}>
+        {t('common.cancel')}
+      </button>
     </div>
   );
 }

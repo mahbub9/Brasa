@@ -1,5 +1,6 @@
 import type {
   AdminMenuCategoryDto,
+  CreateRoomRequest,
   CreateTableRequest,
   ImportMenuItemsResponse,
   MenuItemDto,
@@ -10,6 +11,7 @@ import type {
   UpdateMenuItemAvailabilityRequest,
   UpdateMenuItemPriceRequest,
   UpdateMenuItemTakeawayPriceRequest,
+  UpdateRoomRequest,
   UpdateTableRequest,
 } from './types';
 
@@ -106,4 +108,10 @@ export const api = {
   updateTable: (tableId: string, body: UpdateTableRequest) => put<TableDto>(`/tables/${tableId}`, body),
 
   deleteTable: (tableId: string) => del<void>(`/tables/${tableId}`),
+
+  createRoom: (body: CreateRoomRequest) => post<RoomDto>('/rooms', body),
+
+  updateRoom: (roomId: string, body: UpdateRoomRequest) => put<RoomDto>(`/rooms/${roomId}`, body),
+
+  deleteRoom: (roomId: string) => del<void>(`/rooms/${roomId}`),
 };

@@ -522,6 +522,88 @@
         }
       }
     },
+    "/api/v1/rooms": {
+      "post": {
+        "tags": [
+          "FloorEndpoints"
+        ],
+        "summary": "Creates a room (FLR-03's room-CRUD follow-up).",
+        "operationId": "CreateRoom",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoomRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/rooms/{roomId}": {
+      "put": {
+        "tags": [
+          "FloorEndpoints"
+        ],
+        "summary": "Renames or reorders a room (FLR-03's room-CRUD follow-up).",
+        "operationId": "UpdateRoom",
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoomRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "FloorEndpoints"
+        ],
+        "summary": "Removes a room. Requires it to have no tables (FLR-03's room-CRUD follow-up).",
+        "operationId": "DeleteRoom",
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/orders": {
       "post": {
         "tags": [
@@ -1232,6 +1314,26 @@
           }
         }
       },
+      "CreateRoomRequest": {
+        "required": [
+          "name",
+          "displayOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          }
+        }
+      },
       "CreateTableRequest": {
         "required": [
           "label",
@@ -1563,6 +1665,26 @@
               "string"
             ],
             "format": "double"
+          }
+        }
+      },
+      "UpdateRoomRequest": {
+        "required": [
+          "name",
+          "displayOrder"
+        ],
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "displayOrder": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
           }
         }
       },

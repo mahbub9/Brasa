@@ -60,6 +60,10 @@ export const en = {
     positionY: 'Y position',
     deleteTable: 'Delete',
     cannotDeleteNotFree: 'Only a free table can be deleted.',
+    addRoom: 'Add room',
+    roomNamePlaceholder: 'Room name, e.g. "Esplanada"',
+    deleteRoom: 'Delete room',
+    cannotDeleteRoomNotEmpty: 'Remove every table from this room first.',
     shapeOption: {
       Round: 'Round',
       Square: 'Square',

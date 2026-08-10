@@ -98,6 +98,16 @@ export interface UpdateTableRequest {
   shape: TableShape;
 }
 
+export interface CreateRoomRequest {
+  name: string;
+  displayOrder: number;
+}
+
+export interface UpdateRoomRequest {
+  name: string;
+  displayOrder: number;
+}
+
 /** RFC 9457 problem response shape used for every API failure. */
 export interface ProblemDetails {
   title?: string;
