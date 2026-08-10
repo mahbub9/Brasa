@@ -41,21 +41,21 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **API** | API platform & mobile readiness | 13 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
-| **CAT** | Catalog & menu | 10 | 19 | I0 (rest: I1) |
+| **CAT** | Catalog & menu | 9 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
-| **ORD** | Ordering | 17 | 22 | I0 (rest: I2) |
+| **ORD** | Ordering | 16 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
 | **FIS** | Fiscal engine | 3 | 24 | I0 (rest: I7) |
-| **WEB** | Web clients | 5 | 13 | I0 (rest: I1–I8) |
+| **WEB** | Web clients | 4 | 13 | I0 (rest: I1–I8) |
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
-| **QA** | Automated testing | 7 | 14 | I0–I1 → ongoing |
+| **QA** | Automated testing | 8 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **95** | **292** | |
+| | **Total** | **93** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -613,7 +613,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | QA-04 | Fixed-clock control for time-dependent tests | ⬜ nothing built yet needs it — see e2e-testing.md |
 | QA-05 | E2E: full service loop, seat → order → fire → pay → close | ✅ `walking-skeleton.spec.ts` — open → order → split → close → receipt, driving the real UI. "Fire" and "pay" aren't built yet (KIT/PAY), so the loop ends at close |
 | QA-06 | E2E: offline mode — network killed mid-service | ⬜ blocked on WEB-04/SYN — no offline capability exists to test |
-| QA-07 | E2E: split-bill flows | 🚧 even split covered (`split-preview.spec.ts`, API-level, sweeps 1/2/3/5/7 ways); by-item/by-cover blocked on ORD-16/17 |
+| QA-07 | E2E: split-bill flows | ✅ Even split (`split-preview.spec.ts`, sweeps 1/2/3/5/7 ways), by-item (`split-by-item.spec.ts`, ORD-16) and by-cover (`split-by-cover.spec.ts`, ORD-17) all covered — this row's own status had gone stale, still citing ORD-16/17 as unbuilt blockers after both shipped |
 | QA-08 | E2E: multi-terminal concurrency | ⬜ blocked on ORD-21 |
 | QA-09 | Testcontainers integration-test base fixture | ✅ `TenantIsolationIntegrationTests` — real disposable Postgres per run, migrates for real, creates `brasa_app` the same way `initdb` does. One fixture so far; extract a shared base once a second test needs it |
 | QA-10 | Tenant isolation test suite (RLS) | ✅ Automated version of the manual verification that caught ADR 0010: zero rows with no/wrong tenant set, own rows only with the right one, DDL refused — queried as `brasa_app` via raw SQL, deliberately bypassing the EF convenience filter so a silently-disabled RLS policy can't hide behind it |
