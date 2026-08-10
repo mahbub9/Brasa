@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
 
-// WEB-09 — the admin back-office shell. "Visão geral" and, since WEB-10,
-// "Menu" are live; Floor plan/Staff stay labelled placeholders until their
-// own editors land. This spec proves the shell is actually wired to the API
-// (real counts from GET /menu and GET /floor), not a static mock — the same
-// bar applied to pos's own screens.
+// WEB-09 — the admin back-office shell. "Visão geral", "Menu" (WEB-10) and,
+// since FLR-03's first slice, "Plano de sala" are live; Staff stays a
+// labelled placeholder until its own editor lands. This spec proves the
+// shell is actually wired to the API (real counts from GET /menu and
+// GET /floor), not a static mock — the same bar applied to pos's own
+// screens.
 
 const adminBaseUrl = process.env.BRASA_ADMIN_BASE_URL ?? 'http://localhost:5174';
 
@@ -29,9 +30,9 @@ test.describe('admin back-office shell', () => {
   test('unbuilt sections are labelled, not silently missing', async ({ page }) => {
     await page.goto(adminBaseUrl);
 
-    await expect(page.getByTestId('nav-floor')).toContainText('Brevemente');
     await expect(page.getByTestId('nav-staff')).toContainText('Brevemente');
     await expect(page.getByTestId('nav-overview')).not.toContainText('Brevemente');
     await expect(page.getByTestId('nav-menu')).not.toContainText('Brevemente');
+    await expect(page.getByTestId('nav-floor')).not.toContainText('Brevemente');
   });
 });

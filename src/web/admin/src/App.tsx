@@ -2,12 +2,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from './api/client';
 import type { AdminMenuCategoryDto, RoomDto } from './api/types';
+import { FloorManager } from './components/FloorManager';
 import { LanguageToggle } from './components/LanguageToggle';
 import { MenuManager } from './components/MenuManager';
 import i18n from './i18n/i18n';
 import './App.css';
 
-const LIVE_SECTIONS = ['overview', 'menu'] as const;
+const LIVE_SECTIONS = ['overview', 'menu', 'floor'] as const;
 const NAV_KEYS = ['overview', 'menu', 'floor', 'staff'] as const;
 type Section = (typeof LIVE_SECTIONS)[number];
 
@@ -16,10 +17,11 @@ function isLiveSection(key: string): key is Section {
 }
 
 /**
- * The back-office shell (WEB-09), now with its first real editor (WEB-10's
- * menu slice — floor-plan editing is separate, not built here). "Overview"
- * and "Menu" are both live; Floor plan/Staff stay labelled placeholders
- * until their own tasks land — see docs/product/backlog.md (WEB-10/11).
+ * The back-office shell (WEB-09), now with three real editors: WEB-10's
+ * menu slice and FLR-03's first slice — table CRUD (add/edit/delete),
+ * not yet the drag-and-drop canvas that task's own title names. "Staff"
+ * stays a labelled placeholder until its own task lands — see
+ * docs/product/backlog.md (WEB-11).
  */
 export default function App() {
   const { t } = useTranslation();
@@ -34,12 +36,16 @@ export default function App() {
     });
   }, []);
 
-  useEffect(() => {
-    loadCatalog();
+  const loadFloor = useCallback(() => {
     api.getFloor().then(setRooms).catch((err: unknown) => {
       setError(err instanceof ApiError ? err.message : i18n.t('error.generic'));
     });
-  }, [loadCatalog]);
+  }, []);
+
+  useEffect(() => {
+    loadCatalog();
+    loadFloor();
+  }, [loadCatalog, loadFloor]);
 
   return (
     <div className="admin">
@@ -85,6 +91,9 @@ export default function App() {
           {categories && rooms && section === 'overview' && <Overview categories={categories} rooms={rooms} />}
           {categories && section === 'menu' && (
             <MenuManager categories={categories} onReload={loadCatalog} onErrorChange={setError} />
+          )}
+          {rooms && section === 'floor' && (
+            <FloorManager rooms={rooms} onReload={loadFloor} onErrorChange={setError} />
           )}
         </main>
       </div>

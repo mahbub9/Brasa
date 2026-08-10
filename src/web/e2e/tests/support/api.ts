@@ -206,6 +206,53 @@ export function findFreeTable(rooms: RoomDto[]): TableDto {
   throw new Error('No free table available — the seeded floor plan may be exhausted. See DevFloorSeeder.');
 }
 
+interface TableFields {
+  label: string;
+  seats: number;
+  positionX: number;
+  positionY: number;
+  shape: string;
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (FLR-03). */
+export function createTableResponse(request: APIRequestContext, roomId: string, fields: TableFields) {
+  return request.post(`${apiBaseUrl}/rooms/${roomId}/tables`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: fields,
+  });
+}
+
+export async function createTable(request: APIRequestContext, roomId: string, fields: TableFields): Promise<TableDto> {
+  const response = await createTableResponse(request, roomId, fields);
+  if (!response.ok()) {
+    throw new Error(`POST /rooms/${roomId}/tables failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (FLR-03). */
+export function updateTableResponse(request: APIRequestContext, tableId: string, fields: TableFields) {
+  return request.put(`${apiBaseUrl}/tables/${tableId}`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: fields,
+  });
+}
+
+export async function updateTable(request: APIRequestContext, tableId: string, fields: TableFields): Promise<TableDto> {
+  const response = await updateTableResponse(request, tableId, fields);
+  if (!response.ok()) {
+    throw new Error(`PUT /tables/${tableId} failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (FLR-03). */
+export function deleteTableResponse(request: APIRequestContext, tableId: string) {
+  return request.delete(`${apiBaseUrl}/tables/${tableId}`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+  });
+}
+
 export async function openOrder(
   request: APIRequestContext,
   tableId: string,

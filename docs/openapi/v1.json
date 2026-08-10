@@ -429,6 +429,99 @@
         }
       }
     },
+    "/api/v1/rooms/{roomId}/tables": {
+      "post": {
+        "tags": [
+          "FloorEndpoints"
+        ],
+        "summary": "Adds a table to a room (FLR-03).",
+        "operationId": "CreateTable",
+        "parameters": [
+          {
+            "name": "roomId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/v1/tables/{tableId}": {
+      "put": {
+        "tags": [
+          "FloorEndpoints"
+        ],
+        "summary": "Edits a table's label, seats, shape or position (FLR-03).",
+        "operationId": "UpdateTable",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTableRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "FloorEndpoints"
+        ],
+        "summary": "Removes a table from the floor plan. Requires the table to be free (FLR-03).",
+        "operationId": "DeleteTable",
+        "parameters": [
+          {
+            "name": "tableId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/v1/orders": {
       "post": {
         "tags": [
@@ -1139,6 +1232,48 @@
           }
         }
       },
+      "CreateTableRequest": {
+        "required": [
+          "label",
+          "seats",
+          "positionX",
+          "positionY",
+          "shape"
+        ],
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "seats": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "positionX": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "positionY": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "shape": {
+            "type": "string"
+          }
+        }
+      },
       "ImportMenuItemsRequest": {
         "required": [
           "csv"
@@ -1428,6 +1563,48 @@
               "string"
             ],
             "format": "double"
+          }
+        }
+      },
+      "UpdateTableRequest": {
+        "required": [
+          "label",
+          "seats",
+          "positionX",
+          "positionY",
+          "shape"
+        ],
+        "type": "object",
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "seats": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "positionX": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "positionY": {
+            "pattern": "^-?(?:0|[1-9]\\d*)$",
+            "type": [
+              "integer",
+              "string"
+            ],
+            "format": "int32"
+          },
+          "shape": {
+            "type": "string"
           }
         }
       },

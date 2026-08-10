@@ -297,3 +297,108 @@
   color: var(--muted);
   font-size: 0.85rem;
 }
+
+.floor-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 44rem;
+}
+
+.floor-manager-room {
+  padding: 1rem 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.floor-manager-room h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.75rem;
+}
+
+.floor-manager-tables {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.floor-manager-table {
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.floor-manager-table:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.floor-manager-table-row,
+.floor-manager-table-edit {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.floor-manager-table-label {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  background: none;
+  font-weight: 600;
+}
+
+.floor-manager-table-detail {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.floor-manager-table-edit input,
+.floor-manager-table-edit select {
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.floor-manager-table-edit input[type='number'] {
+  width: 4rem;
+}
+
+.floor-manager-table-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--danger);
+}
+
+.floor-manager-add-table {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--brasa);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.floor-manager-add-table-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.floor-manager-add-table-form input,
+.floor-manager-add-table-form select {
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.floor-manager-add-table-form input[type='number'] {
+  width: 4rem;
+}

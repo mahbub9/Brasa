@@ -142,4 +142,51 @@ public sealed class Table : Entity
         State = TableState.Free;
         return Result.Success();
     }
+
+    /// <summary>
+    /// Updates this table's editable floor-plan fields (FLR-03) — label,
+    /// seating capacity, shape and position. Independent of
+    /// <see cref="State"/>: repositioning or relabelling a table doesn't
+    /// require it to be empty first, unlike <see cref="Delete"/>.
+    /// </summary>
+    public Result Update(string label, int seats, int positionX, int positionY, TableShape shape)
+    {
+        if (string.IsNullOrWhiteSpace(label))
+        {
+            return Result.Failure(Error.Validation("floor.invalid_label", "Table label must not be empty."));
+        }
+
+        if (seats < 1)
+        {
+            return Result.Failure(Error.Validation("floor.invalid_seats", "Seats must be at least 1."));
+        }
+
+        Label = label.Trim();
+        Seats = seats;
+        PositionX = positionX;
+        PositionY = positionY;
+        Shape = shape;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Guards removing this table from the floor plan entirely (FLR-03) —
+    /// the actual delete is a plain <c>DbSet.Remove</c> at the API layer,
+    /// this only checks it's safe. Requires <see cref="TableState.Free"/>:
+    /// a table mid-service, or dirty and awaiting clearing, must not simply
+    /// vanish. Safe to hard delete rather than soft-delete like
+    /// <c>MenuItem</c> (CAT-18): a closed order's <c>TableLabel</c> is
+    /// already snapshotted at open time (<c>Order.TableLabel</c>), so
+    /// nothing re-resolves a table's row after the fact the way a receipt
+    /// re-derives a menu item's name would.
+    /// </summary>
+    public Result EnsureCanDelete()
+    {
+        if (State != TableState.Free)
+        {
+            return Result.Failure(Error.Conflict("floor.table_not_free", $"Table {Label} is not free."));
+        }
+
+        return Result.Success();
+    }
 }

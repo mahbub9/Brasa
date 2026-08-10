@@ -62,16 +62,40 @@ export interface ImportMenuItemsResponse {
 }
 
 export type TableState = 'Free' | 'Occupied' | 'BillRequested' | 'Dirty';
+export type TableShape = 'Round' | 'Square' | 'Rectangle';
 
 export interface TableDto {
   id: string;
+  roomId: string;
+  label: string;
+  seats: number;
+  positionX: number;
+  positionY: number;
+  shape: TableShape;
   state: TableState;
 }
 
 export interface RoomDto {
   id: string;
   name: string;
+  displayOrder: number;
   tables: TableDto[];
+}
+
+export interface CreateTableRequest {
+  label: string;
+  seats: number;
+  positionX: number;
+  positionY: number;
+  shape: TableShape;
+}
+
+export interface UpdateTableRequest {
+  label: string;
+  seats: number;
+  positionX: number;
+  positionY: number;
+  shape: TableShape;
 }
 
 /** RFC 9457 problem response shape used for every API failure. */

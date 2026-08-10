@@ -47,6 +47,28 @@ export const pt = {
     importCreated: '{{count}} itens criados.',
     importRowError: 'Linha {{row}}: {{message}}',
   },
+  floor: {
+    empty: 'Sem salas configuradas.',
+    noTables: 'Sem mesas nesta sala.',
+    seatsCount: '{{count}} lugares',
+    addTable: 'Adicionar mesa',
+    tableLabelPlaceholder: 'Nome da mesa, ex.: "Mesa 7"',
+    positionX: 'Posição X',
+    positionY: 'Posição Y',
+    deleteTable: 'Eliminar',
+    cannotDeleteNotFree: 'Só é possível eliminar uma mesa livre.',
+    shapeOption: {
+      Round: 'Redonda',
+      Square: 'Quadrada',
+      Rectangle: 'Retangular',
+    },
+    state: {
+      Free: 'Livre',
+      Occupied: 'Ocupada',
+      BillRequested: 'Conta pedida',
+      Dirty: 'Por limpar',
+    },
+  },
   common: {
     save: 'Guardar',
     cancel: 'Cancelar',

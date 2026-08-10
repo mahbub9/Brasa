@@ -151,12 +151,18 @@ export interface CloseOrderResponse {
 
 export interface TableDto {
   id: string;
+  roomId: string;
   label: string;
+  seats: number;
+  positionX: number;
+  positionY: number;
+  shape: 'Round' | 'Square' | 'Rectangle';
   state: 'Free' | 'Occupied' | 'BillRequested' | 'Dirty';
 }
 
 export interface RoomDto {
   id: string;
   name: string;
+  displayOrder: number;
   tables: TableDto[];
 }

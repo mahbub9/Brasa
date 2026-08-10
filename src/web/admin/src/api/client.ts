@@ -1,13 +1,16 @@
 import type {
   AdminMenuCategoryDto,
+  CreateTableRequest,
   ImportMenuItemsResponse,
   MenuItemDto,
   ProblemDetails,
   RoomDto,
+  TableDto,
   UpdateMenuCategoryVisibilityRequest,
   UpdateMenuItemAvailabilityRequest,
   UpdateMenuItemPriceRequest,
   UpdateMenuItemTakeawayPriceRequest,
+  UpdateTableRequest,
 } from './types';
 
 // http://localhost:5216 is the "http" launch profile in
@@ -97,4 +100,10 @@ export const api = {
   deleteItem: (itemId: string) => del<void>(`/menu/items/${itemId}`),
 
   importMenuItems: (csv: string) => post<ImportMenuItemsResponse>('/menu/items/import', { csv }),
+
+  createTable: (roomId: string, body: CreateTableRequest) => post<TableDto>(`/rooms/${roomId}/tables`, body),
+
+  updateTable: (tableId: string, body: UpdateTableRequest) => put<TableDto>(`/tables/${tableId}`, body),
+
+  deleteTable: (tableId: string) => del<void>(`/tables/${tableId}`),
 };

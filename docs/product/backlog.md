@@ -404,7 +404,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 |---|---|---|
 | FLR-01 | Rooms / areas (indoor, esplanada, bar) | ✅ `Room` — seeded (Salão, Esplanada), no editor UI yet |
 | FLR-02 | Tables — number, seats, position, shape | ✅ `Table` — position/shape stored for FLR-03 to use later; `pos` renders a static grid, not the coordinates |
-| FLR-03 | Drag-and-drop floor plan editor | ⬜ back-office feature (WEB-10) — `admin` (WEB-09) exists now with a menu editor, this piece of WEB-10 isn't built yet |
+| FLR-03 | Drag-and-drop floor plan editor | 🚧 First slice: table CRUD, not the drag-and-drop canvas this row's own title names — `POST /rooms/{id}/tables`, `PUT /tables/{id}`, `DELETE /tables/{id}` (guarded to `Free` only), `admin`'s "Plano de sala" now live with plain add/edit/delete forms (position/shape as number/select inputs, no visual canvas). Room creation is a deliberate, separate gap: tables can only be added to a room that already exists (seeded, FLR-01) — same "mechanism before the visual affordance" call WEB-10 made for the menu editor. **Verified live**: `floor-table-management.spec.ts` |
 | FLR-04 | Table states (free, occupied, bill requested, dirty) | ✅ all four wired end-to-end through `pos`, including `BillRequested` now: `POST /tables/{id}/request-bill` + a "Pedir conta" button, distinct from the pre-bill preview (ORD-18/19, "Ver conta") — that stays a read-only `GET`, this is the explicit floor-plan signal for staff. **Verified live** in a real browser: clicking it flags the table `BillRequested` on `GET /floor`; a free table 409s (`floor.table_not_occupied`), an unknown table 404s |
 | FLR-05 | Table merge / split for large parties | ⬜ |
 | FLR-06 | Section assignment to waiters | ⬜ depends on IDN |

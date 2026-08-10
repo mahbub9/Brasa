@@ -715,6 +715,33 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > the same item; and the `admin` editor's add/edit/clear round-trips to
 > the real API, not just local state.
 
+> **Update (floor-plan table CRUD, first slice of FLR-03):** `Table`'s own
+> remarks have said since I1 that position/shape exist "so a future
+> drag-and-drop editor (FLR-03) has somewhere to persist to without a
+> schema change" — this is that persistence layer, not yet the canvas.
+> `POST /rooms/{roomId}/tables`, `PUT /tables/{id}` (`Table.Update` —
+> label/seats/shape/position, independent of `TableState`) and
+> `DELETE /tables/{id}` (`Table.EnsureCanDelete` — requires `Free`, hard
+> delete rather than soft: a closed order's `TableLabel` is already
+> snapshotted at open time, so nothing needs to re-resolve a table row
+> after the fact the way a receipt re-derives a menu item's name would).
+> `admin`'s "Plano de sala" nav entry is live for the first time — plain
+> add/edit/delete forms per room, numeric X/Y inputs instead of a drag
+> canvas, the identical "mechanism first, visual affordance later" call
+> WEB-10 already made for the menu editor. Room creation stays a
+> deliberate, separate gap: tables can only be added to a room that
+> already exists (seeded, FLR-01). Caught and fixed two existing E2E
+> assertions that had gone stale the moment this shipped:
+> `admin-shell.spec.ts` and `admin-language-toggle.spec.ts` both still
+> asserted "Plano de sala" showed the "Brevemente"/"Coming soon"
+> placeholder — updated to assert the opposite now that it's genuinely
+> live. **Verified live**: create/edit/delete round-trip through
+> `GET /floor`; an empty label, zero seats, an unrecognised shape and an
+> unknown room are all rejected on create; an unknown table 404s on
+> edit/delete; deleting an occupied table 409s (`floor.table_not_free`);
+> and the `admin` UI round trip (add → edit → delete) works in a real
+> browser end to end.
+
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
 

@@ -50,6 +50,28 @@ export const en = {
     importCreated: '{{count}} items created.',
     importRowError: 'Row {{row}}: {{message}}',
   },
+  floor: {
+    empty: 'No rooms configured.',
+    noTables: 'No tables in this room.',
+    seatsCount: '{{count}} seats',
+    addTable: 'Add table',
+    tableLabelPlaceholder: 'Table label, e.g. "Mesa 7"',
+    positionX: 'X position',
+    positionY: 'Y position',
+    deleteTable: 'Delete',
+    cannotDeleteNotFree: 'Only a free table can be deleted.',
+    shapeOption: {
+      Round: 'Round',
+      Square: 'Square',
+      Rectangle: 'Rectangle',
+    },
+    state: {
+      Free: 'Free',
+      Occupied: 'Occupied',
+      BillRequested: 'Bill requested',
+      Dirty: 'Needs clearing',
+    },
+  },
   common: {
     save: 'Save',
     cancel: 'Cancel',
