@@ -72,8 +72,10 @@ internal sealed class MenuItemConfiguration : IEntityTypeConfiguration<MenuItem>
         // properties above — never persisted directly.
         builder.Ignore(i => i.ScheduledPrice);
 
-        // VatRate is a single-value wrapper around a fraction; a full conversion
-        // table arrives with the I1 TaxRule model (see VatRate's remarks).
+        // VatRate is a single-value wrapper around a fraction. TaxRule
+        // (CAT-07/08) is the full effective-dated model now, but this flat
+        // column is still what AddLine/the fiscal document builder read
+        // live — see VatRate's own remarks.
         builder.Property(i => i.VatRate)
             .HasConversion(rate => rate.Fraction, fraction => new VatRate(fraction))
             .HasColumnName("vat_rate")

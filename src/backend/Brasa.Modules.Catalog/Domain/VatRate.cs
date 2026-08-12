@@ -5,10 +5,12 @@ namespace Brasa.Modules.Catalog.Domain;
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the I0 placeholder. The full model — <c>TaxRule</c>, keyed by
-/// item × channel × region with effective dates — lands in I1
-/// (<c>docs/product/roadmap.md</c>, epic CAT) once takeaway/delivery channels
-/// and regions exist to key it by.
+/// This is still the value <c>MenuItem.VatRate</c> carries live. The full
+/// effective-dated model, <see cref="TaxRule"/> (CAT-07/08), exists now —
+/// keyed by alcohol band × channel × region — but nothing in
+/// <c>AddLine</c>/<c>AddComboLineAsync</c>/the fiscal document builder
+/// resolves through it yet; see <see cref="TaxRule"/>'s own remarks for
+/// why that rewiring is a deliberately separate task.
 /// </para>
 /// <para>
 /// It is still never a bare <c>decimal</c> scattered through the codebase: one

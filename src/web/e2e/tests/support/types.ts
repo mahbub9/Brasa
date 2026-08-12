@@ -236,6 +236,22 @@ export interface TableDto {
   groupId: string | null;
 }
 
+/** An effective-dated VAT rate for one (alcohol band, channel, region) combination (CAT-07/08). */
+export interface TaxRuleDto {
+  id: string;
+  isAlcoholic: boolean;
+  isTakeaway: boolean;
+  region: string;
+  vatRatePercent: number;
+  effectiveFromUtc: string;
+  effectiveToUtc: string | null;
+}
+
+/** The rate resolved for one combination at one instant (CAT-08). */
+export interface ResolvedTaxRuleDto {
+  vatRatePercent: number;
+}
+
 export interface RoomDto {
   id: string;
   name: string;

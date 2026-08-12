@@ -11,10 +11,12 @@ import type {
   OrganizationDto,
   PreBillDto,
   PriceListDto,
+  ResolvedTaxRuleDto,
   RoomDto,
   SiteDto,
   SplitByItemResponse,
   TableDto,
+  TaxRuleDto,
   TerminalDto,
 } from './types';
 
@@ -1045,6 +1047,55 @@ export async function addComboLine(request: APIRequestContext, orderId: string, 
   const response = await addComboLineResponse(request, orderId, comboId);
   if (!response.ok()) {
     throw new Error(`POST /orders/${orderId}/combo-lines failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+// Tax rules (CAT-07/08) — a narrow first slice, create/list/resolve only,
+// not yet wired into AddLine or the fiscal document builder.
+
+export interface CreateTaxRuleFields {
+  isAlcoholic: boolean;
+  isTakeaway: boolean;
+  region: string;
+  vatRatePercent: number;
+  effectiveFromUtc: string;
+  effectiveToUtc?: string | null;
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-07). */
+export function createTaxRuleResponse(request: APIRequestContext, fields: CreateTaxRuleFields) {
+  return request.post(`${apiBaseUrl}/tax-rules`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: fields,
+  });
+}
+
+export async function createTaxRule(request: APIRequestContext, fields: CreateTaxRuleFields): Promise<TaxRuleDto> {
+  const response = await createTaxRuleResponse(request, fields);
+  if (!response.ok()) {
+    throw new Error(`POST /tax-rules failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export async function getTaxRules(request: APIRequestContext): Promise<TaxRuleDto[]> {
+  const response = await request.get(`${apiBaseUrl}/tax-rules`);
+  if (!response.ok()) {
+    throw new Error(`GET /tax-rules failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-08). */
+export function resolveTaxRuleResponse(request: APIRequestContext, query: string) {
+  return request.get(`${apiBaseUrl}/tax-rules/resolve?${query}`);
+}
+
+export async function resolveTaxRule(request: APIRequestContext, query: string): Promise<ResolvedTaxRuleDto> {
+  const response = await resolveTaxRuleResponse(request, query);
+  if (!response.ok()) {
+    throw new Error(`GET /tax-rules/resolve?${query} failed: ${response.status()} ${await response.text()}`);
   }
   return response.json();
 }

@@ -2,6 +2,7 @@ using Brasa.Modules.Catalog.Domain;
 using Brasa.Modules.Catalog.Persistence;
 using Brasa.Shared.Primitives;
 using Brasa.Shared.Tenancy;
+using Brasa.Shared.Time;
 using Microsoft.EntityFrameworkCore;
 
 namespace Brasa.Api.Seed;
@@ -39,6 +40,13 @@ public static class DevCatalogSeeder
         tenantContext.Resolve(DevTenant.Id);
 
         var db = scope.ServiceProvider.GetRequiredService<CatalogDbContext>();
+
+        // Tax rules are seeded independently of the menu below — this
+        // codebase's dev database is long-lived, not reset per run (QA-02),
+        // so by the time CAT-07/08 shipped, every dev database already had
+        // categories from an earlier session and would otherwise skip this
+        // entirely via the early return just below.
+        await SeedTaxRulesAsync(db, cancellationToken).ConfigureAwait(false);
 
         if (await db.Categories.AnyAsync(cancellationToken).ConfigureAwait(false))
         {
@@ -97,6 +105,35 @@ public static class DevCatalogSeeder
             new MenuItem(bebidas.Id, "Imperial", Money.FromDecimal(1.80m), VatRate.StandardMainland, isAlcoholic: true),
             pastelDeNata,
             new MenuItem(sobremesas.Id, "Arroz Doce", Money.FromDecimal(3.00m), VatRate.IntermediateMainland));
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Seeds mainland-only dine-in/takeaway tax rules for both bands
+    /// (CAT-07/08) — the same two rates <see cref="VatRate"/> already names
+    /// as unconfirmed by an accountant, now as effective-dated rows rather
+    /// than the flat <c>MenuItem.VatRate</c> constant. Madeira/Azores rows
+    /// are deliberately not seeded — no seeded site claims either region
+    /// yet, and inventing rates nobody asked for would be worse than
+    /// leaving the gap honest. Effective from a fixed anchor in the past,
+    /// not "now," so resolving "today" always finds a rule regardless of
+    /// which day the seeder happens to run.
+    /// </summary>
+    private static async Task SeedTaxRulesAsync(CatalogDbContext db, CancellationToken cancellationToken)
+    {
+        if (await db.TaxRules.AnyAsync(cancellationToken).ConfigureAwait(false))
+        {
+            return;
+        }
+
+        var effectiveFrom = new DateTimeOffset(2024, 1, 1, 0, 0, 0, TimeSpan.Zero);
+
+        db.TaxRules.AddRange(
+            new TaxRule(isAlcoholic: false, isTakeaway: false, PortugueseRegion.Continental, VatRate.IntermediateMainland, effectiveFrom, null),
+            new TaxRule(isAlcoholic: false, isTakeaway: true, PortugueseRegion.Continental, VatRate.IntermediateMainland, effectiveFrom, null),
+            new TaxRule(isAlcoholic: true, isTakeaway: false, PortugueseRegion.Continental, VatRate.StandardMainland, effectiveFrom, null),
+            new TaxRule(isAlcoholic: true, isTakeaway: true, PortugueseRegion.Continental, VatRate.StandardMainland, effectiveFrom, null));
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }

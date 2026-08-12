@@ -66,7 +66,7 @@ public sealed class MenuItem : Entity, ISoftDeletable
     /// </summary>
     public Money Price { get; private set; }
 
-    /// <summary>Current VAT rate. See <see cref="Domain.VatRate"/> for why this is a placeholder for the I1 <c>TaxRule</c> model.</summary>
+    /// <summary>Current VAT rate. See <see cref="Domain.VatRate"/>'s own remarks — <see cref="TaxRule"/> (CAT-07/08) exists but doesn't drive this yet.</summary>
     public VatRate VatRate { get; private set; }
 
     /// <summary>

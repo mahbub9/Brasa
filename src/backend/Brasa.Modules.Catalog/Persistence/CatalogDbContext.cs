@@ -31,6 +31,9 @@ public sealed class CatalogDbContext(
     /// <summary>Fixed-price bundles of menu items (CAT-10).</summary>
     public DbSet<Combo> Combos => Set<Combo>();
 
+    /// <summary>Effective-dated VAT rates by alcohol band, channel and region (CAT-07/08).</summary>
+    public DbSet<TaxRule> TaxRules => Set<TaxRule>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
