@@ -59,6 +59,19 @@ internal sealed class MenuItemConfiguration : IEntityTypeConfiguration<MenuItem>
         builder.MapMoney(i => i.Price, "price");
         builder.MapOptionalMoney(i => i.TakeawayPrice, "takeaway_price");
 
+        // CAT-16's pending price change — two flat, independently nullable
+        // fields (always written together by MenuItem.SetScheduledPrice), not
+        // one nested value object: EF Core cannot constructor-bind a complex
+        // type (Money) nested inside another complex type
+        // (ScheduledPriceChange). MapOptionalMoney is the exact same helper
+        // TakeawayPrice already uses successfully.
+        builder.MapOptionalMoney(i => i.ScheduledNewPrice, "scheduled_price");
+        builder.Property(i => i.ScheduledPriceEffectiveFromUtc).HasColumnName("scheduled_price_effective_from_utc");
+
+        // ScheduledPrice itself is a computed, read-only assembly of the two
+        // properties above — never persisted directly.
+        builder.Ignore(i => i.ScheduledPrice);
+
         // VatRate is a single-value wrapper around a fraction; a full conversion
         // table arrives with the I1 TaxRule model (see VatRate's remarks).
         builder.Property(i => i.VatRate)

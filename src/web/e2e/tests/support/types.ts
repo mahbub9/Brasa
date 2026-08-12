@@ -29,6 +29,13 @@ export interface MenuItemScheduleDto {
   endTime: string;
 }
 
+/** A price change queued to take effect at a future instant (CAT-16). */
+export interface ScheduledPriceDto {
+  newPrice: MoneyDto;
+  effectiveFromUtc: string;
+  isActive: boolean;
+}
+
 export interface MenuItemDto {
   id: string;
   name: string;
@@ -41,6 +48,7 @@ export interface MenuItemDto {
   station: string | null;
   schedule: MenuItemScheduleDto | null;
   isCouvert: boolean;
+  scheduledPrice: ScheduledPriceDto | null;
   allergens: string[];
   modifierGroups: ModifierGroupDto[];
 }

@@ -19,6 +19,10 @@ public sealed record ModifierGroupDto(
 /// when not yet assigned (CAT-14/CAT-15) — a data-entry gap, not a claim the
 /// item has no course or is prepared nowhere. <c>Schedule</c> is null when
 /// the item is always available (CAT-11), not just on a recurring window.
+/// <c>Price</c> is always the item's <i>effective</i> price right now —
+/// <see cref="Domain.MenuItem.EffectivePrice"/>, not the raw stored value —
+/// so a due <c>ScheduledPrice</c> (CAT-16) is already reflected in it
+/// without the caller having to check <c>ScheduledPrice.IsActive</c> first.
 /// </summary>
 public sealed record MenuItemDto(
     Guid Id,
@@ -33,8 +37,18 @@ public sealed record MenuItemDto(
     string? Station,
     MenuItemScheduleDto? Schedule,
     bool IsCouvert,
+    ScheduledPriceDto? ScheduledPrice,
     IReadOnlyList<string> Allergens,
     IReadOnlyList<ModifierGroupDto> ModifierGroups);
+
+/// <summary>
+/// A price change queued to take effect at a future instant (CAT-16).
+/// <c>EffectiveFromUtc</c> is an ISO 8601 instant. <c>IsActive</c> is true
+/// once that instant has passed — at which point <see cref="MenuItemDto.Price"/>
+/// already equals <c>NewPrice</c>, this is only surfaced so a caller can see
+/// *why*, and so `admin` can distinguish "already live" from "still pending."
+/// </summary>
+public sealed record ScheduledPriceDto(MoneyDto NewPrice, string EffectiveFromUtc, bool IsActive);
 
 /// <summary>
 /// The recurring day/time window a menu item is available in (CAT-11) — a
@@ -83,6 +97,15 @@ public sealed record UpdateMenuItemStationRequest(string? Station);
 
 /// <summary>Request body to mark or unmark a menu item as couvert (CAT-12).</summary>
 public sealed record UpdateMenuItemCouvertRequest(bool IsCouvert);
+
+/// <summary>
+/// Request body to set or clear a menu item's pending price change (CAT-16).
+/// <c>EffectiveFromUtc</c> is an ISO 8601 instant and must be strictly in
+/// the future. Both null clears the pending change; setting only one of the
+/// two is rejected — a schedule is all-or-nothing, the same convention
+/// <see cref="UpdateMenuItemScheduleRequest"/> (CAT-11) already uses.
+/// </summary>
+public sealed record SetScheduledPriceRequest(decimal? Price, string? EffectiveFromUtc);
 
 /// <summary>
 /// Request body to set or clear a menu item's recurring availability window
@@ -144,12 +167,18 @@ public sealed record ImportMenuItemsResponse(int Created, IReadOnlyList<ImportMe
 /// <summary>Maps Catalog domain entities to wire DTOs.</summary>
 public static class CatalogDtoMappings
 {
-    /// <summary>Converts a menu item to its wire representation.</summary>
-    public static MenuItemDto ToDto(this MenuItem item) => new(
+    /// <summary>
+    /// Converts a menu item to its wire representation. <paramref name="nowUtc"/>
+    /// resolves <see cref="Domain.MenuItem.EffectivePrice"/> for
+    /// <see cref="MenuItemDto.Price"/> and <see cref="ScheduledPriceDto.IsActive"/> —
+    /// never <c>DateTimeOffset.UtcNow</c> directly, the caller's own
+    /// injected <c>IClock</c>.
+    /// </summary>
+    public static MenuItemDto ToDto(this MenuItem item, DateTimeOffset nowUtc) => new(
         item.Id,
         item.Name,
         item.Description,
-        item.Price.ToDto(),
+        item.EffectivePrice(nowUtc).ToDto(),
         item.TakeawayPrice?.ToDto(),
         item.VatRate.Fraction,
         item.IsAlcoholic,
@@ -158,8 +187,14 @@ public static class CatalogDtoMappings
         item.Station?.ToString(),
         item.Schedule?.ToDto(),
         item.IsCouvert,
+        item.ScheduledPrice?.ToDto(nowUtc),
         [.. item.Allergens.Select(a => a.ToString())],
         [.. item.ModifierGroups.OrderBy(g => g.DisplayOrder).Select(g => g.ToDto())]);
+
+    private static ScheduledPriceDto ToDto(this ScheduledPriceChange change, DateTimeOffset nowUtc) => new(
+        change.NewPrice.ToDto(),
+        change.EffectiveFromUtc.ToString("O", System.Globalization.CultureInfo.InvariantCulture),
+        change.IsActiveAt(nowUtc));
 
     private static MenuItemScheduleDto ToDto(this MenuItemSchedule schedule) => new(
         [.. schedule.Days.ToDayOfWeeks().Select(d => d.ToString())],

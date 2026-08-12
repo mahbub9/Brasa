@@ -297,6 +297,7 @@ public static class OrderEndpoints
         AddLineRequest request,
         OrderingDbContext orderingDb,
         CatalogDbContext catalogDb,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         if (request.Quantity < 1)
@@ -334,10 +335,16 @@ public static class OrderEndpoints
 
         // The line snapshots price, VAT rate and modifiers now — see
         // docs/architecture/module-boundaries.md on why that is correctness,
-        // not denormalisation. A takeaway order uses the item's separate
-        // takeaway price when one is set (CAT-06) — no table service to
-        // cover — falling back to the dine-in price otherwise.
-        var unitPrice = order.IsTakeaway ? menuItem.TakeawayPrice ?? menuItem.Price : menuItem.Price;
+        // not denormalisation. EffectivePrice (CAT-16) resolves a due
+        // scheduled price change first — the same figure GetMenuAsync just
+        // showed the guest, never the raw stored Price, or a change due
+        // five minutes ago would silently not apply. A takeaway order uses
+        // the item's separate takeaway price when one is set (CAT-06) — no
+        // table service to cover — falling back to that resolved dine-in
+        // price otherwise; TakeawayPrice itself has no scheduling of its
+        // own yet, a named gap (see ScheduledPriceChange's own remarks).
+        var basePrice = menuItem.EffectivePrice(clock.UtcNow);
+        var unitPrice = order.IsTakeaway ? menuItem.TakeawayPrice ?? basePrice : basePrice;
         var addResult = order.AddLine(
             menuItem.Id, menuItem.Name, unitPrice, menuItem.VatRate.Fraction, request.Quantity, modifiersResult.Value);
         if (addResult.IsFailure)
@@ -364,6 +371,7 @@ public static class OrderEndpoints
         AddComboLineRequest request,
         OrderingDbContext orderingDb,
         CatalogDbContext catalogDb,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var order = await FindOrderAsync(orderingDb, orderId, cancellationToken).ConfigureAwait(false);
@@ -411,7 +419,12 @@ public static class OrderEndpoints
             items.Add(item);
         }
 
-        var weights = items.Select(i => (int)i.Price.MinorUnits).ToArray();
+        // EffectivePrice (CAT-16), not the raw Price — a component with a
+        // due scheduled discount should pull its fair (smaller) share of
+        // the combo's own fixed price, the same figure GetMenuAsync would
+        // show for it standalone.
+        var nowUtc = clock.UtcNow;
+        var weights = items.Select(i => (int)i.EffectivePrice(nowUtc).MinorUnits).ToArray();
         if (weights.Sum() == 0)
         {
             return Error.Conflict(

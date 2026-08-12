@@ -242,6 +242,32 @@ export async function updateMenuItemCouvert(
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-16). Both null clears the pending change. */
+export function updateMenuItemScheduledPriceResponse(
+  request: APIRequestContext,
+  itemId: string,
+  price: number | null,
+  effectiveFromUtc: string | null,
+) {
+  return request.put(`${apiBaseUrl}/menu/items/${itemId}/scheduled-price`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { price, effectiveFromUtc },
+  });
+}
+
+export async function updateMenuItemScheduledPrice(
+  request: APIRequestContext,
+  itemId: string,
+  price: number | null,
+  effectiveFromUtc: string | null,
+): Promise<MenuItemDto> {
+  const response = await updateMenuItemScheduledPriceResponse(request, itemId, price, effectiveFromUtc);
+  if (!response.ok()) {
+    throw new Error(`PUT /menu/items/${itemId}/scheduled-price failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Fetches the live seeded floor plan. */
 export async function getFloor(request: APIRequestContext): Promise<RoomDto[]> {
   const response = await request.get(`${apiBaseUrl}/floor`);

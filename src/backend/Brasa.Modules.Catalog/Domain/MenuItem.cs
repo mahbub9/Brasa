@@ -134,6 +134,33 @@ public sealed class MenuItem : Entity, ISoftDeletable
     /// </remarks>
     public bool IsCouvert { get; private set; }
 
+    /// <summary>
+    /// The pending change's new price, or null when none is queued. Persisted
+    /// as two flat fields with <see cref="ScheduledPriceEffectiveFromUtc"/>
+    /// rather than one nested value object — EF Core cannot constructor-bind
+    /// a complex type (<c>Money</c>) nested inside another complex type
+    /// (<c>ScheduledPriceChange</c>); see <see cref="ScheduledPrice"/> for
+    /// the assembled, domain-facing form. Both are null or both are set,
+    /// never one alone — enforced by <see cref="SetScheduledPrice"/>, the
+    /// only way either is written.
+    /// </summary>
+    public Money? ScheduledNewPrice { get; private set; }
+
+    /// <summary>The instant <see cref="ScheduledNewPrice"/> takes effect. See that property's own remarks.</summary>
+    public DateTimeOffset? ScheduledPriceEffectiveFromUtc { get; private set; }
+
+    /// <summary>
+    /// A price change queued to take effect at a future instant (CAT-16),
+    /// assembled from <see cref="ScheduledNewPrice"/>/
+    /// <see cref="ScheduledPriceEffectiveFromUtc"/> — not itself persisted.
+    /// Null means no change is pending — <see cref="EffectivePrice"/> then
+    /// always returns <see cref="Price"/> unchanged.
+    /// </summary>
+    public ScheduledPriceChange? ScheduledPrice
+        => ScheduledNewPrice is not null && ScheduledPriceEffectiveFromUtc is not null
+            ? new ScheduledPriceChange(ScheduledNewPrice.Value, ScheduledPriceEffectiveFromUtc.Value)
+            : null;
+
     /// <inheritdoc/>
     /// <remarks>
     /// Distinct from <see cref="IsAvailable"/>: 86'ing is "out of stock today,
@@ -206,6 +233,24 @@ public sealed class MenuItem : Entity, ISoftDeletable
 
     /// <summary>Marks or unmarks this item as couvert (CAT-12).</summary>
     public void SetIsCouvert(bool isCouvert) => IsCouvert = isCouvert;
+
+    /// <summary>Sets or clears the pending price change (CAT-16). Null clears it — no change stays queued.</summary>
+    public void SetScheduledPrice(ScheduledPriceChange? change)
+    {
+        ScheduledNewPrice = change?.NewPrice;
+        ScheduledPriceEffectiveFromUtc = change?.EffectiveFromUtc;
+    }
+
+    /// <summary>
+    /// The price this item actually charges right now: <see cref="ScheduledPrice"/>'s
+    /// own price once it is due, otherwise <see cref="Price"/> unchanged.
+    /// This is what <c>GetMenuAsync</c> shows a guest and what <c>AddLine</c>
+    /// snapshots onto a new dine-in line — never the raw <see cref="Price"/>
+    /// field directly, or a change due five minutes ago would silently not
+    /// apply until someone happened to reprice the item by hand.
+    /// </summary>
+    public Money EffectivePrice(DateTimeOffset nowUtc)
+        => ScheduledPrice is not null && ScheduledPrice.IsActiveAt(nowUtc) ? ScheduledPrice.NewPrice : Price;
 
     /// <summary>Sets or clears the description (CAT-02). Null/whitespace clears it.</summary>
     public void SetDescription(string? description)

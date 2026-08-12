@@ -72,6 +72,10 @@ public static class CatalogEndpoints
             .WithName("UpdateMenuItemCouvert")
             .WithSummary("Marks or unmarks a menu item as couvert (CAT-12).");
 
+        group.MapPut("/menu/items/{itemId:guid}/scheduled-price", UpdateMenuItemScheduledPriceAsync)
+            .WithName("UpdateMenuItemScheduledPrice")
+            .WithSummary("Sets or clears a menu item's pending future price change (CAT-16).");
+
         group.MapPut("/menu/categories/{categoryId:guid}/visibility", UpdateMenuCategoryVisibilityAsync)
             .WithName("UpdateMenuCategoryVisibility")
             .WithSummary("Hides a whole category (and every item under it) from GET /menu, or shows it again (CAT-01).");
@@ -115,7 +119,7 @@ public static class CatalogEndpoints
                 c.Id,
                 c.Name,
                 c.DisplayOrder,
-                [.. itemsByCategory[c.Id].Select(i => i.ToDto())]))
+                [.. itemsByCategory[c.Id].Select(i => i.ToDto(clock.UtcNow))]))
             .ToList();
 
         // API-10: the menu changes rarely, so most POS pulls should come
@@ -133,7 +137,7 @@ public static class CatalogEndpoints
     /// 86'ing an item would be a one-way door once the admin UI's only view
     /// of the catalog was the already-filtered one.
     /// </summary>
-    private static async Task<IResult> GetMenuAllAsync(CatalogDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> GetMenuAllAsync(CatalogDbContext db, IClock clock, CancellationToken cancellationToken)
     {
         var categories = await db.Categories
             .OrderBy(c => c.DisplayOrder)
@@ -154,7 +158,7 @@ public static class CatalogEndpoints
                 c.Name,
                 c.DisplayOrder,
                 c.IsVisible,
-                [.. itemsByCategory[c.Id].Select(i => i.ToDto())]))
+                [.. itemsByCategory[c.Id].Select(i => i.ToDto(clock.UtcNow))]))
             .ToList();
 
         return Results.Ok(dto);
@@ -185,6 +189,7 @@ public static class CatalogEndpoints
         Guid itemId,
         UpdateMenuItemDetailsRequest request,
         CatalogDbContext db,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var item = await db.Items
@@ -214,7 +219,7 @@ public static class CatalogEndpoints
         item.SetAllergens(allergens);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(item.ToDto());
+        return Results.Ok(item.ToDto(clock.UtcNow));
     }
 
     /// <summary>
@@ -230,6 +235,7 @@ public static class CatalogEndpoints
         Guid itemId,
         UpdateMenuItemAvailabilityRequest request,
         CatalogDbContext db,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var item = await db.Items
@@ -254,7 +260,7 @@ public static class CatalogEndpoints
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(item.ToDto());
+        return Results.Ok(item.ToDto(clock.UtcNow));
     }
 
     /// <summary>
@@ -270,6 +276,7 @@ public static class CatalogEndpoints
         Guid itemId,
         UpdateMenuItemPriceRequest request,
         CatalogDbContext db,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var item = await db.Items
@@ -294,7 +301,7 @@ public static class CatalogEndpoints
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(item.ToDto());
+        return Results.Ok(item.ToDto(clock.UtcNow));
     }
 
     /// <summary>
@@ -312,6 +319,7 @@ public static class CatalogEndpoints
         Guid itemId,
         UpdateMenuItemTakeawayPriceRequest request,
         CatalogDbContext db,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var item = await db.Items
@@ -334,7 +342,7 @@ public static class CatalogEndpoints
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(item.ToDto());
+        return Results.Ok(item.ToDto(clock.UtcNow));
     }
 
     /// <summary>
@@ -349,6 +357,7 @@ public static class CatalogEndpoints
         Guid itemId,
         UpdateMenuItemCourseRequest request,
         CatalogDbContext db,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var item = await db.Items
@@ -378,7 +387,7 @@ public static class CatalogEndpoints
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(item.ToDto());
+        return Results.Ok(item.ToDto(clock.UtcNow));
     }
 
     /// <summary>
@@ -391,6 +400,7 @@ public static class CatalogEndpoints
         Guid itemId,
         UpdateMenuItemStationRequest request,
         CatalogDbContext db,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var item = await db.Items
@@ -420,7 +430,7 @@ public static class CatalogEndpoints
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(item.ToDto());
+        return Results.Ok(item.ToDto(clock.UtcNow));
     }
 
     /// <summary>
@@ -435,6 +445,7 @@ public static class CatalogEndpoints
         Guid itemId,
         UpdateMenuItemScheduleRequest request,
         CatalogDbContext db,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var item = await db.Items
@@ -455,7 +466,7 @@ public static class CatalogEndpoints
         {
             item.SetSchedule(null);
             await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-            return Results.Ok(item.ToDto());
+            return Results.Ok(item.ToDto(clock.UtcNow));
         }
 
         if (!hasDays || request.StartTime is null || request.EndTime is null)
@@ -500,7 +511,7 @@ public static class CatalogEndpoints
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(item.ToDto());
+        return Results.Ok(item.ToDto(clock.UtcNow));
     }
 
     /// <summary>
@@ -515,6 +526,7 @@ public static class CatalogEndpoints
         Guid itemId,
         UpdateMenuItemCouvertRequest request,
         CatalogDbContext db,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var item = await db.Items
@@ -531,7 +543,78 @@ public static class CatalogEndpoints
         item.SetIsCouvert(request.IsCouvert);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(item.ToDto());
+        return Results.Ok(item.ToDto(clock.UtcNow));
+    }
+
+    /// <summary>
+    /// Sets or clears a menu item's pending price change (CAT-16) — a
+    /// scheduled future price, deliberately not backed by a background job:
+    /// nothing runs one yet (Hangfire is OPS-10, not built). Instead
+    /// <see cref="MenuItem.EffectivePrice"/> resolves it lazily on every
+    /// read, the same "computed, not promoted" shape CAT-11's own schedule
+    /// already uses. Ships ahead of any UI trigger, the same way CAT-14/15
+    /// did — <c>GetMenuAsync</c>/<c>GetMenuAllAsync</c>'s own price fields,
+    /// and <c>AddLine</c>'s snapshot, are the only consumers today.
+    /// </summary>
+    private static async Task<IResult> UpdateMenuItemScheduledPriceAsync(
+        Guid itemId,
+        SetScheduledPriceRequest request,
+        CatalogDbContext db,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        var nowUtc = clock.UtcNow;
+
+        if (request.Price is null && request.EffectiveFromUtc is null)
+        {
+            item.SetScheduledPrice(null);
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return Results.Ok(item.ToDto(nowUtc));
+        }
+
+        if (request.Price is null || request.EffectiveFromUtc is null)
+        {
+            return Error.Validation(
+                "catalog.incomplete_scheduled_price",
+                "Price and effectiveFromUtc are both required together, or both omitted to clear the pending change.").ToProblem();
+        }
+
+        if (!DateTimeOffset.TryParse(
+            request.EffectiveFromUtc, CultureInfo.InvariantCulture, DateTimeStyles.None, out var effectiveFromUtc))
+        {
+            return Error.Validation(
+                "catalog.invalid_scheduled_price_date", $"\"{request.EffectiveFromUtc}\" is not a valid instant.").ToProblem();
+        }
+
+        if (effectiveFromUtc <= nowUtc)
+        {
+            return Error.Validation(
+                "catalog.scheduled_price_not_future", "effectiveFromUtc must be strictly in the future.").ToProblem();
+        }
+
+        try
+        {
+            item.SetScheduledPrice(new ScheduledPriceChange(Money.FromDecimal(request.Price.Value), effectiveFromUtc));
+        }
+        catch (ArgumentException)
+        {
+            return Error.Validation("catalog.invalid_price", "Price must not be negative.").ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(item.ToDto(nowUtc));
     }
 
     private static readonly string[] RequiredImportColumns = ["CategoryName", "Name", "Price", "VatRate"];
