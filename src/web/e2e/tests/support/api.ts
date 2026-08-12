@@ -286,6 +286,15 @@ export function findFreeTable(rooms: RoomDto[]): TableDto {
   throw new Error('No free table available — the seeded floor plan may be exhausted. See DevFloorSeeder.');
 }
 
+/** Picks `count` distinct currently-free tables (FLR-05's table groups need 2+ at once). */
+export function findFreeTables(rooms: RoomDto[], count: number): TableDto[] {
+  const free = rooms.flatMap((r) => r.tables).filter((t) => t.state === 'Free');
+  if (free.length < count) {
+    throw new Error(`Only ${free.length} free table(s) available, needed ${count}. See DevFloorSeeder.`);
+  }
+  return free.slice(0, count);
+}
+
 interface TableFields {
   label: string;
   seats: number;
@@ -369,15 +378,50 @@ export function deleteRoomResponse(request: APIRequestContext, roomId: string) {
   });
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (FLR-05). */
+export function createTableGroupResponse(request: APIRequestContext, tableIds: string[]) {
+  return request.post(`${apiBaseUrl}/table-groups`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { tableIds },
+  });
+}
+
+export async function createTableGroup(request: APIRequestContext, tableIds: string[]): Promise<TableDto[]> {
+  const response = await createTableGroupResponse(request, tableIds);
+  if (!response.ok()) {
+    throw new Error(`POST /table-groups failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (FLR-05). */
+export function deleteTableGroupResponse(request: APIRequestContext, groupId: string) {
+  return request.delete(`${apiBaseUrl}/table-groups/${groupId}`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+  });
+}
+
+export async function deleteTableGroup(request: APIRequestContext, groupId: string): Promise<void> {
+  const response = await deleteTableGroupResponse(request, groupId);
+  if (!response.ok()) {
+    throw new Error(`DELETE /table-groups/${groupId} failed: ${response.status()} ${await response.text()}`);
+  }
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too. */
+export function openOrderResponse(request: APIRequestContext, tableId: string, coverCount: number) {
+  return request.post(`${apiBaseUrl}/orders`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { tableId, coverCount },
+  });
+}
+
 export async function openOrder(
   request: APIRequestContext,
   tableId: string,
   coverCount: number,
 ): Promise<OrderDto> {
-  const response = await request.post(`${apiBaseUrl}/orders`, {
-    headers: { 'Idempotency-Key': idempotencyKey() },
-    data: { tableId, coverCount },
-  });
+  const response = await openOrderResponse(request, tableId, coverCount);
   if (!response.ok()) {
     throw new Error(`POST /orders failed: ${response.status()} ${await response.text()}`);
   }

@@ -42,7 +42,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 1 | 16 | I3 |
 | **CAT** | Catalog & menu | 14 | 19 | I0 (rest: I1) |
-| **FLR** | Floor plan & tables | 3 | 7 | I1 |
+| **FLR** | Floor plan & tables | 4 | 7 | I1 |
 | **ORD** | Ordering | 16 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
@@ -55,7 +55,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 8 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **94** | **292** | |
+| | **Total** | **95** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -406,7 +406,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | FLR-02 | Tables — number, seats, position, shape | ✅ `Table` — position/shape stored for FLR-03 to use later; `pos` renders a static grid, not the coordinates |
 | FLR-03 | Drag-and-drop floor plan editor | 🚧 Table and room CRUD both done, not the drag-and-drop canvas this row's own title names — `POST /rooms/{id}/tables`, `PUT /tables/{id}`, `DELETE /tables/{id}` (guarded to `Free` only), `POST /rooms`, `PUT /rooms/{id}`, `DELETE /rooms/{id}` (guarded to zero tables); `admin`'s "Plano de sala" has plain add/edit/delete forms for both (position/shape as number/select inputs, no visual canvas) — same "mechanism before the visual affordance" call WEB-10 made for the menu editor. **Verified live**: `floor-table-management.spec.ts` |
 | FLR-04 | Table states (free, occupied, bill requested, dirty) | ✅ all four wired end-to-end through `pos`, including `BillRequested` now: `POST /tables/{id}/request-bill` + a "Pedir conta" button, distinct from the pre-bill preview (ORD-18/19, "Ver conta") — that stays a read-only `GET`, this is the explicit floor-plan signal for staff. **Verified live** in a real browser: clicking it flags the table `BillRequested` on `GET /floor`; a free table 409s (`floor.table_not_occupied`), an unknown table 404s |
-| FLR-05 | Table merge / split for large parties | ⬜ |
+| FLR-05 | Table merge / split for large parties | ✅ Scoped to a floor-plan seating group — pushing 2+ *free* tables together into one unit for a large party, not a full order-merge (that already exists, separately, as `ORD` table-transfer/merge-orders). `Table.GroupId` (a plain `Guid?`, no FK — the same opaque-reference convention `OrderLine.MenuItemId` already established) via `POST /table-groups` / `DELETE /table-groups/{id}`, both requiring every table to be `Free` first. Deliberately given real teeth rather than staying cosmetic: `Table.Occupy()` itself now refuses a grouped table (`floor.table_grouped`) — a grouped table shown as `Free` with nothing stopping it being seated individually would have actively contradicted the feature's own purpose. Cascading `Occupy`/`Clear`/`Release` across a group's siblings was deliberately *not* built (a materially larger change touching every already-shipped table-state endpoint) — grouping only blocks individual seating for now, a named gap. No client UI yet — no floor-plan multi-select exists in `admin`/`pos` today, same "mechanism before the trigger" call CAT-05/CAT-10/CAT-16 each made. **Verified live**: `table-groups.spec.ts` — grouping blocks `POST /orders` on every member table with `floor.table_grouped`, ungrouping restores ordinary seating; rejects fewer than 2 tables (`floor.table_group_too_small`), an unknown table (`floor.table_not_found`), a non-free table (`floor.table_not_free`), a table already in another group (`floor.table_already_grouped`), and 404s deleting an unknown group (`floor.table_group_not_found`) |
 | FLR-06 | Section assignment to waiters | ⬜ depends on IDN |
 | FLR-07 | Multi-floor support | ⬜ |
 

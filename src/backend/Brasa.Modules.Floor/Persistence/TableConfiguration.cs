@@ -19,9 +19,11 @@ internal sealed class TableConfiguration : IEntityTypeConfiguration<Table>
         builder.Property(t => t.PositionY).IsRequired();
         builder.Property(t => t.Shape).HasConversion<string>().HasMaxLength(20).IsRequired();
         builder.Property(t => t.State).HasConversion<string>().HasMaxLength(20).IsRequired();
+        builder.Property(t => t.GroupId);
 
         builder.HasIndex(t => t.RoomId);
         builder.HasIndex(t => t.State);
+        builder.HasIndex(t => t.GroupId);
 
         // Table.Occupy() is a check-then-act on in-memory state with no
         // database-level guard otherwise: two concurrent "open this table"

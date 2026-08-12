@@ -232,6 +232,8 @@ export interface TableDto {
   positionY: number;
   shape: 'Round' | 'Square' | 'Rectangle';
   state: 'Free' | 'Occupied' | 'BillRequested' | 'Dirty';
+  /** Non-null when pushed together with others as one seating unit (FLR-05). */
+  groupId: string | null;
 }
 
 export interface RoomDto {

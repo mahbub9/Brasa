@@ -72,12 +72,50 @@ public sealed class Table : Entity
     /// <summary>Current lifecycle state.</summary>
     public TableState State { get; private set; }
 
-    /// <summary>Seats guests and opens the table for ordering. Requires the table to be free.</summary>
+    /// <summary>
+    /// Which seating group this table belongs to, if any (FLR-05) — a
+    /// large party seated across 2+ physical tables pushed together, e.g.
+    /// "Mesa 5" and "Mesa 6" sharing one 8-seat footprint. A plain shared
+    /// value, not a separate <c>TableGroup</c> entity: every field a group
+    /// needs (which tables, combined seats) is computed from the member
+    /// tables themselves, so there is nothing else to own.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately does not let a grouped table's siblings occupy
+    /// together in one action yet — opening an order still targets one
+    /// specific table id, the same call as always. What grouping *does*
+    /// change is real, not cosmetic: <see cref="Occupy"/> refuses any
+    /// table with a non-null <see cref="GroupId"/> outright, so once
+    /// grouped, neither table can be individually seated — a host can't
+    /// accidentally put a different party at "Mesa 6" while it is pushed
+    /// together with "Mesa 5" for a large one. Un-grouping
+    /// (<see cref="LeaveGroup"/>) is required before either table can be
+    /// occupied again, individually or as part of a new group. Building
+    /// "open one order that seats the whole group at once" is a separate,
+    /// deferred follow-up — it would touch several already-shipped,
+    /// already-tested endpoints (<c>OpenOrderAsync</c>, <c>ClearTableAsync</c>,
+    /// <c>TransferOrderAsync</c>) and deserves its own careful pass rather
+    /// than riding in on this one.
+    /// </remarks>
+    public Guid? GroupId { get; private set; }
+
+    /// <summary>
+    /// Seats guests and opens the table for ordering. Requires the table
+    /// to be free and not part of a seating group (FLR-05) — see
+    /// <see cref="GroupId"/>'s own remarks for why grouped tables refuse
+    /// individual seating rather than silently allowing it.
+    /// </summary>
     public Result Occupy()
     {
         if (State != TableState.Free)
         {
             return Result.Failure(Error.Conflict("floor.table_not_free", $"Table {Label} is not free."));
+        }
+
+        if (GroupId is not null)
+        {
+            return Result.Failure(Error.Conflict(
+                "floor.table_grouped", $"Table {Label} is part of a seating group — ungroup it first."));
         }
 
         State = TableState.Occupied;
@@ -187,6 +225,53 @@ public sealed class Table : Entity
             return Result.Failure(Error.Conflict("floor.table_not_free", $"Table {Label} is not free."));
         }
 
+        if (GroupId is not null)
+        {
+            return Result.Failure(Error.Conflict(
+                "floor.table_grouped", $"Table {Label} is part of a seating group — ungroup it first."));
+        }
+
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Joins this table to a seating group (FLR-05) so 2+ physical tables
+    /// can be pushed together for a large party. Requires
+    /// <see cref="TableState.Free"/> and no existing group — merging
+    /// starts from a clean state, not mid-service.
+    /// </summary>
+    public Result JoinGroup(Guid groupId)
+    {
+        if (State != TableState.Free)
+        {
+            return Result.Failure(Error.Conflict("floor.table_not_free", $"Table {Label} is not free."));
+        }
+
+        if (GroupId is not null)
+        {
+            return Result.Failure(Error.Conflict(
+                "floor.table_already_grouped", $"Table {Label} is already part of a seating group."));
+        }
+
+        GroupId = groupId;
+        return Result.Success();
+    }
+
+    /// <summary>
+    /// Leaves its seating group (FLR-05), freeing this table to be
+    /// occupied individually or grouped again. In practice a grouped
+    /// table is always <see cref="TableState.Free"/> already —
+    /// <see cref="Occupy"/> refuses one otherwise — but the guard is kept
+    /// explicit rather than assumed.
+    /// </summary>
+    public Result LeaveGroup()
+    {
+        if (State != TableState.Free)
+        {
+            return Result.Failure(Error.Conflict("floor.table_not_free", $"Table {Label} is not free."));
+        }
+
+        GroupId = null;
         return Result.Success();
     }
 }

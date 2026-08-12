@@ -59,10 +59,14 @@ as any change to an error code, the same rule as everything else in
 | `floor.invalid_shape` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `shape` isn't a recognised `TableShape` name. |
 | `floor.room_not_empty` | Conflict | 409 | `DELETE /rooms/{id}`'s (FLR-03) target room still has at least one table. |
 | `floor.room_not_found` | NotFound | 404 | `POST /rooms/{id}/tables`, `PUT /rooms/{id}` or `DELETE /rooms/{id}`'s (FLR-03) room id doesn't exist. |
+| `floor.table_already_grouped` | Conflict | 409 | `POST /table-groups`'s (FLR-05) target table already belongs to a different seating group — ungroup it first, this endpoint never moves a table between groups. |
 | `floor.table_concurrently_modified` | Conflict | 409 | `PUT /tables/{id}`'s (FLR-03) `xmin` concurrency token was stale — someone else edited the same table between the read and the write. Distinct from `floor.table_not_free`: editing has no `TableState` precondition to re-affirm, so this is a genuine lost-update race, not a stale-state check. |
+| `floor.table_group_not_found` | NotFound | 404 | `DELETE /table-groups/{id}`'s (FLR-05) group id has no tables currently in it. |
+| `floor.table_group_too_small` | Validation | 400 | `POST /table-groups`'s (FLR-05) `tableIds` names fewer than 2 distinct tables. |
+| `floor.table_grouped` | Conflict | 409 | `POST /orders` or `DELETE /tables/{id}` (FLR-03) targeted a table that is currently part of a seating group (FLR-05) — ungroup it (`DELETE /table-groups/{id}`) before seating or removing it individually. |
 | `floor.table_not_dirty` | Conflict | 409 | `POST /tables/{id}/clear` was called on a table that isn't `Dirty`. |
-| `floor.table_not_free` | Conflict | 409 | `POST /orders` or `POST /orders/{id}/transfer` targeted a table that isn't `Free` — including the `xmin` concurrency-token case where two requests raced for it; or `DELETE /tables/{id}` (FLR-03) targeted a table that isn't `Free`, initially or via the same concurrency race. |
-| `floor.table_not_found` | NotFound | 404 | The table id in the request doesn't exist. |
+| `floor.table_not_free` | Conflict | 409 | `POST /orders` or `POST /orders/{id}/transfer` targeted a table that isn't `Free` — including the `xmin` concurrency-token case where two requests raced for it; or `DELETE /tables/{id}` (FLR-03) targeted a table that isn't `Free`, initially or via the same concurrency race; or `POST`/`DELETE /table-groups` (FLR-05) targeted a table that isn't `Free`. |
+| `floor.table_not_found` | NotFound | 404 | The table id in the request doesn't exist, incl. as referenced by `POST /table-groups` (FLR-05). |
 | `floor.table_not_occupied` | Conflict | 409 | `POST /tables/{id}/request-bill` (FLR-04) or `MarkDirty`/`Release` (both domain-only, no endpoint) was called on a table that isn't `Occupied`. |
 | `order.already_closed` | Conflict | 409 | `Close()` was called on an order that is already `Closed`. |
 | `order.empty` | Validation | 400 | `Close()` or `EnsureCanGeneratePreBill()` was called on an order with zero lines. |

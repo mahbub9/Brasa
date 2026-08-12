@@ -50,6 +50,14 @@ public static class FloorEndpoints
             .WithName("DeleteRoom")
             .WithSummary("Removes a room. Requires it to have no tables (FLR-03's room-CRUD follow-up).");
 
+        group.MapPost("/table-groups", CreateTableGroupAsync)
+            .WithName("CreateTableGroup")
+            .WithSummary("Pushes 2+ free tables together into one seating group for a large party (FLR-05).");
+
+        group.MapDelete("/table-groups/{groupId:guid}", DeleteTableGroupAsync)
+            .WithName("DeleteTableGroup")
+            .WithSummary("Un-groups every table in a seating group, freeing them to be seated individually again (FLR-05).");
+
         return group;
     }
 
@@ -324,6 +332,89 @@ public static class FloorEndpoints
         }
 
         db.Rooms.Remove(room);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.NoContent();
+    }
+
+    /// <summary>
+    /// Pushes 2+ free tables together into one seating group (FLR-05) — a
+    /// large party seated across several physical tables. Validates every
+    /// table before joining any of them (no partial group on a rejected
+    /// request — nothing is saved unless all of them succeed), then makes
+    /// every member's <see cref="Table.Occupy"/> refuse individual seating
+    /// until the group is dissolved again. Deliberately does not offer
+    /// "open one order for the whole group" yet — see
+    /// <c>Table.GroupId</c>'s own remarks for why that is a separate,
+    /// deferred follow-up.
+    /// </summary>
+    private static async Task<IResult> CreateTableGroupAsync(
+        CreateTableGroupRequest request,
+        FloorDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var tableIds = (request.TableIds ?? []).Distinct().ToList();
+        if (tableIds.Count < 2)
+        {
+            return Error.Validation(
+                "floor.table_group_too_small", "A seating group needs at least 2 distinct tables.").ToProblem();
+        }
+
+        var tables = await db.Tables
+            .Where(t => tableIds.Contains(t.Id))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (tables.Count != tableIds.Count)
+        {
+            return Error.NotFound(
+                "floor.table_not_found", "One or more tables in the request were not found.").ToProblem();
+        }
+
+        // UUIDv7 — time-ordered, offline-mintable, the same convention
+        // Entity's own id already uses. Not an Entity id itself: GroupId
+        // is a plain shared correlation value, not a row of its own.
+        var groupId = Guid.CreateVersion7();
+
+        foreach (var table in tables)
+        {
+            var joinResult = table.JoinGroup(groupId);
+            if (joinResult.IsFailure)
+            {
+                return joinResult.Error.ToProblem();
+            }
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(tables.Select(t => t.ToDto()).ToList());
+    }
+
+    /// <summary>
+    /// Un-groups every table sharing <paramref name="groupId"/> (FLR-05),
+    /// freeing each to be occupied individually or grouped again.
+    /// </summary>
+    private static async Task<IResult> DeleteTableGroupAsync(Guid groupId, FloorDbContext db, CancellationToken cancellationToken)
+    {
+        var tables = await db.Tables
+            .Where(t => t.GroupId == groupId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (tables.Count == 0)
+        {
+            return Error.NotFound("floor.table_group_not_found", $"Table group {groupId} was not found.").ToProblem();
+        }
+
+        foreach (var table in tables)
+        {
+            var leaveResult = table.LeaveGroup();
+            if (leaveResult.IsFailure)
+            {
+                return leaveResult.Error.ToProblem();
+            }
+        }
+
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.NoContent();
