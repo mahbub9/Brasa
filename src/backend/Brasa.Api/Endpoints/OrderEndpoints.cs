@@ -49,6 +49,10 @@ public static class OrderEndpoints
             .WithName("AddOrderLine")
             .WithSummary("Rings up a menu item onto an open order.");
 
+        group.MapPost("/orders/{orderId:guid}/combo-lines", AddComboLineAsync)
+            .WithName("AddComboLine")
+            .WithSummary("Rings a combo up onto an open order (CAT-10), one ordinary line per component at its own VAT rate.");
+
         group.MapPut("/orders/{orderId:guid}/lines/{lineId:guid}/notes", SetLineNotesAsync)
             .WithName("SetOrderLineNotes")
             .WithSummary("Sets or clears a line's free-text kitchen note (ORD-06).");
@@ -339,6 +343,90 @@ public static class OrderEndpoints
         if (addResult.IsFailure)
         {
             return addResult.Error.ToProblem();
+        }
+
+        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Ok(order.ToDto());
+    }
+
+    /// <summary>
+    /// Rings a combo up onto an open order (CAT-10) — resolves the combo's
+    /// components, allocates <c>Combo.Price</c> across them via
+    /// <c>Money.Allocate</c> weighted by each component's own current
+    /// standalone price (the same proration ORD-11 already uses for an
+    /// order-level discount), then adds each component as an ordinary line
+    /// at its own real VAT rate. Composes Catalog (combo + item lookup) and
+    /// Ordering (<c>AddLine</c>) in one handler, the same shape
+    /// <see cref="AddLineAsync"/> already uses for a single item.
+    /// </summary>
+    private static async Task<IResult> AddComboLineAsync(
+        Guid orderId,
+        AddComboLineRequest request,
+        OrderingDbContext orderingDb,
+        CatalogDbContext catalogDb,
+        CancellationToken cancellationToken)
+    {
+        var order = await FindOrderAsync(orderingDb, orderId, cancellationToken).ConfigureAwait(false);
+        if (order is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        var combo = await ComboEndpoints.FindComboAsync(catalogDb, request.ComboId, cancellationToken).ConfigureAwait(false);
+        if (combo is null)
+        {
+            return ComboEndpoints.ComboNotFound(request.ComboId).ToProblem();
+        }
+
+        if (combo.Components.Count == 0)
+        {
+            return Error.Validation(
+                "catalog.combo_has_no_components", $"Combo {combo.Name} has no components yet.").ToProblem();
+        }
+
+        var componentItemIds = combo.Components.Select(c => c.MenuItemId).ToList();
+        var componentItems = await catalogDb.Items
+            .Where(i => componentItemIds.Contains(i.Id))
+            .ToDictionaryAsync(i => i.Id, cancellationToken)
+            .ConfigureAwait(false);
+
+        // Preserves Components' own order, not the dictionary's — Allocate's
+        // remainder distribution is deterministic by position, so a stable
+        // order keeps a re-issued combo line splitting identically.
+        var items = new List<MenuItem>(combo.Components.Count);
+        foreach (var component in combo.Components)
+        {
+            if (!componentItems.TryGetValue(component.MenuItemId, out var item))
+            {
+                return Error.NotFound(
+                    "catalog.item_not_found", $"Menu item {component.MenuItemId} was not found.").ToProblem();
+            }
+
+            if (!item.IsAvailable)
+            {
+                return Error.Conflict(
+                    "catalog.item_unavailable", $"{item.Name} is not currently available.").ToProblem();
+            }
+
+            items.Add(item);
+        }
+
+        var weights = items.Select(i => (int)i.Price.MinorUnits).ToArray();
+        if (weights.Sum() == 0)
+        {
+            return Error.Conflict(
+                "catalog.combo_price_not_allocable", $"Combo {combo.Name}'s components have no price to allocate against.").ToProblem();
+        }
+
+        var allocatedPrices = combo.Price.Allocate(weights);
+
+        for (var i = 0; i < items.Count; i++)
+        {
+            var addResult = order.AddLine(items[i].Id, items[i].Name, allocatedPrices[i], items[i].VatRate.Fraction, quantity: 1);
+            if (addResult.IsFailure)
+            {
+                return addResult.Error.ToProblem();
+            }
         }
 
         await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

@@ -2,6 +2,7 @@ import type { APIRequestContext } from '@playwright/test';
 import type {
   AdminMenuCategoryDto,
   CloseOrderResponse,
+  ComboDto,
   EffectivePriceDto,
   MenuCategoryDto,
   MenuItemDto,
@@ -908,6 +909,72 @@ export async function getEffectivePrice(
     throw new Error(
       `GET /price-lists/${priceListId}/effective-price/${menuItemId} failed: ${response.status()} ${await response.text()}`,
     );
+  }
+  return response.json();
+}
+
+// Combos (CAT-10) — a narrow first slice, create/read/add-component only.
+// Ringing one up is POST /orders/{id}/combo-lines, which decomposes into
+// ordinary AddLine calls, one per component, so it needs no new order-side
+// helper here — addComboLineResponse below just posts and returns the
+// updated OrderDto the same way addLine already does.
+
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-10). */
+export function createComboResponse(request: APIRequestContext, name: string, price: number) {
+  return request.post(`${apiBaseUrl}/combos`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { name, price },
+  });
+}
+
+export async function createCombo(request: APIRequestContext, name: string, price: number): Promise<ComboDto> {
+  const response = await createComboResponse(request, name, price);
+  if (!response.ok()) {
+    throw new Error(`POST /combos failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export function getComboResponse(request: APIRequestContext, comboId: string) {
+  return request.get(`${apiBaseUrl}/combos/${comboId}`);
+}
+
+export async function getCombo(request: APIRequestContext, comboId: string): Promise<ComboDto> {
+  const response = await getComboResponse(request, comboId);
+  if (!response.ok()) {
+    throw new Error(`GET /combos/${comboId} failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-10). */
+export function addComboComponentResponse(request: APIRequestContext, comboId: string, menuItemId: string) {
+  return request.post(`${apiBaseUrl}/combos/${comboId}/components`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { menuItemId },
+  });
+}
+
+export async function addComboComponent(request: APIRequestContext, comboId: string, menuItemId: string): Promise<ComboDto> {
+  const response = await addComboComponentResponse(request, comboId, menuItemId);
+  if (!response.ok()) {
+    throw new Error(`POST /combos/${comboId}/components failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-10). */
+export function addComboLineResponse(request: APIRequestContext, orderId: string, comboId: string) {
+  return request.post(`${apiBaseUrl}/orders/${orderId}/combo-lines`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { comboId },
+  });
+}
+
+export async function addComboLine(request: APIRequestContext, orderId: string, comboId: string): Promise<OrderDto> {
+  const response = await addComboLineResponse(request, orderId, comboId);
+  if (!response.ok()) {
+    throw new Error(`POST /orders/${orderId}/combo-lines failed: ${response.status()} ${await response.text()}`);
   }
   return response.json();
 }

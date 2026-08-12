@@ -107,6 +107,20 @@ export interface EffectivePriceDto {
   isOverridden: boolean;
 }
 
+/** A fixed-price bundle of menu items (CAT-10), with every component it currently holds. */
+export interface ComboDto {
+  id: string;
+  name: string;
+  price: MoneyDto;
+  components: ComboComponentDto[];
+}
+
+/** One item within a combo — always exactly one unit. */
+export interface ComboComponentDto {
+  id: string;
+  menuItemId: string;
+}
+
 export interface ImportMenuItemsRowError {
   rowNumber: number;
   message: string;

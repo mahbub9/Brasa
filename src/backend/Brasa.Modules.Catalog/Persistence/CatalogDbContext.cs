@@ -28,6 +28,9 @@ public sealed class CatalogDbContext(
     /// <summary>Per-site price lists (CAT-05).</summary>
     public DbSet<PriceList> PriceLists => Set<PriceList>();
 
+    /// <summary>Fixed-price bundles of menu items (CAT-10).</summary>
+    public DbSet<Combo> Combos => Set<Combo>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

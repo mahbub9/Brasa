@@ -19,19 +19,24 @@ as any change to an error code, the same rule as everything else in
 | Code | Type | HTTP | Meaning |
 |---|---|---|---|
 | `catalog.category_not_found` | NotFound | 404 | `PUT /menu/categories/{id}/visibility`'s category id doesn't exist. |
+| `catalog.combo_component_exists` | Conflict | 409 | `POST /combos/{id}/components`'s (CAT-10) `menuItemId` already has a component in this combo — remove it first, this endpoint never overwrites. |
+| `catalog.combo_has_no_components` | Validation | 400 | `POST /orders/{id}/combo-lines`'s (CAT-10) combo has zero components — nothing to ring up. |
+| `catalog.combo_not_found` | NotFound | 404 | The combo id in the request doesn't exist (CAT-10). |
+| `catalog.combo_price_not_allocable` | Conflict | 409 | `POST /orders/{id}/combo-lines`'s (CAT-10) combo's components all price at zero, so `Combo.Price` cannot be proportionally allocated across them. |
 | `catalog.import_empty` | Validation | 400 | `POST /menu/items/import`'s `csv` has no rows at all (not even a header). |
 | `catalog.import_invalid_header` | Validation | 400 | `POST /menu/items/import`'s CSV header is missing a required column (`CategoryName`, `Name`, `Price`, `VatRate`). |
 | `catalog.incomplete_schedule` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) days/start/end are only partly set — a schedule is all-or-nothing, not a partial update. |
 | `catalog.invalid_allergen` | Validation | 400 | `PUT /menu/items/{id}/details`'s `allergens` contains a name that isn't a recognised `Allergen`. |
+| `catalog.invalid_combo_name` | Validation | 400 | `POST /combos`'s (CAT-10) `name` is missing, empty or whitespace. |
 | `catalog.invalid_course` | Validation | 400 | `PUT /menu/items/{id}/course`'s `course` isn't a recognised `Course` name. |
 | `catalog.invalid_day_of_week` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) `daysOfWeek` contains a name that isn't a recognised day. |
 | `catalog.invalid_schedule` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) window is empty or backwards (`startTime >= endTime`). |
 | `catalog.invalid_station` | Validation | 400 | `PUT /menu/items/{id}/station`'s `station` isn't a recognised `KitchenStation` name. |
-| `catalog.invalid_price` | Validation | 400 | `PUT /menu/items/{id}/price`'s `price` is negative, or `PUT /menu/items/{id}/takeaway-price`'s (CAT-06) `price` is negative, or `POST /price-lists/{id}/entries`'s (CAT-05) `price` is negative. |
+| `catalog.invalid_price` | Validation | 400 | `PUT /menu/items/{id}/price`'s `price` is negative, or `PUT /menu/items/{id}/takeaway-price`'s (CAT-06) `price` is negative, or `POST /price-lists/{id}/entries`'s (CAT-05) `price` is negative, or `POST /combos`'s (CAT-10) `price` is negative. |
 | `catalog.invalid_price_list_name` | Validation | 400 | `POST /price-lists`'s (CAT-05) `name` is missing, empty or whitespace. |
 | `catalog.invalid_time` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) `startTime`/`endTime` isn't a valid `"HH:mm"` time. |
-| `catalog.item_not_found` | NotFound | 404 | The menu item id in the request doesn't exist (or is soft-deleted — CAT-18), incl. as referenced by `POST /price-lists/{id}/entries` or `GET /price-lists/{id}/effective-price/{menuItemId}` (CAT-05). |
-| `catalog.item_unavailable` | Conflict | 409 | The menu item exists but is currently 86'd (`IsAvailable = false`). |
+| `catalog.item_not_found` | NotFound | 404 | The menu item id in the request doesn't exist (or is soft-deleted — CAT-18), incl. as referenced by `POST /price-lists/{id}/entries`/`GET /price-lists/{id}/effective-price/{menuItemId}` (CAT-05) or `POST /combos/{id}/components`/`POST /orders/{id}/combo-lines` (CAT-10). |
+| `catalog.item_unavailable` | Conflict | 409 | The menu item exists but is currently 86'd (`IsAvailable = false`), incl. as referenced by a combo component (CAT-10). |
 | `catalog.modifier_not_found` | NotFound | 404 | A `selectedModifierIds` entry doesn't belong to any of the item's modifier groups. |
 | `catalog.modifier_selection_invalid` | Validation | 400 | A modifier group's selection count is outside its `MinSelect`/`MaxSelect` range. |
 | `catalog.price_list_entry_exists` | Conflict | 409 | `POST /price-lists/{id}/entries`'s (CAT-05) `menuItemId` already has an entry in this price list — remove it first, this endpoint never overwrites. |

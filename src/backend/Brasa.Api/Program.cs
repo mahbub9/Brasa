@@ -344,6 +344,7 @@ v1.MapCatalogEndpoints();
 v1.MapFloorEndpoints();
 v1.MapIdentityEndpoints();
 v1.MapPriceListEndpoints();
+v1.MapComboEndpoints();
 v1.MapOrderEndpoints();
 v1.MapClientEndpoints();
 
