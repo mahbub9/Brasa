@@ -25,6 +25,9 @@ public sealed class CatalogDbContext(
     /// <summary>Menu items.</summary>
     public DbSet<MenuItem> Items => Set<MenuItem>();
 
+    /// <summary>Per-site price lists (CAT-05).</summary>
+    public DbSet<PriceList> PriceLists => Set<PriceList>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -27,12 +27,15 @@ as any change to an error code, the same rule as everything else in
 | `catalog.invalid_day_of_week` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) `daysOfWeek` contains a name that isn't a recognised day. |
 | `catalog.invalid_schedule` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) window is empty or backwards (`startTime >= endTime`). |
 | `catalog.invalid_station` | Validation | 400 | `PUT /menu/items/{id}/station`'s `station` isn't a recognised `KitchenStation` name. |
-| `catalog.invalid_price` | Validation | 400 | `PUT /menu/items/{id}/price`'s `price` is negative, or `PUT /menu/items/{id}/takeaway-price`'s (CAT-06) `price` is negative. |
+| `catalog.invalid_price` | Validation | 400 | `PUT /menu/items/{id}/price`'s `price` is negative, or `PUT /menu/items/{id}/takeaway-price`'s (CAT-06) `price` is negative, or `POST /price-lists/{id}/entries`'s (CAT-05) `price` is negative. |
+| `catalog.invalid_price_list_name` | Validation | 400 | `POST /price-lists`'s (CAT-05) `name` is missing, empty or whitespace. |
 | `catalog.invalid_time` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) `startTime`/`endTime` isn't a valid `"HH:mm"` time. |
-| `catalog.item_not_found` | NotFound | 404 | The menu item id in the request doesn't exist (or is soft-deleted — CAT-18). |
+| `catalog.item_not_found` | NotFound | 404 | The menu item id in the request doesn't exist (or is soft-deleted — CAT-18), incl. as referenced by `POST /price-lists/{id}/entries` or `GET /price-lists/{id}/effective-price/{menuItemId}` (CAT-05). |
 | `catalog.item_unavailable` | Conflict | 409 | The menu item exists but is currently 86'd (`IsAvailable = false`). |
 | `catalog.modifier_not_found` | NotFound | 404 | A `selectedModifierIds` entry doesn't belong to any of the item's modifier groups. |
 | `catalog.modifier_selection_invalid` | Validation | 400 | A modifier group's selection count is outside its `MinSelect`/`MaxSelect` range. |
+| `catalog.price_list_entry_exists` | Conflict | 409 | `POST /price-lists/{id}/entries`'s (CAT-05) `menuItemId` already has an entry in this price list — remove it first, this endpoint never overwrites. |
+| `catalog.price_list_not_found` | NotFound | 404 | The price list id in the request doesn't exist (CAT-05). |
 | `client.header_required` | Validation | 400 | `GET /client-requirements` was called with no (or a malformed) `X-Brasa-Client` header. |
 | `client.unknown_client_id` | NotFound | 404 | `GET /client-requirements`'s `X-Brasa-Client` header names a client id with no configured version policy. |
 | `fiscal.no_lines` | Validation | 400 | `IssueSimplifiedInvoiceAsync` was called with an empty line list. |

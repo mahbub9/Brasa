@@ -2,12 +2,14 @@ import type { APIRequestContext } from '@playwright/test';
 import type {
   AdminMenuCategoryDto,
   CloseOrderResponse,
+  EffectivePriceDto,
   MenuCategoryDto,
   MenuItemDto,
   OrderDto,
   OrderSummaryDto,
   OrganizationDto,
   PreBillDto,
+  PriceListDto,
   RoomDto,
   SiteDto,
   SplitByItemResponse,
@@ -825,6 +827,87 @@ export async function getTerminals(request: APIRequestContext, siteId: string): 
   const response = await getTerminalsResponse(request, siteId);
   if (!response.ok()) {
     throw new Error(`GET /sites/${siteId}/terminals failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+// Price lists (CAT-05) — a narrow first slice, create/read/add-entry only.
+// Nothing in AddLine or either web client resolves an effective price
+// through these yet (no site-selection concept exists in pos/admin today);
+// GetEffectivePrice is the resolution logic itself, exercised here directly
+// against the API.
+
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-05). */
+export function createPriceListResponse(request: APIRequestContext, siteId: string, name: string) {
+  return request.post(`${apiBaseUrl}/price-lists`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { siteId, name },
+  });
+}
+
+export async function createPriceList(request: APIRequestContext, siteId: string, name: string): Promise<PriceListDto> {
+  const response = await createPriceListResponse(request, siteId, name);
+  if (!response.ok()) {
+    throw new Error(`POST /price-lists failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export function getPriceListResponse(request: APIRequestContext, priceListId: string) {
+  return request.get(`${apiBaseUrl}/price-lists/${priceListId}`);
+}
+
+export async function getPriceList(request: APIRequestContext, priceListId: string): Promise<PriceListDto> {
+  const response = await getPriceListResponse(request, priceListId);
+  if (!response.ok()) {
+    throw new Error(`GET /price-lists/${priceListId} failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export async function getPriceListsForSite(request: APIRequestContext, siteId: string): Promise<PriceListDto[]> {
+  const response = await request.get(`${apiBaseUrl}/sites/${siteId}/price-lists`);
+  if (!response.ok()) {
+    throw new Error(`GET /sites/${siteId}/price-lists failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-05). */
+export function addPriceListEntryResponse(request: APIRequestContext, priceListId: string, menuItemId: string, price: number) {
+  return request.post(`${apiBaseUrl}/price-lists/${priceListId}/entries`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { menuItemId, price },
+  });
+}
+
+export async function addPriceListEntry(
+  request: APIRequestContext,
+  priceListId: string,
+  menuItemId: string,
+  price: number,
+): Promise<PriceListDto> {
+  const response = await addPriceListEntryResponse(request, priceListId, menuItemId, price);
+  if (!response.ok()) {
+    throw new Error(`POST /price-lists/${priceListId}/entries failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export function getEffectivePriceResponse(request: APIRequestContext, priceListId: string, menuItemId: string) {
+  return request.get(`${apiBaseUrl}/price-lists/${priceListId}/effective-price/${menuItemId}`);
+}
+
+export async function getEffectivePrice(
+  request: APIRequestContext,
+  priceListId: string,
+  menuItemId: string,
+): Promise<EffectivePriceDto> {
+  const response = await getEffectivePriceResponse(request, priceListId, menuItemId);
+  if (!response.ok()) {
+    throw new Error(
+      `GET /price-lists/${priceListId}/effective-price/${menuItemId} failed: ${response.status()} ${await response.text()}`,
+    );
   }
   return response.json();
 }

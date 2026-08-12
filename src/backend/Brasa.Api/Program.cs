@@ -343,6 +343,7 @@ v1.MapGet("/ping", (IClock clock) => Results.Ok(new
 v1.MapCatalogEndpoints();
 v1.MapFloorEndpoints();
 v1.MapIdentityEndpoints();
+v1.MapPriceListEndpoints();
 v1.MapOrderEndpoints();
 v1.MapClientEndpoints();
 

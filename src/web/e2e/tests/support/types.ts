@@ -85,6 +85,28 @@ export interface TerminalDto {
   label: string;
 }
 
+/** A per-site price list (CAT-05), with every entry it currently holds. */
+export interface PriceListDto {
+  id: string;
+  siteId: string;
+  name: string;
+  entries: PriceListEntryDto[];
+}
+
+/** One item's overridden price within a price list. */
+export interface PriceListEntryDto {
+  id: string;
+  menuItemId: string;
+  price: MoneyDto;
+}
+
+/** The price an item resolves to at a site right now (CAT-05) — a list override, or the item's ordinary price. */
+export interface EffectivePriceDto {
+  menuItemId: string;
+  price: MoneyDto;
+  isOverridden: boolean;
+}
+
 export interface ImportMenuItemsRowError {
   rowNumber: number;
   message: string;
