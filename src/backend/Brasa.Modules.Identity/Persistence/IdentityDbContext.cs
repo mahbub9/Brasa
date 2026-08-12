@@ -1,0 +1,41 @@
+using Brasa.Modules.Identity.Domain;
+using Brasa.Shared.Persistence;
+using Brasa.Shared.Tenancy;
+using Brasa.Shared.Time;
+using Microsoft.EntityFrameworkCore;
+
+namespace Brasa.Modules.Identity.Persistence;
+
+/// <summary>
+/// Owns the <c>identity</c> schema: organizations, sites and terminals
+/// (IDN-01). Users, roles, staff PINs and terminal pairing — the rest of
+/// this module's own epic — are separate, not-yet-built rows.
+/// </summary>
+public sealed class IdentityDbContext(
+    DbContextOptions<IdentityDbContext> options,
+    ITenantContext tenantContext,
+    ITenantContextAccessor tenantContextAccessor,
+    IClock clock)
+    : TenantAwareDbContext(options, tenantContext, tenantContextAccessor, clock)
+{
+    /// <inheritdoc/>
+    protected override string Schema => "identity";
+
+    /// <summary>The restaurant business, top of the Organization → Site → Terminal hierarchy.</summary>
+    public DbSet<Organization> Organizations => Set<Organization>();
+
+    /// <summary>Physical restaurant locations belonging to an organization.</summary>
+    public DbSet<Site> Sites => Set<Site>();
+
+    /// <summary>Physical POS devices registered at a site.</summary>
+    public DbSet<Terminal> Terminals => Set<Terminal>();
+
+    /// <inheritdoc/>
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        ArgumentNullException.ThrowIfNull(modelBuilder);
+
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(IdentityDbContext).Assembly);
+        base.OnModelCreating(modelBuilder);
+    }
+}

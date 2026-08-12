@@ -6,10 +6,13 @@ import type {
   MenuItemDto,
   OrderDto,
   OrderSummaryDto,
+  OrganizationDto,
   PreBillDto,
   RoomDto,
+  SiteDto,
   SplitByItemResponse,
   TableDto,
+  TerminalDto,
 } from './types';
 
 // Deterministic test-data builders (QA-03) — set up state via the API
@@ -732,4 +735,96 @@ export function requestBillResponse(request: APIRequestContext, tableId: string)
   return request.post(`${apiBaseUrl}/tables/${tableId}/request-bill`, {
     headers: { 'Idempotency-Key': idempotencyKey() },
   });
+}
+
+// Organization / Site / Terminal (IDN-01) — a narrow first slice, create and
+// list only. No delete exists yet, so specs that create their own
+// organization/site/terminal (rather than reusing the DevIdentitySeeder's
+// seeded "Brasa Demo, Lda" / "Restaurante Central" / "Caixa 1") leave rows
+// behind; harmless today since nothing asserts an exact count, only that a
+// specific known row is present.
+
+/** Raw response so callers can assert on status/body for the failure cases too (IDN-01). */
+export function createOrganizationResponse(request: APIRequestContext, name: string) {
+  return request.post(`${apiBaseUrl}/organizations`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { name },
+  });
+}
+
+export async function createOrganization(request: APIRequestContext, name: string): Promise<OrganizationDto> {
+  const response = await createOrganizationResponse(request, name);
+  if (!response.ok()) {
+    throw new Error(`POST /organizations failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export async function getOrganizations(request: APIRequestContext): Promise<OrganizationDto[]> {
+  const response = await request.get(`${apiBaseUrl}/organizations`);
+  if (!response.ok()) {
+    throw new Error(`GET /organizations failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (IDN-01). */
+export function createSiteResponse(request: APIRequestContext, organizationId: string, name: string, region: string) {
+  return request.post(`${apiBaseUrl}/organizations/${organizationId}/sites`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { name, region },
+  });
+}
+
+export async function createSite(
+  request: APIRequestContext,
+  organizationId: string,
+  name: string,
+  region: string,
+): Promise<SiteDto> {
+  const response = await createSiteResponse(request, organizationId, name, region);
+  if (!response.ok()) {
+    throw new Error(`POST /organizations/${organizationId}/sites failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export function getSitesResponse(request: APIRequestContext, organizationId: string) {
+  return request.get(`${apiBaseUrl}/organizations/${organizationId}/sites`);
+}
+
+export async function getSites(request: APIRequestContext, organizationId: string): Promise<SiteDto[]> {
+  const response = await getSitesResponse(request, organizationId);
+  if (!response.ok()) {
+    throw new Error(`GET /organizations/${organizationId}/sites failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (IDN-01). */
+export function createTerminalResponse(request: APIRequestContext, siteId: string, label: string) {
+  return request.post(`${apiBaseUrl}/sites/${siteId}/terminals`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { label },
+  });
+}
+
+export async function createTerminal(request: APIRequestContext, siteId: string, label: string): Promise<TerminalDto> {
+  const response = await createTerminalResponse(request, siteId, label);
+  if (!response.ok()) {
+    throw new Error(`POST /sites/${siteId}/terminals failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export function getTerminalsResponse(request: APIRequestContext, siteId: string) {
+  return request.get(`${apiBaseUrl}/sites/${siteId}/terminals`);
+}
+
+export async function getTerminals(request: APIRequestContext, siteId: string): Promise<TerminalDto[]> {
+  const response = await getTerminalsResponse(request, siteId);
+  if (!response.ok()) {
+    throw new Error(`GET /sites/${siteId}/terminals failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
 }

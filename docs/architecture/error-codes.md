@@ -36,6 +36,12 @@ as any change to an error code, the same rule as everything else in
 | `client.header_required` | Validation | 400 | `GET /client-requirements` was called with no (or a malformed) `X-Brasa-Client` header. |
 | `client.unknown_client_id` | NotFound | 404 | `GET /client-requirements`'s `X-Brasa-Client` header names a client id with no configured version policy. |
 | `fiscal.no_lines` | Validation | 400 | `IssueSimplifiedInvoiceAsync` was called with an empty line list. |
+| `identity.invalid_organization_name` | Validation | 400 | `POST /organizations`'s (IDN-01) `name` is missing, empty or whitespace. |
+| `identity.invalid_region` | Validation | 400 | `POST /organizations/{id}/sites`'s (IDN-01) `region` isn't a recognised `PortugueseRegion` name. |
+| `identity.invalid_site_name` | Validation | 400 | `POST /organizations/{id}/sites`'s (IDN-01) `name` is missing, empty or whitespace. |
+| `identity.invalid_terminal_label` | Validation | 400 | `POST /sites/{id}/terminals`'s (IDN-01) `label` is missing, empty or whitespace. |
+| `identity.organization_not_found` | NotFound | 404 | The organization id in the request doesn't exist. |
+| `identity.site_not_found` | NotFound | 404 | The site id in the request doesn't exist. |
 | `floor.invalid_label` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `label` is missing, empty or whitespace. |
 | `floor.invalid_room_name` | Validation | 400 | `POST /rooms` or `PUT /rooms/{id}`'s (FLR-03) `name` is missing, empty or whitespace. |
 | `floor.invalid_seats` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `seats` is less than 1. |

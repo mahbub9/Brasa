@@ -14,6 +14,8 @@ using Brasa.Modules.Catalog;
 using Brasa.Modules.Catalog.Persistence;
 using Brasa.Modules.Floor;
 using Brasa.Modules.Floor.Persistence;
+using Brasa.Modules.Identity;
+using Brasa.Modules.Identity.Persistence;
 using Brasa.Modules.Ordering;
 using Brasa.Modules.Ordering.Persistence;
 using Brasa.Shared.Persistence;
@@ -173,6 +175,7 @@ builder.Services.AddRateLimiter(limiterOptions =>
 builder.Services.AddCatalogModule(connectionString);
 builder.Services.AddOrderingModule(connectionString);
 builder.Services.AddFloorModule(connectionString);
+builder.Services.AddIdentityModule(connectionString);
 
 // Fiscal.Portugal (the real, AT-certifiable engine) is I7 work — see
 // docs/architecture/decisions/0002-own-fiscal-engine.md. Until it exists, there
@@ -245,6 +248,7 @@ if (!app.Environment.IsProduction())
     await MigrateAsync(migrationsConnectionString, CancellationToken.None).ConfigureAwait(false);
     await DevCatalogSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
     await DevFloorSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
+    await DevIdentitySeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
 }
 
 // Must be one of the first middlewares in the pipeline — anything that
@@ -338,6 +342,7 @@ v1.MapGet("/ping", (IClock clock) => Results.Ok(new
 
 v1.MapCatalogEndpoints();
 v1.MapFloorEndpoints();
+v1.MapIdentityEndpoints();
 v1.MapOrderEndpoints();
 v1.MapClientEndpoints();
 
@@ -382,6 +387,14 @@ static async Task MigrateAsync(string migrationsConnectionString, CancellationTo
     await using (var floorDb = new FloorDbContext(floorOptions, tenantContext, tenantContextAccessor, clock))
     {
         await floorDb.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    var identityOptions = new DbContextOptionsBuilder<IdentityDbContext>()
+        .UseNpgsql(migrationsConnectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "identity"))
+        .Options;
+    await using (var identityDb = new IdentityDbContext(identityOptions, tenantContext, tenantContextAccessor, clock))
+    {
+        await identityDb.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
     }
 }
 

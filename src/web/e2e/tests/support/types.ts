@@ -64,6 +64,27 @@ export interface AdminMenuCategoryDto {
   items: AdminMenuItemDto[];
 }
 
+/** Top of the Organization/Site/Terminal hierarchy (IDN-01). */
+export interface OrganizationDto {
+  id: string;
+  name: string;
+}
+
+/** A physical restaurant location. Region is a PortugueseRegion name (IDN-01). */
+export interface SiteDto {
+  id: string;
+  organizationId: string;
+  name: string;
+  region: string;
+}
+
+/** A physical POS device registered at a site. No pairing/auth yet (IDN-01). */
+export interface TerminalDto {
+  id: string;
+  siteId: string;
+  label: string;
+}
+
 export interface ImportMenuItemsRowError {
   rowNumber: number;
   message: string;

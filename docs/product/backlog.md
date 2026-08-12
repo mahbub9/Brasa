@@ -40,7 +40,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
 | **API** | API platform & mobile readiness | 13 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
-| **IDN** | Identity & access | 0 | 16 | I3 |
+| **IDN** | Identity & access | 1 | 16 | I3 |
 | **CAT** | Catalog & menu | 11 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
 | **ORD** | Ordering | 16 | 22 | I0 (rest: I2) |
@@ -357,7 +357,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| IDN-01 | Organization / Site / Terminal hierarchy | ⬜ |
+| IDN-01 | Organization / Site / Terminal hierarchy | ✅ A narrow first slice — `Brasa.Modules.Identity`, previously an empty stub, now owns the `identity` schema: `Organization` (tenant-scoped, a business), `Site` (belongs to an organization, carries a real `PortugueseRegion` — Continental/Madeira/Azores — from day one, not a placeholder), `Terminal` (belongs to a site, a bare registry row). Create + list only via `POST`/`GET /organizations`, `POST`/`GET /organizations/{id}/sites`, `POST`/`GET /sites/{id}/terminals` — no update/delete yet, and no pairing/auth (IDN-06/07 are separate, not-yet-built rows), a deliberately minimal slice. `DevIdentitySeeder` seeds one full chain ("Brasa Demo, Lda" → "Restaurante Central" → "Caixa 1") the same way `DevFloorSeeder` seeds the floor plan. Exists to give `Site` a stable, referenceable id — the intended near-term consumers are CAT-05 (price lists per site) and FLR-06 (waiter section assignment), neither built yet. **Verified live**: `identity-organization-site-terminal.spec.ts` — create/list at all three levels, the region round-trips, validation and 404 paths (`identity.invalid_organization_name`/`invalid_site_name`/`invalid_region`/`invalid_terminal_label`/`organization_not_found`/`site_not_found`), and the seeded demo chain resolves end to end |
 | IDN-02 | User accounts, email verification, password reset | ⬜ |
 | IDN-03 | OAuth 2.1 / OIDC authorization-code flow with PKCE | ⬜ |
 | IDN-04 | Access token (JWT) issuance and validation | ⬜ |
