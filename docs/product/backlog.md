@@ -52,10 +52,10 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
-| **QA** | Automated testing | 8 | 14 | I0–I1 → ongoing |
+| **QA** | Automated testing | 9 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **100** | **292** | |
+| | **Total** | **101** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -610,7 +610,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | QA-01 | Choose an E2E framework (Playwright vs alternatives) | ✅ Playwright + TypeScript, `src/web/e2e` |
 | QA-02 | E2E harness — app + Postgres + seeded tenant | 🚧 `webServer` starts API + `pos` fresh each run; database is the persistent dev instance, not disposable per run |
 | QA-03 | Deterministic test data builders | ✅ `tests/support/api.ts` — looks menu items up by name, never by id |
-| QA-04 | Fixed-clock control for time-dependent tests | ⬜ nothing built yet needs it — see e2e-testing.md |
+| QA-04 | Fixed-clock control for time-dependent tests | ✅ Revisited once CAT-16/CAT-07-08 actually needed it — both had shipped by waiting out a real wall-clock window instead. `TestableClock : IClock` (`Brasa.Shared`) holds its override in a static `AsyncLocal<DateTimeOffset?>`, not instance or DI-scoped state: `MockFiscalProvider` is deliberately **singleton** (its in-memory sequential numbering must survive across requests), and a singleton can't consume a scoped `IClock` — ASP.NET Core's own DI validation refused to start the app on the first attempt, a real captive-dependency bug caught before it shipped (see the trap in `docs/ai/README.md`). `TestClockMiddleware` reads an optional `X-Brasa-Test-Clock` header (ISO 8601) and fixes the override for that request's own async call chain only — two Playwright workers overriding to different instants against the one shared running API never interfere with each other. Mirrors `DevTenantMiddleware` exactly: registered unconditionally, throws on the very first request if `IsProduction()`, so a misconfigured deployment fails loudly rather than ever letting a client forge the instant a fiscal document is issued at. A missing/unparseable header is silently ignored — this is a testing lever, not public API surface. **Verified live**: `test-clock.spec.ts` proves the mechanism directly against `GET /ping` (which echoes `IClock.UtcNow`) — an override lands exactly on the request that sent it, a concurrent unheadered request still sees the real clock, and an unparseable header degrades to the real clock too. `menu-item-scheduled-price.spec.ts` (CAT-16) is the real first consumer, retrofitted to fast-forward past a scheduled price's effective date instead of `test.slow()`-waiting a real ~2s window — same assertions, now instant and deterministic every run |
 | QA-05 | E2E: full service loop, seat → order → fire → pay → close | ✅ `walking-skeleton.spec.ts` — open → order → split → close → receipt, driving the real UI. "Fire" and "pay" aren't built yet (KIT/PAY), so the loop ends at close |
 | QA-06 | E2E: offline mode — network killed mid-service | ⬜ blocked on WEB-04/SYN — no offline capability exists to test |
 | QA-07 | E2E: split-bill flows | ✅ Even split (`split-preview.spec.ts`, sweeps 1/2/3/5/7 ways), by-item (`split-by-item.spec.ts`, ORD-16) and by-cover (`split-by-cover.spec.ts`, ORD-17) all covered — this row's own status had gone stale, still citing ORD-16/17 as unbuilt blockers after both shipped |

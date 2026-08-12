@@ -10,6 +10,7 @@ using Brasa.Api.Idempotency;
 using Brasa.Api.RateLimiting;
 using Brasa.Api.Seed;
 using Brasa.Api.Tenancy;
+using Brasa.Api.Testing;
 using Brasa.Fiscal.Mock;
 using Brasa.Modules.Catalog;
 using Brasa.Modules.Catalog.Persistence;
@@ -115,7 +116,17 @@ var migrationsConnectionString = builder.Configuration.GetConnectionString("Post
     ?? throw new InvalidOperationException("ConnectionStrings:PostgresMigrations is not configured.");
 
 // ── Shared kernel ───────────────────────────────────────────────────────────
-builder.Services.AddSingleton<IClock, SystemClock>();
+// TestableClock (QA-04) replaces the plain SystemClock registration so
+// TestClockMiddleware has something to override. Singleton, not scoped —
+// MockFiscalProvider is deliberately singleton (its in-memory sequential
+// numbering must survive across requests), and a singleton cannot consume
+// a scoped IClock (ASP.NET Core's own DI validation refuses to start the
+// app if it tries — caught exactly this way). Per-request isolation comes
+// from TestableClock's own internal AsyncLocal instead of DI scoping — see
+// its remarks. It behaves exactly like SystemClock until something calls
+// OverrideWith, which only that Production-guarded middleware ever does.
+builder.Services.AddSingleton<TestableClock>();
+builder.Services.AddSingleton<IClock>(sp => sp.GetRequiredService<TestableClock>());
 builder.Services.AddBrasaTenancy();
 builder.Services.AddMemoryCache();
 
@@ -290,6 +301,12 @@ app.UseCors(WebClientsCorsPolicy);
 // the idempotency cache key, the rate limiter's partition key, and every
 // module's RLS session variable all depend on it.
 app.UseMiddleware<DevTenantMiddleware>();
+
+// QA-04 — must run before any handler resolves IClock, which every one of
+// them does indirectly the moment it needs UtcNow. Order relative to
+// DevTenantMiddleware doesn't matter; placed right after it since both are
+// the same "structurally impossible in Production" shape.
+app.UseMiddleware<TestClockMiddleware>();
 
 // OPS-07 — every log line for the rest of the request carries TenantId
 // (and Site/Terminal/User ids once auth populates them). Doesn't reach

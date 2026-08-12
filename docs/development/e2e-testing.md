@@ -2,10 +2,9 @@
 
 > **Status: I0/I1 harness built, plus a first slice of I2.** `src/web/e2e` —
 > Playwright + TypeScript, against the real `pos` UI and the real API
-> (QA-01/02/03/05/09/10/14 — see [../product/backlog.md](../product/backlog.md)).
-> QA-04 (clock control) and QA-06 (offline chaos) are **not** built yet — see
-> §"What's actually built" below for why, honestly, rather than pretending
-> they're covered.
+> (QA-01/02/03/04/05/09/10/14 — see [../product/backlog.md](../product/backlog.md)).
+> QA-06 (offline chaos) is **not** built yet — see §"What's actually built"
+> below for why, honestly, rather than pretending it's covered.
 
 ## Why this needs a plan
 
@@ -126,14 +125,36 @@ not a defect in any one spec. If you hit "No free table available", check
 /tables/{id}/clear` any `Dirty` table, and re-run — or just wait for a
 disposable-per-run database (see "What's next" below).
 
+### Clock control (QA-04)
+
+`TestClockMiddleware` reads an optional `X-Brasa-Test-Clock` header (an ISO
+8601 instant) and fixes `IClock.UtcNow` to it for that request's own async
+call chain — see `TestableClock`'s own remarks for why the override lives in
+a static `AsyncLocal<DateTimeOffset?>` rather than a DI-scoped service
+(`MockFiscalProvider` is deliberately singleton, and a singleton can't
+consume a scoped `IClock`). Never reachable in Production — the middleware
+throws on the very first request if `IsProduction()`, the same guard
+`DevTenantMiddleware` uses.
+
+Revisited once CAT-16 (scheduled price changes) and CAT-07/08 (tax rule
+effective dates) actually needed it — both had already shipped by waiting
+out a real ~2s wall-clock window (`test.slow()`) instead, since nothing
+before them was time-sensitive enough to justify building this speculatively.
+`menu-item-scheduled-price.spec.ts` is the retrofitted proof: the same
+assertions, now fast-forwarding the API's clock past the scheduled instant
+instead of waiting for real time to catch up — instant and deterministic
+every run. `test-clock.spec.ts` proves the mechanism itself directly against
+`GET /ping` (which echoes `IClock.UtcNow` verbatim): an override lands only
+on the request that sent it, a concurrent unheadered request still sees the
+real clock, and an unparseable header is silently ignored rather than
+rejected — this is a testing lever, not public API surface.
+
+Use `testClockHeader(instant)` (`support/api.ts`) wherever a test needs to
+simulate "as of a later instant" without a real wait — pass its result as
+the `headers` argument any helper that accepts one already forwards.
+
 ### What's deliberately not built yet
 
-- **QA-04 (clock control).** No test-only `IClock` override exists in the
-  API. Nothing the E2E suite currently exercises is time-sensitive enough to
-  need it — no daily close, no business-day rollover, no SAF-T period
-  boundary is wired up yet. Building clock control now, before anything
-  depends on it, would be speculative. Revisit when AGT (Site Agent) or FIS
-  (SAF-T) work lands.
 - **QA-06 (offline chaos).** The `pos` shell has **no offline capability at
   all** yet — no Dexie, no service worker, no outbox (that's `WEB-04`,
   depending on the `SYN` epic). An E2E test that kills the network right now
@@ -178,9 +199,11 @@ Seeded tenant, site, terminal, menu and staff, built from typed builders
 database.
 
 ### Clock control
-The API needs a test-only `IClock` that E2E can set, so business-day rollover
-and Azores offsets are testable at any wall-clock time (QA-04). It must be
-impossible to enable outside a test environment.
+✅ Built — see "Clock control (QA-04)" above. `TestClockMiddleware` throws on
+the first request if `IsProduction()`, so it is structurally impossible to
+enable outside dev/test. Business-day rollover and Azores offsets are not
+tested by anything yet (`Order`/`Reporting` don't have a daily-close concept
+built), but the mechanism itself is ready for whichever task builds that.
 
 ### Site Agent in the loop
 Decide whether E2E runs against a real agent process or a stub. Real is more

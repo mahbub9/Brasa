@@ -7,6 +7,7 @@ import {
   getMenu,
   importMenuItemsResponse,
   openOrderOnAnyFreeTable,
+  testClockHeader,
   updateMenuItemScheduledPrice,
   updateMenuItemScheduledPriceResponse,
 } from './support/api';
@@ -17,9 +18,13 @@ import {
 // lazily on every read, the same way CAT-11's schedule resolves its
 // recurring window. GET /menu's Price field and AddLine's snapshot must
 // both already reflect a due change with zero manual intervention — that
-// is the actual thing worth proving, not just that the endpoint exists, so
-// this spec waits for a real short window to elapse rather than mocking
-// time (there is no clock-injection seam for a live API process yet, QA-04).
+// is the actual thing worth proving, not just that the endpoint exists.
+// Schedules a full minute out (comfortably future, no race with request
+// latency), confirms it is not yet due against the real clock, then uses
+// QA-04's X-Brasa-Test-Clock header to fast-forward the API's own clock
+// past that instant for the "is it due now" requests only — no real wait,
+// deterministic every run (this spec used to `test.slow()` and actually
+// wait out a ~2s window before QA-04 existed).
 //
 // Uses a freshly-imported item, isolated from the shared seeded menu other
 // specs read concurrently — same reasoning as menu-item-takeaway-price.spec.ts.
@@ -46,12 +51,10 @@ function findItem(categories: Awaited<ReturnType<typeof getMenu>>, name: string)
 
 test.describe('menu item scheduled price (CAT-16)', () => {
   test('a due change is reflected in GET /menu and charged by AddLine, with no manual step', async ({ request }) => {
-    test.slow(); // waits out a real ~2s window below -- see the file-level comment.
-
     const item = await createTestItem(request, '5.00');
 
     try {
-      const effectiveFromUtc = new Date(Date.now() + 1500).toISOString();
+      const effectiveFromUtc = new Date(Date.now() + 60_000).toISOString();
       const scheduled = await updateMenuItemScheduledPrice(request, item.id, 6.0, effectiveFromUtc);
       expect(scheduled.scheduledPrice).toEqual({
         newPrice: { amount: 6.0, currency: 'EUR' },
@@ -65,18 +68,20 @@ test.describe('menu item scheduled price (CAT-16)', () => {
       expect(beforeDue.price.amount).toBeCloseTo(5.0, 2);
       expect(beforeDue.scheduledPrice?.isActive).toBe(false);
 
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-
-      const afterDue = findItem(await getMenu(request), item.name);
+      // QA-04: fast-forward the API's own clock to just past the scheduled
+      // instant, for these requests only -- no real wait.
+      const afterEffective = testClockHeader(new Date(Date.parse(effectiveFromUtc) + 1000).toISOString());
+      const afterDue = findItem(await getMenu(request, afterEffective), item.name);
       expect(afterDue.price.amount).toBeCloseTo(6.0, 2);
       expect(afterDue.scheduledPrice?.isActive).toBe(true);
 
       // The actual charge, not just the display -- AddLine must snapshot
       // the same effective price GET /menu just showed, never the stale
-      // raw one.
+      // raw one. Same fast-forwarded clock, since AddLine resolves
+      // EffectivePrice against whatever instant this request itself sees.
       const { order, table } = await openOrderOnAnyFreeTable(request, 2);
       try {
-        const withLine = await addLine(request, order.id, item.id, 1);
+        const withLine = await addLine(request, order.id, item.id, 1, [], afterEffective);
         expect(withLine.lines[0].unitPrice.amount).toBeCloseTo(6.0, 2);
       } finally {
         await closeOrderAndClearTable(request, order.id, table.id);

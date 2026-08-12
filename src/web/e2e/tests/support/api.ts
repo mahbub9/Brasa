@@ -39,12 +39,21 @@ function idempotencyKey(): string {
 }
 
 /** Fetches the live seeded menu — never hardcode menu item ids, they are UUIDv7 and not stable across a fresh database. */
-export async function getMenu(request: APIRequestContext): Promise<MenuCategoryDto[]> {
-  const response = await request.get(`${apiBaseUrl}/menu`);
+export async function getMenu(request: APIRequestContext, headers: Record<string, string> = {}): Promise<MenuCategoryDto[]> {
+  const response = await request.get(`${apiBaseUrl}/menu`, { headers });
   if (!response.ok()) {
     throw new Error(`GET /menu failed: ${response.status()} ${await response.text()}`);
   }
   return response.json();
+}
+
+/**
+ * Fixes the API's clock to `instant` for one request only (QA-04) — never
+ * reachable in Production. Lets a test assert a scheduled change (CAT-16)
+ * or an effective-date boundary (CAT-07/08) is due without a real wait.
+ */
+export function testClockHeader(instant: string): Record<string, string> {
+  return { 'X-Brasa-Test-Clock': instant };
 }
 
 /** Every category and item, hidden/unavailable ones included — WEB-10's admin management view (GetMenuAllAsync). */
@@ -492,9 +501,10 @@ export async function addLine(
   menuItemId: string,
   quantity: number,
   selectedModifierIds: string[] = [],
+  headers: Record<string, string> = {},
 ): Promise<OrderDto> {
   const response = await request.post(`${apiBaseUrl}/orders/${orderId}/lines`, {
-    headers: { 'Idempotency-Key': idempotencyKey() },
+    headers: { 'Idempotency-Key': idempotencyKey(), ...headers },
     data: { menuItemId, quantity, selectedModifierIds },
   });
   if (!response.ok()) {
