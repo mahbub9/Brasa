@@ -1,4 +1,5 @@
 using Brasa.Api.Contracts;
+using Brasa.Api.Hubs;
 using Brasa.Modules.Catalog.Domain;
 using Brasa.Modules.Catalog.Persistence;
 using Brasa.Modules.Fiscal;
@@ -8,6 +9,7 @@ using Brasa.Modules.Ordering.Persistence;
 using Brasa.Shared.Primitives;
 using Brasa.Shared.Tenancy;
 using Brasa.Shared.Time;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Brasa.Api.Endpoints;
@@ -112,6 +114,7 @@ public static class OrderEndpoints
         OpenOrderRequest request,
         OrderingDbContext orderingDb,
         FloorDbContext floorDb,
+        IHubContext<FloorHub> floorHub,
         IClock clock,
         CancellationToken cancellationToken)
     {
@@ -157,6 +160,8 @@ public static class OrderEndpoints
         var order = Order.Open(table.Id, table.Label, request.CoverCount, clock.UtcNow);
         orderingDb.Orders.Add(order);
         await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        await floorHub.NotifyFloorChangedAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.Created($"/api/v1/orders/{order.Id}", order.ToDto());
     }
@@ -610,6 +615,7 @@ public static class OrderEndpoints
         TransferOrderRequest request,
         OrderingDbContext orderingDb,
         FloorDbContext floorDb,
+        IHubContext<FloorHub> floorHub,
         CancellationToken cancellationToken)
     {
         var order = await FindOrderAsync(orderingDb, orderId, cancellationToken).ConfigureAwait(false);
@@ -659,6 +665,8 @@ public static class OrderEndpoints
         {
             return Error.Conflict("floor.table_not_free", $"Table {newTable.Label} is not free.").ToProblem();
         }
+
+        await floorHub.NotifyFloorChangedAsync(cancellationToken).ConfigureAwait(false);
 
         // Floor has already committed at this point, so the tables are
         // correctly swapped even in the (should-be-impossible, since Open
@@ -749,6 +757,7 @@ public static class OrderEndpoints
         MergeOrdersRequest request,
         OrderingDbContext orderingDb,
         FloorDbContext floorDb,
+        IHubContext<FloorHub> floorHub,
         CancellationToken cancellationToken)
     {
         if (request.SecondaryOrderId == orderId)
@@ -804,6 +813,7 @@ public static class OrderEndpoints
             try
             {
                 await floorDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await floorHub.NotifyFloorChangedAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -943,6 +953,7 @@ public static class OrderEndpoints
         Guid orderId,
         OrderingDbContext orderingDb,
         FloorDbContext floorDb,
+        IHubContext<FloorHub> floorHub,
         IFiscalProvider fiscalProvider,
         ITenantContext tenantContext,
         IClock clock,
@@ -1005,6 +1016,7 @@ public static class OrderEndpoints
             try
             {
                 await floorDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+                await floorHub.NotifyFloorChangedAsync(cancellationToken).ConfigureAwait(false);
             }
             catch (DbUpdateConcurrencyException)
             {

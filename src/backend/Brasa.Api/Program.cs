@@ -5,6 +5,7 @@ using Brasa.Api;
 using Brasa.Api.ClientVersioning;
 using Brasa.Api.Endpoints;
 using Brasa.Api.HealthChecks;
+using Brasa.Api.Hubs;
 using Brasa.Api.Idempotency;
 using Brasa.Api.RateLimiting;
 using Brasa.Api.Seed;
@@ -219,6 +220,11 @@ builder.Services.AddApiVersioning(options =>
     options.ReportApiVersions = true;
 });
 
+// API-16 — this codebase's first realtime channel. See FloorHub's own
+// remarks: broadcast-only, payload-less, no server-invokable methods, so
+// no hub-specific service configuration beyond the default is needed.
+builder.Services.AddSignalR();
+
 // Web clients are separate origins from day one (Vite dev server today, real
 // domains for pos/kds/admin/order later) — see docs/architecture/api-contract.md.
 // Origins come from configuration, not a hardcoded localhost port, because each
@@ -348,6 +354,11 @@ v1.MapComboEndpoints();
 v1.MapTaxRuleEndpoints();
 v1.MapOrderEndpoints();
 v1.MapClientEndpoints();
+
+// Not under /api/v1 -- a hub is a connection, not a versioned resource.
+// API-16/17: this codebase's first realtime channel, broadcast-only,
+// payload-less (see FloorHub's own remarks for why).
+app.MapHub<FloorHub>("/hubs/floor");
 
 await app.RunAsync().ConfigureAwait(false);
 

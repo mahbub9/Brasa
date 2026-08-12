@@ -1,7 +1,9 @@
 using Brasa.Api.Contracts;
+using Brasa.Api.Hubs;
 using Brasa.Modules.Floor.Domain;
 using Brasa.Modules.Floor.Persistence;
 using Brasa.Shared.Primitives;
+using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Brasa.Api.Endpoints;
@@ -81,7 +83,8 @@ public static class FloorEndpoints
         return Results.Ok(dto);
     }
 
-    private static async Task<IResult> ClearTableAsync(Guid tableId, FloorDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> ClearTableAsync(
+        Guid tableId, FloorDbContext db, IHubContext<FloorHub> floorHub, CancellationToken cancellationToken)
     {
         var table = await db.Tables
             .FirstOrDefaultAsync(t => t.Id == tableId, cancellationToken)
@@ -111,10 +114,13 @@ public static class FloorEndpoints
             return Error.Conflict("floor.table_not_dirty", $"Table {table.Label} is not dirty.").ToProblem();
         }
 
+        await floorHub.NotifyFloorChangedAsync(cancellationToken).ConfigureAwait(false);
+
         return Results.Ok(table.ToDto());
     }
 
-    private static async Task<IResult> RequestBillAsync(Guid tableId, FloorDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> RequestBillAsync(
+        Guid tableId, FloorDbContext db, IHubContext<FloorHub> floorHub, CancellationToken cancellationToken)
     {
         var table = await db.Tables
             .FirstOrDefaultAsync(t => t.Id == tableId, cancellationToken)
@@ -143,6 +149,8 @@ public static class FloorEndpoints
             // same conflict a stale in-memory check would have given.
             return Error.Conflict("floor.table_not_occupied", $"Table {table.Label} is not occupied.").ToProblem();
         }
+
+        await floorHub.NotifyFloorChangedAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.Ok(table.ToDto());
     }

@@ -2,6 +2,7 @@ import { LanguageToggle } from '@brasa/ui/components/LanguageToggle';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from './api/client';
+import { connectFloorHub } from './api/floorHub';
 import type {
   CloseOrderResponse,
   MenuCategoryDto,
@@ -46,6 +47,14 @@ export default function App() {
   useEffect(() => {
     api.getMenu().then(setMenu).catch((err) => setError(describeError(err)));
     loadFloor();
+
+    // API-16: another terminal opening/clearing/transferring a table shows
+    // up here without a manual refresh or a poll -- the floor picker was
+    // the whole reason this codebase's first realtime channel exists.
+    const floorHub = connectFloorHub(loadFloor);
+    return () => {
+      void floorHub.stop();
+    };
   }, []);
 
   function loadFloor() {
