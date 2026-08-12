@@ -32,6 +32,7 @@ public sealed record MenuItemDto(
     string? Course,
     string? Station,
     MenuItemScheduleDto? Schedule,
+    bool IsCouvert,
     IReadOnlyList<string> Allergens,
     IReadOnlyList<ModifierGroupDto> ModifierGroups);
 
@@ -79,6 +80,9 @@ public sealed record UpdateMenuItemCourseRequest(string? Course);
 /// e.g. <c>"Grill"</c>; null clears it back to unassigned.
 /// </summary>
 public sealed record UpdateMenuItemStationRequest(string? Station);
+
+/// <summary>Request body to mark or unmark a menu item as couvert (CAT-12).</summary>
+public sealed record UpdateMenuItemCouvertRequest(bool IsCouvert);
 
 /// <summary>
 /// Request body to set or clear a menu item's recurring availability window
@@ -153,6 +157,7 @@ public static class CatalogDtoMappings
         item.Course?.ToString(),
         item.Station?.ToString(),
         item.Schedule?.ToDto(),
+        item.IsCouvert,
         [.. item.Allergens.Select(a => a.ToString())],
         [.. item.ModifierGroups.OrderBy(g => g.DisplayOrder).Select(g => g.ToDto())]);
 

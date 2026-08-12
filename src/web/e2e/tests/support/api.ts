@@ -216,6 +216,26 @@ export async function updateMenuItemSchedule(
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-12). */
+export function updateMenuItemCouvertResponse(request: APIRequestContext, itemId: string, isCouvert: boolean) {
+  return request.put(`${apiBaseUrl}/menu/items/${itemId}/couvert`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { isCouvert },
+  });
+}
+
+export async function updateMenuItemCouvert(
+  request: APIRequestContext,
+  itemId: string,
+  isCouvert: boolean,
+): Promise<MenuItemDto> {
+  const response = await updateMenuItemCouvertResponse(request, itemId, isCouvert);
+  if (!response.ok()) {
+    throw new Error(`PUT /menu/items/${itemId}/couvert failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Fetches the live seeded floor plan. */
 export async function getFloor(request: APIRequestContext): Promise<RoomDto[]> {
   const response = await request.get(`${apiBaseUrl}/floor`);

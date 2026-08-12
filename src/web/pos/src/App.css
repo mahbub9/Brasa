@@ -291,6 +291,22 @@ main {
   margin-top: 0;
 }
 
+/* Couvert (CAT-12) — a distinct one-tap strip above the regular menu grid,
+   not a category within it: couvert items still appear in their normal
+   category too, this is purely a shortcut that rings one up at the order's
+   cover count instead of the usual quantity of 1. */
+.couvert-bar {
+  margin-bottom: 1.5rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.couvert-bar h2 {
+  font-size: 1.05rem;
+  color: var(--brasa);
+  margin: 0 0 0.75rem;
+}
+
 .menu-items {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));

@@ -40,6 +40,7 @@ export interface MenuItemDto {
   course: string | null;
   station: string | null;
   schedule: MenuItemScheduleDto | null;
+  isCouvert: boolean;
   allergens: string[];
   modifierGroups: ModifierGroupDto[];
 }

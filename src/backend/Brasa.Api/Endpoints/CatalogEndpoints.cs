@@ -68,6 +68,10 @@ public static class CatalogEndpoints
             .WithName("UpdateMenuItemSchedule")
             .WithSummary("Sets or clears a menu item's recurring day/time availability window (CAT-11).");
 
+        group.MapPut("/menu/items/{itemId:guid}/couvert", UpdateMenuItemCouvertAsync)
+            .WithName("UpdateMenuItemCouvert")
+            .WithSummary("Marks or unmarks a menu item as couvert (CAT-12).");
+
         group.MapPut("/menu/categories/{categoryId:guid}/visibility", UpdateMenuCategoryVisibilityAsync)
             .WithName("UpdateMenuCategoryVisibility")
             .WithSummary("Hides a whole category (and every item under it) from GET /menu, or shows it again (CAT-01).");
@@ -494,6 +498,37 @@ public static class CatalogEndpoints
             return Error.Validation("catalog.invalid_schedule", ex.Message).ToProblem();
         }
 
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(item.ToDto());
+    }
+
+    /// <summary>
+    /// Marks or unmarks a menu item as couvert (CAT-12) — a tag only, same
+    /// shape as CAT-13/86'ing: <c>AddLine</c> needs no changes at all, since
+    /// adding a couvert item is the same call as any other. Ships ahead of
+    /// its consumer the same way CAT-14/15 did: <c>pos</c>'s dedicated
+    /// one-tap "add at cover count" affordance is the only thing that reads
+    /// this flag today.
+    /// </summary>
+    private static async Task<IResult> UpdateMenuItemCouvertAsync(
+        Guid itemId,
+        UpdateMenuItemCouvertRequest request,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        item.SetIsCouvert(request.IsCouvert);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         return Results.Ok(item.ToDto());

@@ -18,6 +18,7 @@ internal sealed class MenuItemConfiguration : IEntityTypeConfiguration<MenuItem>
         builder.Property(i => i.Description).HasMaxLength(1000);
         builder.Property(i => i.IsAlcoholic).IsRequired();
         builder.Property(i => i.IsAvailable).IsRequired();
+        builder.Property(i => i.IsCouvert).IsRequired();
         builder.Property(i => i.Course).HasConversion<string>().HasMaxLength(20);
         builder.Property(i => i.Station).HasConversion<string>().HasMaxLength(20);
         builder.Property(i => i.DeletedAtUtc);

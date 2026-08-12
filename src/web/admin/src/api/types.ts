@@ -30,6 +30,7 @@ export interface MenuItemDto {
   isAlcoholic: boolean;
   isAvailable: boolean;
   schedule: MenuItemScheduleDto | null;
+  isCouvert: boolean;
   allergens: string[];
 }
 
@@ -65,6 +66,10 @@ export interface UpdateMenuItemScheduleRequest {
   daysOfWeek: string[] | null;
   startTime: string | null;
   endTime: string | null;
+}
+
+export interface UpdateMenuItemCouvertRequest {
+  isCouvert: boolean;
 }
 
 export interface UpdateMenuCategoryVisibilityRequest {

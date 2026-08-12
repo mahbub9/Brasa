@@ -161,6 +161,13 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
     });
   }
 
+  function toggleCouvert() {
+    void run(async () => {
+      await api.setItemCouvert(item.id, { isCouvert: !item.isCouvert });
+      onReload();
+    });
+  }
+
   function savePrice() {
     const parsed = Number(priceDraft);
     if (Number.isNaN(parsed)) {
@@ -413,6 +420,11 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
           onClick={toggleAvailability}
         >
           {item.isAvailable ? t('menu.markUnavailable') : t('menu.markAvailable')}
+        </button>
+
+        {item.isCouvert && <span className="badge badge-on">{t('menu.couvert')}</span>}
+        <button type="button" data-testid={`toggle-couvert-${item.name}`} disabled={busy} onClick={toggleCouvert}>
+          {item.isCouvert ? t('menu.unmarkCouvert') : t('menu.markCouvert')}
         </button>
 
         {confirmingDelete ? (

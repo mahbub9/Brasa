@@ -44,6 +44,9 @@ export const en = {
     addSchedule: 'Add schedule',
     scheduleStart: 'Start',
     scheduleEnd: 'End',
+    couvert: 'Couvert',
+    markCouvert: 'Mark as couvert',
+    unmarkCouvert: 'Unmark as couvert',
     day: {
       Monday: 'Mon',
       Tuesday: 'Tue',

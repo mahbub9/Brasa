@@ -9,6 +9,7 @@ import type {
   TableDto,
   UpdateMenuCategoryVisibilityRequest,
   UpdateMenuItemAvailabilityRequest,
+  UpdateMenuItemCouvertRequest,
   UpdateMenuItemPriceRequest,
   UpdateMenuItemScheduleRequest,
   UpdateMenuItemTakeawayPriceRequest,
@@ -99,6 +100,9 @@ export const api = {
 
   setItemSchedule: (itemId: string, body: UpdateMenuItemScheduleRequest) =>
     put<MenuItemDto>(`/menu/items/${itemId}/schedule`, body),
+
+  setItemCouvert: (itemId: string, body: UpdateMenuItemCouvertRequest) =>
+    put<MenuItemDto>(`/menu/items/${itemId}/couvert`, body),
 
   setCategoryVisibility: (categoryId: string, body: UpdateMenuCategoryVisibilityRequest) =>
     put(`/menu/categories/${categoryId}/visibility`, body),

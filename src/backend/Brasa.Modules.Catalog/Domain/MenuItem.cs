@@ -112,6 +112,28 @@ public sealed class MenuItem : Entity, ISoftDeletable
     /// </summary>
     public MenuItemSchedule? Schedule { get; private set; }
 
+    /// <summary>
+    /// Whether this item is <i>couvert</i> — bread, olives, butter and the
+    /// like, offered at the table before ordering (CAT-12). Purely a tag:
+    /// it changes nothing about how <c>AddLine</c> prices or taxes the
+    /// item, and adding one is the same call as any other menu item. What
+    /// it changes is <c>pos</c>'s UI — a dedicated one-tap "add at cover
+    /// count" affordance — and, eventually, separate Z-report accounting
+    /// (not built yet, <c>Reporting</c> is empty). Being couvert does not
+    /// remove the item from the ordinary menu grid either: a guest can
+    /// still be charged for extra couvert, or a regular dish that happens
+    /// to be marked couvert can still be rung up the normal way.
+    /// </summary>
+    /// <remarks>
+    /// Portuguese consumer law requires couvert to be optional and charged
+    /// only if actually consumed — already true of every menu item today,
+    /// since nothing is ever added to an order except by an explicit
+    /// <c>AddLine</c> call. This flag does not change that; it only makes
+    /// offering and accepting couvert a one-tap action instead of a normal
+    /// menu lookup.
+    /// </remarks>
+    public bool IsCouvert { get; private set; }
+
     /// <inheritdoc/>
     /// <remarks>
     /// Distinct from <see cref="IsAvailable"/>: 86'ing is "out of stock today,
@@ -181,6 +203,9 @@ public sealed class MenuItem : Entity, ISoftDeletable
     /// </summary>
     public bool IsAvailableAt(DayOfWeek dayOfWeek, TimeOnly timeOfDay)
         => Schedule is null || Schedule.IsActiveAt(dayOfWeek, timeOfDay);
+
+    /// <summary>Marks or unmarks this item as couvert (CAT-12).</summary>
+    public void SetIsCouvert(bool isCouvert) => IsCouvert = isCouvert;
 
     /// <summary>Sets or clears the description (CAT-02). Null/whitespace clears it.</summary>
     public void SetDescription(string? description)

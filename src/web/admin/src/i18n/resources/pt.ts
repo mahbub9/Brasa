@@ -41,6 +41,9 @@ export const pt = {
     addSchedule: 'Adicionar horário',
     scheduleStart: 'Início',
     scheduleEnd: 'Fim',
+    couvert: 'Couvert',
+    markCouvert: 'Marcar como couvert',
+    unmarkCouvert: 'Desmarcar como couvert',
     day: {
       Monday: 'Seg',
       Tuesday: 'Ter',

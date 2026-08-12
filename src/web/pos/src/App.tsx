@@ -11,6 +11,7 @@ import type {
   PreBillDto,
   RoomDto,
 } from './api/types';
+import { CouvertBar } from './components/CouvertBar';
 import { ErrorBanner } from './components/ErrorBanner';
 import i18n from './i18n/i18n';
 import { MenuGrid } from './components/MenuGrid';
@@ -108,18 +109,23 @@ export default function App() {
     setPickerItem(null);
   }
 
-  async function addLine(menuItemId: string, selectedModifierIds: string[]) {
+  async function addLine(menuItemId: string, selectedModifierIds: string[], quantity = 1) {
     if (!order) return;
     setBusy(true);
     setError(null);
     try {
-      setOrder(await api.addLine(order.id, { menuItemId, quantity: 1, selectedModifierIds }));
+      setOrder(await api.addLine(order.id, { menuItemId, quantity, selectedModifierIds }));
       setSplitAmounts(null);
     } catch (err) {
       setError(describeError(err));
     } finally {
       setBusy(false);
     }
+  }
+
+  function handleAddCouvert(item: MenuItemDto) {
+    if (!order) return;
+    void addLine(item.id, [], order.coverCount);
   }
 
   async function handlePreviewSplit() {
@@ -261,7 +267,17 @@ export default function App() {
           <Receipt result={closeResult} onNewTable={handleNewTable} />
         ) : order ? (
           <div className="ordering-layout">
-            <MenuGrid categories={menu ?? []} onSelectItem={handleSelectItem} disabled={busy} isTakeaway={order.isTakeaway} />
+            <div className="menu-column">
+              {!order.isTakeaway && (
+                <CouvertBar
+                  items={(menu ?? []).flatMap((c) => c.items).filter((item) => item.isCouvert)}
+                  coverCount={order.coverCount}
+                  disabled={busy}
+                  onAdd={handleAddCouvert}
+                />
+              )}
+              <MenuGrid categories={menu ?? []} onSelectItem={handleSelectItem} disabled={busy} isTakeaway={order.isTakeaway} />
+            </div>
             <OrderSummary
               order={order}
               splitParts={splitParts}

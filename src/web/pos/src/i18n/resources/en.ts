@@ -41,6 +41,10 @@ export const en = {
       Molluscs: 'Molluscs',
     },
   },
+  couvert: {
+    title: 'Couvert',
+    add: 'Add for {{count}}',
+  },
   modifiers: {
     title: 'Customise',
     required: 'Required',
