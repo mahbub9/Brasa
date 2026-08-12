@@ -41,7 +41,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **API** | API platform & mobile readiness | 13 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 0 | 16 | I3 |
-| **CAT** | Catalog & menu | 9 | 19 | I0 (rest: I1) |
+| **CAT** | Catalog & menu | 10 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 3 | 7 | I1 |
 | **ORD** | Ordering | 16 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
@@ -388,7 +388,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | CAT-08 | VAT resolution service with date-aware lookup | ⬜ |
 | CAT-09 | Alcohol flag driving the 23% band separation | ✅ `MenuItem.IsAlcoholic` |
 | CAT-10 | Combos / menus (*menu do dia*) | ⬜ |
-| CAT-11 | *Prato do dia* — daily specials with schedules | ⬜ |
+| CAT-11 | *Prato do dia* — daily specials with schedules | ✅ `MenuItem.Schedule` (`MenuItemSchedule`: a `[Flags] ScheduleDays` mask + start/end `TimeOnly`, start inclusive/end exclusive, no overnight wraparound — see its own doc comment) via `PUT /menu/items/{id}/schedule`, all-or-nothing (days+start+end together, or all three cleared). `GET /menu` filters a scheduled item out entirely outside its window; `GET /menu/all` never filters on it, same shape as CAT-01/13's visible-vs-management split. No per-tenant region/site record exists yet (IDN-01/CAT-05), so this uses mainland `Europe/Lisbon` time via the existing `PortugueseTimeZone` helper — an honest gap, not silently wrong, and the same default the rest of the app already assumes. `admin` gets a day-checkboxes + two time-inputs editor; `pos` needed no changes at all, since an out-of-window item simply isn't in `GET /menu`'s response. **Verified live**: `menu-item-schedule.spec.ts` — a window covering today (computed from the real `Europe/Lisbon` date, not hardcoded) keeps the item on `GET /menu`; a window excluding today removes it from `GET /menu` but not `GET /menu/all`; clearing restores it; an invalid day name, an unparsable time, a backwards window, a partial (some-but-not-all-fields) update and an unknown item are all rejected |
 | CAT-12 | *Couvert* handling — charged only when consumed | ⬜ |
 | CAT-13 | Item availability / 86-ing (out of stock) | ✅ `MarkAvailable`/`MarkUnavailable` existed since I0 and `AddLine` already enforced `IsAvailable`, but no endpoint ever called either — `IsAvailable` could never actually become `false`. `PUT /menu/items/{id}/availability` closes that: ships ahead of any UI that will call it (no admin app, no in-order 86 control), same as CAT-02/CAT-17/CAT-18. **Verified live**: 86'ing an item hides it from `GET /menu` and the previously-dead `catalog.item_unavailable` guard on `AddLine` finally fires for real; un-86'ing restores both; unknown item `404`s |
 | CAT-14 | Course assignment per item | ✅ `PUT /menu/items/{id}/course` — `Course?` (`Starter`/`Main`/`Dessert`/`Drink`), null when not yet assigned (a data-entry gap, same convention as an empty `Allergens` list). Independent of `MenuCategory`: a menu can be organised for browsing by ingredient/style while every item still belongs to exactly one course. No admin UI yet, and course *firing* (ORD-07) isn't built either — ships ahead of both, the tag it will read from once it is. **Verified live**: set/persist/clear, an unrecognised course name and an unknown item both rejected (`catalog.invalid_course`/`catalog.item_not_found`) |

@@ -68,7 +68,7 @@
 | `Brasa.Shared.Tests` | ✅ | 51 passing, incl. exhaustive allocation check, the error-code registry test (API-04, now scanning six `Error.*` factories, not five — `RateLimited` joined in API-12), `PortugueseTimeZoneTests` (previously zero coverage on code CLAUDE.md itself flags as easy to get wrong), and `ResultTests`/`ErrorTests` (previously zero direct coverage on the hard-rule-5 types themselves) |
 | `Brasa.Fiscal.Portugal.Tests` | ✅ | 13 passing: gross→net VAT derivation (exhaustive per rate), mock provider sequential numbering, mixed-rate reconciliation |
 | `Brasa.Api.IntegrationTests` | ✅ | 31 tests: `TenantIsolationReflectionTests` (DAT-11, no DB) + `TenantIsolationIntegrationTests` (QA-09/10) — real disposable PostgreSQL via Testcontainers, zero rows with no/wrong tenant, own rows only with the right one, DDL refused (the automated version of the manual check that first caught [ADR 0010](../architecture/decisions/0010-rls-runtime-role-split.md)) — plus `CsvParserTests` (CAT-17, no DB), `ErrorMappingTests` (no DB, pins all 6 `ErrorType`→HTTP status mappings directly, since `ErrorMapping.ToProblem()` is, by its own doc comment, "the only place `ErrorType` is translated to an HTTP status"), `ApiDeprecationMiddlewareTests` (API-08, no DB) and `ApiRateLimitingTests` (API-12, no DB — partition-key logic; the real 429/`Retry-After` behaviour was verified live instead, see below) |
-| E2E (Playwright) | ✅ | `src/web/e2e` — 109 tests (incl. `admin-shell.spec.ts`/`admin-language-toggle.spec.ts`/`admin-menu-management.spec.ts`, WEB-09/10, and table-label/takeaway-default English assertions in `language-toggle.spec.ts`), all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). That same repeated-run discipline is what caught the API-10 JSON-casing regression below before it reached a commit, and shaped the API-09 pagination test itself: a first version asserting exact page sizes flaked under concurrent specs sharing the dev database, fixed by walking the full cursor chain and asserting only what must hold regardless of noise from other tests. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), menu bulk CSV import (CAT-17), request-bill floor-plan signal (FLR-04), 86-ing a menu item (CAT-13), menu item repricing incl. the past-order-lines-immune-to-a-reprice invariant (CAT-19), menu category visibility (CAT-01), menu `ETag`/304 caching (API-10, now retry-tolerant of legitimate concurrent catalog mutations from sibling specs), idempotency replay — a retried close never double-issues a fiscal document (QA-11), client version negotiation (API-06/07), order-history cursor pagination (API-09), response compression incl. error bodies (API-11), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
+| E2E (Playwright) | ✅ | `src/web/e2e` — 111 tests (incl. `admin-shell.spec.ts`/`admin-language-toggle.spec.ts`/`admin-menu-management.spec.ts`, WEB-09/10, `menu-item-schedule.spec.ts`, CAT-11, and table-label/takeaway-default English assertions in `language-toggle.spec.ts`), all green across several consecutive full runs under real parallel load (2 workers) — that repetition is what surfaced and then proved the fix for the table-occupy race below (and, later, occasionally exhausted the original 8-table pool under back-to-back full runs — a QA-02 scaling limitation, mitigated by doubling the seeded pool to 16). That same repeated-run discipline is what caught the API-10 JSON-casing regression below before it reached a commit, and shaped the API-09 pagination test itself: a first version asserting exact page sizes flaked under concurrent specs sharing the dev database, fixed by walking the full cursor chain and asserting only what must hold regardless of noise from other tests. UI walking-skeleton through the real table picker (QA-05), the modifier picker (CAT-03/04), the pre-bill preview (ORD-18/19), per-line kitchen notes (ORD-06), table transfer (ORD-12), line transfer (ORD-13, API-level), order merge (ORD-14, API-level), split by item and by cover (ORD-16/17, API-level), takeaway orders (ORD-20), menu item description/allergens (CAT-02), menu bulk CSV import (CAT-17), request-bill floor-plan signal (FLR-04), 86-ing a menu item (CAT-13), menu item repricing incl. the past-order-lines-immune-to-a-reprice invariant (CAT-19), menu category visibility (CAT-01), menu `ETag`/304 caching (API-10, now retry-tolerant of legitimate concurrent catalog mutations from sibling specs), idempotency replay — a retried close never double-issues a fiscal document (QA-11), client version negotiation (API-06/07), order-history cursor pagination (API-09), response compression incl. error bodies (API-11), accessibility scans (QA-14), API-level split-math sweep (QA-03), order history/search (ORD-22), language toggle + cookie persistence (WEB-13). CI job written but **not yet run in CI**. See [../development/e2e-testing.md](../development/e2e-testing.md) |
 
 ## I0 demo — verified live, not just unit-tested
 
@@ -848,6 +848,49 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > `merge-orders.spec.ts` failure reproduced as a pre-existing table-pool
 > contention flake under parallel load, confirmed by re-running it alone,
 > where it passed).
+
+> **Update (*prato do dia* daily specials with schedules, CAT-11):**
+> `MenuItem.Schedule` is a recurring day/time window — `MenuItemSchedule`
+> pairs a `[Flags] ScheduleDays` mask with start/end `TimeOnly` (start
+> inclusive, end exclusive; no overnight wraparound, a deliberate v1
+> simplification its own doc comment names), set or cleared via
+> `PUT /menu/items/{id}/schedule`, all-or-nothing — days, start and end
+> together, or all three cleared, never a partial update. Stored as three
+> nullable columns via an EF Core complex property (`ComplexProperty`,
+> the same shape `Money`/`TakeawayPrice` already use), with `Days` mapped
+> through the same well-proven `HasConversion<string>()` a `[Flags]` enum
+> already gets everywhere else in this codebase, rather than nesting a
+> list conversion inside the complex type — untested territory here, and
+> unnecessary when a bitmask says the same thing in one column.
+> `GET /menu` (guest/pos-facing) now filters a scheduled item out
+> entirely outside its own window; `GET /menu/all` (admin) never filters
+> on it, the same visible-vs-management split CAT-01/13 already
+> established — an item can be scheduled out and still edited. No
+> per-tenant region or site record exists yet to pick a timezone from
+> (that's IDN-01/CAT-05 territory), so "now" is resolved via mainland
+> `Europe/Lisbon` time through the existing `PortugueseTimeZone` helper —
+> an honest gap, written down rather than silently assumed, and the same
+> default the rest of the app already uses absent a real site. `admin`
+> gets a genuinely new editor (no course/station precedent to follow —
+> neither has admin UI yet either): seven day checkboxes plus native
+> `<input type="time">` start/end fields, whose `"HH:mm"` value maps
+> directly onto the wire format with no conversion. `pos` needed zero
+> changes — an out-of-window item is simply absent from `GET /menu`'s
+> response, so the existing menu grid already does the right thing.
+> **Verified live**: `menu-item-schedule.spec.ts`, self-scheduling —
+> "today" and "not today" are computed from the real `Europe/Lisbon`
+> date via `Intl.DateTimeFormat`, not hardcoded, so the test never goes
+> stale. A window covering today (00:00–23:59) keeps the item on
+> `GET /menu`; a window excluding today removes it from `GET /menu` but
+> leaves it, schedule and all, on `GET /menu/all`; clearing restores it
+> unconditionally. An unrecognised day name, an unparsable time, a
+> backwards window (`startTime >= endTime`), a partial update (some but
+> not all of days/start/end) and an unknown item are all rejected with
+> their own error codes (`catalog.invalid_day_of_week`,
+> `catalog.invalid_time`, `catalog.invalid_schedule`,
+> `catalog.incomplete_schedule`, `catalog.item_not_found`) — caught by
+> `ErrorCodeRegistryTests` (API-04) before the docs were even written,
+> exactly the mechanical enforcement it exists for.
 
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:

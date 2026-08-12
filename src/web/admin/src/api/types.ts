@@ -8,6 +8,18 @@ export interface MoneyDto {
   currency: string;
 }
 
+/**
+ * A menu item's recurring day/time availability window (CAT-11) — a *prato
+ * do dia*. `daysOfWeek` entries are English DayOfWeek names ("Monday"),
+ * Monday first; `startTime`/`endTime` are local "HH:mm", start inclusive,
+ * end exclusive.
+ */
+export interface MenuItemScheduleDto {
+  daysOfWeek: string[];
+  startTime: string;
+  endTime: string;
+}
+
 export interface MenuItemDto {
   id: string;
   name: string;
@@ -17,6 +29,7 @@ export interface MenuItemDto {
   vatRatePercent: number;
   isAlcoholic: boolean;
   isAvailable: boolean;
+  schedule: MenuItemScheduleDto | null;
   allergens: string[];
 }
 
@@ -45,6 +58,13 @@ export interface UpdateMenuItemPriceRequest {
 
 export interface UpdateMenuItemTakeawayPriceRequest {
   price: number | null;
+}
+
+/** All three null/empty clears the schedule; all three required together to set one (CAT-11). */
+export interface UpdateMenuItemScheduleRequest {
+  daysOfWeek: string[] | null;
+  startTime: string | null;
+  endTime: string | null;
 }
 
 export interface UpdateMenuCategoryVisibilityRequest {

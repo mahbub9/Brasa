@@ -22,6 +22,13 @@ export interface ModifierGroupDto {
   modifiers: ModifierDto[];
 }
 
+/** A menu item's recurring day/time availability window (CAT-11) — a *prato do dia*. Null means always available. */
+export interface MenuItemScheduleDto {
+  daysOfWeek: string[];
+  startTime: string;
+  endTime: string;
+}
+
 export interface MenuItemDto {
   id: string;
   name: string;
@@ -32,6 +39,7 @@ export interface MenuItemDto {
   isAlcoholic: boolean;
   course: string | null;
   station: string | null;
+  schedule: MenuItemScheduleDto | null;
   allergens: string[];
   modifierGroups: ModifierGroupDto[];
 }

@@ -22,6 +22,18 @@ internal sealed class MenuItemConfiguration : IEntityTypeConfiguration<MenuItem>
         builder.Property(i => i.Station).HasConversion<string>().HasMaxLength(20);
         builder.Property(i => i.DeletedAtUtc);
 
+        // Optional complex type, same pattern as MapOptionalMoney below: all
+        // three columns nullable together, never independently. Days is a
+        // [Flags] enum, not a converted list — one converted column, the
+        // same well-proven HasConversion<string>() shape Course/Station
+        // already use above, rather than nesting a list conversion inside a
+        // complex property (untested combination in this codebase).
+        var schedule = builder.ComplexProperty(i => i.Schedule);
+        schedule.IsRequired(false);
+        schedule.Property(s => s.Days).HasConversion<string>().HasColumnName("schedule_days").HasMaxLength(100);
+        schedule.Property(s => s.StartTime).HasColumnName("schedule_start_time");
+        schedule.Property(s => s.EndTime).HasColumnName("schedule_end_time");
+
         // Stored as a comma-joined list of enum names rather than a Postgres
         // array column — one portable pattern, matching the string
         // conversion every other enum in this codebase already uses

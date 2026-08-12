@@ -10,6 +10,7 @@ import type {
   UpdateMenuCategoryVisibilityRequest,
   UpdateMenuItemAvailabilityRequest,
   UpdateMenuItemPriceRequest,
+  UpdateMenuItemScheduleRequest,
   UpdateMenuItemTakeawayPriceRequest,
   UpdateRoomRequest,
   UpdateTableRequest,
@@ -95,6 +96,9 @@ export const api = {
 
   setItemTakeawayPrice: (itemId: string, body: UpdateMenuItemTakeawayPriceRequest) =>
     put<MenuItemDto>(`/menu/items/${itemId}/takeaway-price`, body),
+
+  setItemSchedule: (itemId: string, body: UpdateMenuItemScheduleRequest) =>
+    put<MenuItemDto>(`/menu/items/${itemId}/schedule`, body),
 
   setCategoryVisibility: (categoryId: string, body: UpdateMenuCategoryVisibilityRequest) =>
     put(`/menu/categories/${categoryId}/visibility`, body),

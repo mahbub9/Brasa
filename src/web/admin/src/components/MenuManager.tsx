@@ -121,6 +121,8 @@ export function MenuManager({ categories, onReload, onErrorChange }: MenuManager
   );
 }
 
+const WEEK_DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] as const;
+
 interface MenuManagerItemProps {
   item: MenuItemDto;
   onReload: () => void;
@@ -134,6 +136,10 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
   const [priceDraft, setPriceDraft] = useState(String(item.price.amount));
   const [editingTakeawayPrice, setEditingTakeawayPrice] = useState(false);
   const [takeawayPriceDraft, setTakeawayPriceDraft] = useState(String(item.takeawayPrice?.amount ?? ''));
+  const [editingSchedule, setEditingSchedule] = useState(false);
+  const [scheduleDaysDraft, setScheduleDaysDraft] = useState<string[]>(item.schedule?.daysOfWeek ?? []);
+  const [scheduleStartDraft, setScheduleStartDraft] = useState(item.schedule?.startTime ?? '');
+  const [scheduleEndDraft, setScheduleEndDraft] = useState(item.schedule?.endTime ?? '');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function run(action: () => Promise<void>) {
@@ -183,6 +189,32 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
   function clearTakeawayPrice() {
     void run(async () => {
       await api.setItemTakeawayPrice(item.id, { price: null });
+      onReload();
+    });
+  }
+
+  function toggleScheduleDay(day: string) {
+    setScheduleDaysDraft((prev) => (prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day]));
+  }
+
+  function saveSchedule() {
+    if (scheduleDaysDraft.length === 0 || !scheduleStartDraft || !scheduleEndDraft) {
+      return;
+    }
+    void run(async () => {
+      await api.setItemSchedule(item.id, {
+        daysOfWeek: scheduleDaysDraft,
+        startTime: scheduleStartDraft,
+        endTime: scheduleEndDraft,
+      });
+      setEditingSchedule(false);
+      onReload();
+    });
+  }
+
+  function clearSchedule() {
+    void run(async () => {
+      await api.setItemSchedule(item.id, { daysOfWeek: null, startTime: null, endTime: null });
       onReload();
     });
   }
@@ -296,6 +328,78 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
             onClick={() => setEditingTakeawayPrice(true)}
           >
             + {t('menu.addTakeawayPrice')}
+          </button>
+        )}
+
+        {editingSchedule ? (
+          <span className="menu-manager-item-schedule-edit" data-testid={`schedule-edit-${item.name}`}>
+            {WEEK_DAYS.map((day) => (
+              <label key={day} className="menu-manager-schedule-day">
+                <input
+                  type="checkbox"
+                  data-testid={`schedule-day-${day}-${item.name}`}
+                  checked={scheduleDaysDraft.includes(day)}
+                  disabled={busy}
+                  onChange={() => toggleScheduleDay(day)}
+                />
+                {t(`menu.day.${day}`)}
+              </label>
+            ))}
+            <input
+              type="time"
+              value={scheduleStartDraft}
+              data-testid={`schedule-start-${item.name}`}
+              disabled={busy}
+              onChange={(e) => setScheduleStartDraft(e.target.value)}
+            />
+            <input
+              type="time"
+              value={scheduleEndDraft}
+              data-testid={`schedule-end-${item.name}`}
+              disabled={busy}
+              onChange={(e) => setScheduleEndDraft(e.target.value)}
+            />
+            <button type="button" data-testid={`schedule-save-${item.name}`} disabled={busy} onClick={saveSchedule}>
+              {t('common.save')}
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setEditingSchedule(false);
+                setScheduleDaysDraft(item.schedule?.daysOfWeek ?? []);
+                setScheduleStartDraft(item.schedule?.startTime ?? '');
+                setScheduleEndDraft(item.schedule?.endTime ?? '');
+              }}
+            >
+              {t('common.cancel')}
+            </button>
+          </span>
+        ) : item.schedule ? (
+          <span className="menu-manager-item-schedule">
+            <button
+              type="button"
+              className="menu-manager-item-price"
+              data-testid={`schedule-edit-open-${item.name}`}
+              disabled={busy}
+              onClick={() => setEditingSchedule(true)}
+            >
+              {item.schedule.daysOfWeek.map((d) => t(`menu.day.${d}`)).join(' ')} {item.schedule.startTime}–
+              {item.schedule.endTime}
+            </button>
+            <button type="button" data-testid={`schedule-clear-${item.name}`} disabled={busy} onClick={clearSchedule}>
+              {t('common.clear')}
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            className="menu-manager-item-schedule-add"
+            data-testid={`schedule-add-${item.name}`}
+            disabled={busy}
+            onClick={() => setEditingSchedule(true)}
+          >
+            + {t('menu.addSchedule')}
           </button>
         )}
 

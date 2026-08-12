@@ -64,6 +64,10 @@ public static class CatalogEndpoints
             .WithName("UpdateMenuItemStation")
             .WithSummary("Sets or clears which kitchen station prepares a menu item (CAT-15).");
 
+        group.MapPut("/menu/items/{itemId:guid}/schedule", UpdateMenuItemScheduleAsync)
+            .WithName("UpdateMenuItemSchedule")
+            .WithSummary("Sets or clears a menu item's recurring day/time availability window (CAT-11).");
+
         group.MapPut("/menu/categories/{categoryId:guid}/visibility", UpdateMenuCategoryVisibilityAsync)
             .WithName("UpdateMenuCategoryVisibility")
             .WithSummary("Hides a whole category (and every item under it) from GET /menu, or shows it again (CAT-01).");
@@ -71,7 +75,8 @@ public static class CatalogEndpoints
         return group;
     }
 
-    private static async Task<IResult> GetMenuAsync(HttpContext httpContext, CatalogDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> GetMenuAsync(
+        HttpContext httpContext, CatalogDbContext db, IClock clock, CancellationToken cancellationToken)
     {
         var categories = await db.Categories
             .Where(c => c.IsVisible)
@@ -86,7 +91,20 @@ public static class CatalogEndpoints
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        var itemsByCategory = items.ToLookup(i => i.CategoryId);
+        // CAT-11: a scheduled item (prato do dia) only belongs on the
+        // guest-facing menu during its own window. Evaluated in memory, not
+        // translated to SQL — items are already materialised above, and
+        // there is no per-tenant region/site record yet to pick a timezone
+        // from (that's IDN-01/CAT-05 territory), so this uses mainland
+        // Portugal time, the same default the rest of the app assumes
+        // absent a real site.
+        var localNow = PortugueseRegion.Continental.ToLocal(clock.UtcNow);
+        var dayOfWeek = localNow.DayOfWeek;
+        var timeOfDay = TimeOnly.FromDateTime(localNow.DateTime);
+
+        var itemsByCategory = items
+            .Where(i => i.IsAvailableAt(dayOfWeek, timeOfDay))
+            .ToLookup(i => i.CategoryId);
 
         var dto = categories
             .Select(c => new MenuCategoryDto(
@@ -394,6 +412,86 @@ public static class CatalogEndpoints
         {
             return Error.Validation(
                 "catalog.invalid_station", $"\"{request.Station}\" is not a recognised kitchen station.").ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(item.ToDto());
+    }
+
+    /// <summary>
+    /// Sets or clears a menu item's recurring day/time availability window
+    /// (CAT-11) — a <i>prato do dia</i>. All three fields null/empty clears
+    /// the schedule back to "always available"; setting only some of the
+    /// three is rejected, since a schedule is all-or-nothing, not a partial
+    /// update. Ships ahead of any UI trigger the same way CAT-14/15 did:
+    /// <c>GetMenuAsync</c>'s own filter is the only consumer today.
+    /// </summary>
+    private static async Task<IResult> UpdateMenuItemScheduleAsync(
+        Guid itemId,
+        UpdateMenuItemScheduleRequest request,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        var hasDays = request.DaysOfWeek is { Count: > 0 };
+        var hasTimes = request.StartTime is not null || request.EndTime is not null;
+
+        if (!hasDays && !hasTimes)
+        {
+            item.SetSchedule(null);
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return Results.Ok(item.ToDto());
+        }
+
+        if (!hasDays || request.StartTime is null || request.EndTime is null)
+        {
+            return Error.Validation(
+                "catalog.incomplete_schedule",
+                "Days of week, start time and end time are all required together, or all omitted to clear the schedule.").ToProblem();
+        }
+
+        var days = ScheduleDays.None;
+        foreach (var name in request.DaysOfWeek!)
+        {
+            if (!Enum.TryParse<DayOfWeek>(name, ignoreCase: true, out var dayOfWeek))
+            {
+                return Error.Validation(
+                    "catalog.invalid_day_of_week", $"\"{name}\" is not a recognised day of the week.").ToProblem();
+            }
+
+            days |= dayOfWeek.ToScheduleDays();
+        }
+
+        if (!TimeOnly.TryParseExact(request.StartTime, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var startTime))
+        {
+            return Error.Validation(
+                "catalog.invalid_time", $"\"{request.StartTime}\" is not a valid \"HH:mm\" time.").ToProblem();
+        }
+
+        if (!TimeOnly.TryParseExact(request.EndTime, "HH:mm", CultureInfo.InvariantCulture, DateTimeStyles.None, out var endTime))
+        {
+            return Error.Validation(
+                "catalog.invalid_time", $"\"{request.EndTime}\" is not a valid \"HH:mm\" time.").ToProblem();
+        }
+
+        try
+        {
+            item.SetSchedule(new MenuItemSchedule(days, startTime, endTime));
+        }
+        catch (ArgumentException ex)
+        {
+            return Error.Validation("catalog.invalid_schedule", ex.Message).ToProblem();
         }
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

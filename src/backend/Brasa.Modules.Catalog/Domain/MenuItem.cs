@@ -104,6 +104,14 @@ public sealed class MenuItem : Entity, ISoftDeletable
     /// </summary>
     public KitchenStation? Station { get; private set; }
 
+    /// <summary>
+    /// The recurring day/time window this item is available in (CAT-11) — a
+    /// <i>prato do dia</i>. Null means always available, whatever
+    /// <see cref="IsAvailable"/> and the menu's other filters already allow;
+    /// it is not itself a claim that the item runs every day.
+    /// </summary>
+    public MenuItemSchedule? Schedule { get; private set; }
+
     /// <inheritdoc/>
     /// <remarks>
     /// Distinct from <see cref="IsAvailable"/>: 86'ing is "out of stock today,
@@ -157,6 +165,22 @@ public sealed class MenuItem : Entity, ISoftDeletable
 
     /// <summary>Sets or clears which kitchen station prepares this item (CAT-15).</summary>
     public void SetStation(KitchenStation? station) => Station = station;
+
+    /// <summary>
+    /// Sets or clears the recurring window this item is available in
+    /// (CAT-11). Null means always available.
+    /// </summary>
+    public void SetSchedule(MenuItemSchedule? schedule) => Schedule = schedule;
+
+    /// <summary>
+    /// Whether <see cref="Schedule"/> allows this item to be sold at the
+    /// given local day/time — <c>GetMenuAsync</c>'s guest-facing filter, not
+    /// <c>AddLine</c>'s: an order already in progress keeps whatever it was
+    /// rung up with, the same "ship the filter, not a retroactive block"
+    /// shape <see cref="IsAvailable"/> already has.
+    /// </summary>
+    public bool IsAvailableAt(DayOfWeek dayOfWeek, TimeOnly timeOfDay)
+        => Schedule is null || Schedule.IsActiveAt(dayOfWeek, timeOfDay);
 
     /// <summary>Sets or clears the description (CAT-02). Null/whitespace clears it.</summary>
     public void SetDescription(string? description)

@@ -188,6 +188,34 @@ export async function updateMenuItemStation(
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-11). All three null clears the schedule. */
+export function updateMenuItemScheduleResponse(
+  request: APIRequestContext,
+  itemId: string,
+  daysOfWeek: string[] | null,
+  startTime: string | null,
+  endTime: string | null,
+) {
+  return request.put(`${apiBaseUrl}/menu/items/${itemId}/schedule`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { daysOfWeek, startTime, endTime },
+  });
+}
+
+export async function updateMenuItemSchedule(
+  request: APIRequestContext,
+  itemId: string,
+  daysOfWeek: string[] | null,
+  startTime: string | null,
+  endTime: string | null,
+): Promise<MenuItemDto> {
+  const response = await updateMenuItemScheduleResponse(request, itemId, daysOfWeek, startTime, endTime);
+  if (!response.ok()) {
+    throw new Error(`PUT /menu/items/${itemId}/schedule failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Fetches the live seeded floor plan. */
 export async function getFloor(request: APIRequestContext): Promise<RoomDto[]> {
   const response = await request.get(`${apiBaseUrl}/floor`);

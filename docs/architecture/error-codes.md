@@ -21,10 +21,14 @@ as any change to an error code, the same rule as everything else in
 | `catalog.category_not_found` | NotFound | 404 | `PUT /menu/categories/{id}/visibility`'s category id doesn't exist. |
 | `catalog.import_empty` | Validation | 400 | `POST /menu/items/import`'s `csv` has no rows at all (not even a header). |
 | `catalog.import_invalid_header` | Validation | 400 | `POST /menu/items/import`'s CSV header is missing a required column (`CategoryName`, `Name`, `Price`, `VatRate`). |
+| `catalog.incomplete_schedule` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) days/start/end are only partly set — a schedule is all-or-nothing, not a partial update. |
 | `catalog.invalid_allergen` | Validation | 400 | `PUT /menu/items/{id}/details`'s `allergens` contains a name that isn't a recognised `Allergen`. |
 | `catalog.invalid_course` | Validation | 400 | `PUT /menu/items/{id}/course`'s `course` isn't a recognised `Course` name. |
+| `catalog.invalid_day_of_week` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) `daysOfWeek` contains a name that isn't a recognised day. |
+| `catalog.invalid_schedule` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) window is empty or backwards (`startTime >= endTime`). |
 | `catalog.invalid_station` | Validation | 400 | `PUT /menu/items/{id}/station`'s `station` isn't a recognised `KitchenStation` name. |
 | `catalog.invalid_price` | Validation | 400 | `PUT /menu/items/{id}/price`'s `price` is negative, or `PUT /menu/items/{id}/takeaway-price`'s (CAT-06) `price` is negative. |
+| `catalog.invalid_time` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) `startTime`/`endTime` isn't a valid `"HH:mm"` time. |
 | `catalog.item_not_found` | NotFound | 404 | The menu item id in the request doesn't exist (or is soft-deleted — CAT-18). |
 | `catalog.item_unavailable` | Conflict | 409 | The menu item exists but is currently 86'd (`IsAvailable = false`). |
 | `catalog.modifier_not_found` | NotFound | 404 | A `selectedModifierIds` entry doesn't belong to any of the item's modifier groups. |

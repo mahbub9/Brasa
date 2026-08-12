@@ -17,7 +17,8 @@ public sealed record ModifierGroupDto(
 /// <summary>
 /// A menu item as returned to clients. <c>Course</c>/<c>Station</c> are null
 /// when not yet assigned (CAT-14/CAT-15) — a data-entry gap, not a claim the
-/// item has no course or is prepared nowhere.
+/// item has no course or is prepared nowhere. <c>Schedule</c> is null when
+/// the item is always available (CAT-11), not just on a recurring window.
 /// </summary>
 public sealed record MenuItemDto(
     Guid Id,
@@ -30,8 +31,17 @@ public sealed record MenuItemDto(
     bool IsAvailable,
     string? Course,
     string? Station,
+    MenuItemScheduleDto? Schedule,
     IReadOnlyList<string> Allergens,
     IReadOnlyList<ModifierGroupDto> ModifierGroups);
+
+/// <summary>
+/// The recurring day/time window a menu item is available in (CAT-11) — a
+/// <i>prato do dia</i>. <c>DaysOfWeek</c> entries are <see cref="System.DayOfWeek"/>
+/// names, Monday first; <c>StartTime</c>/<c>EndTime</c> are local wall-clock
+/// <c>"HH:mm"</c>, start inclusive, end exclusive.
+/// </summary>
+public sealed record MenuItemScheduleDto(IReadOnlyList<string> DaysOfWeek, string StartTime, string EndTime);
 
 /// <summary>A menu category with its items, as returned to clients.</summary>
 public sealed record MenuCategoryDto(Guid Id, string Name, int DisplayOrder, IReadOnlyList<MenuItemDto> Items);
@@ -69,6 +79,16 @@ public sealed record UpdateMenuItemCourseRequest(string? Course);
 /// e.g. <c>"Grill"</c>; null clears it back to unassigned.
 /// </summary>
 public sealed record UpdateMenuItemStationRequest(string? Station);
+
+/// <summary>
+/// Request body to set or clear a menu item's recurring availability window
+/// (CAT-11). <c>DaysOfWeek</c> entries are <see cref="System.DayOfWeek"/> names,
+/// e.g. <c>"Monday"</c>; <c>StartTime</c>/<c>EndTime</c> are local
+/// <c>"HH:mm"</c>. All three null/empty clears the schedule back to "always
+/// available." Setting only some of the three is rejected — a schedule is
+/// all-or-nothing, not a partial update.
+/// </summary>
+public sealed record UpdateMenuItemScheduleRequest(IReadOnlyList<string>? DaysOfWeek, string? StartTime, string? EndTime);
 
 /// <summary>
 /// Request body to change a menu item's price. A decimal in major units
@@ -132,8 +152,14 @@ public static class CatalogDtoMappings
         item.IsAvailable,
         item.Course?.ToString(),
         item.Station?.ToString(),
+        item.Schedule?.ToDto(),
         [.. item.Allergens.Select(a => a.ToString())],
         [.. item.ModifierGroups.OrderBy(g => g.DisplayOrder).Select(g => g.ToDto())]);
+
+    private static MenuItemScheduleDto ToDto(this MenuItemSchedule schedule) => new(
+        [.. schedule.Days.ToDayOfWeeks().Select(d => d.ToString())],
+        schedule.StartTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture),
+        schedule.EndTime.ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture));
 
     private static ModifierGroupDto ToDto(this ModifierGroup group) => new(
         group.Id,
