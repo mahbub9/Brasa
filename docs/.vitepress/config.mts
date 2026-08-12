@@ -151,6 +151,8 @@ export default defineConfig({
           { text: 'Menu item classification', link: '/features/menu-item-classification' },
           { text: 'Channel pricing', link: '/features/channel-pricing' },
           { text: 'Floor-plan editor', link: '/features/floor-plan-editor' },
+          { text: 'Tax rules', link: '/features/tax-rules' },
+          { text: 'Realtime floor updates', link: '/features/realtime-floor-updates' },
         ],
       },
     ],

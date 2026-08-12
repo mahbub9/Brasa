@@ -19,12 +19,14 @@ data-entry gap, never a claim that the item costs nothing for takeaway.
 
 **VAT rate is deliberately untouched.** This feature's own title says
 "channel *pricing*," not "channel tax." Per-channel VAT resolution is a
-separate, larger, not-yet-built concern — `TaxRule` (CAT-07/08) — and
-`VatRate` is explicitly documented as an I0 placeholder pending it (see
-that type's own doc comment). Conflating the two here would mean
-guessing at a VAT rule this codebase's own hard rules say must wait for
-accountant confirmation (`docs/fiscal/README.md`). `AddLineAsync` copies
-`VatRateFraction` onto the line unchanged regardless of which price won.
+separate concern — [tax rules](tax-rules.md) (CAT-07/08) — built since,
+but deliberately not yet wired into `AddLine`: rewiring the live VAT
+computation path is its own fiscally-sensitive task, not a side effect
+of either feature. `VatRate` stays the flat rate `MenuItem` carries
+live; conflating the two here would mean guessing at a VAT rule this
+codebase's own hard rules say must wait for accountant confirmation
+(`docs/fiscal/README.md`). `AddLineAsync` copies `VatRateFraction` onto
+the line unchanged regardless of which price won.
 
 **Delivery is explicitly out of scope, not an oversight.** This
 feature's backlog row names three channels; only two are built. There is
@@ -127,8 +129,10 @@ to the real API, not just local component state.
 - Delivery pricing (the third channel this row's own title names) —
   blocked on a delivery order path existing at all, not just a price
   field.
-- Per-channel VAT (`TaxRule`, CAT-07/08) — a materially bigger, separate
-  piece of work; this feature deliberately doesn't guess at it.
+- Per-channel VAT ([tax rules](tax-rules.md), CAT-07/08) — the model and
+  resolution service exist now, but `AddLine` still resolves VAT from
+  `MenuItem.VatRate` directly; wiring the two together is its own
+  fiscally-sensitive task, deliberately not done here.
 - No UI signal yet for *why* a takeaway price might legitimately be
   higher than dine-in (packaging cost) rather than lower (no service) —
   left as free-form staff judgement, same as any other price.

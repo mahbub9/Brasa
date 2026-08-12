@@ -656,7 +656,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | DOC-07 | Feature page template | ✅ |
 | DOC-08 | API contract for multi-platform clients | ✅ |
 | DOC-09 | Backlog and progress tracking (this page) | ✅ |
-| DOC-10 | Per-feature pages, written as features land | 🚧 6 pages exist (`docs/features/discounts.md`, `void-a-line.md`, `edit-line-quantity.md`, `menu-item-classification.md`, `channel-pricing.md`, `floor-plan-editor.md`) against dozens of shipped backlog items — the "written as the feature is built" policy hasn't actually been followed until now; these six are a start on backfilling it, not the policy catching up on its own. All six indexed in `docs/features/README.md` and the VitePress sidebar; docs site build verified clean |
+| DOC-10 | Per-feature pages, written as features land | 🚧 8 pages exist (`docs/features/discounts.md`, `void-a-line.md`, `edit-line-quantity.md`, `menu-item-classification.md`, `channel-pricing.md`, `floor-plan-editor.md`, `tax-rules.md`, `realtime-floor-updates.md`) against dozens of shipped backlog items — the "written as the feature is built" policy hasn't actually been followed until now; these eight are a start on backfilling it, not the policy catching up on its own. `floor-plan-editor.md` was extended in place (FLR-05/FLR-07 are the same screen/concept as FLR-03, not a fresh page each), and `channel-pricing.md`'s own forward-reference to `TaxRule` now links to the real page. All eight indexed in `docs/features/README.md` and the VitePress sidebar; docs site build verified clean |
 
 ## MOB — Mobile apps
 

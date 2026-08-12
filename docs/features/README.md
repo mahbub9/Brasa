@@ -37,4 +37,6 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | [Edit a line's quantity](edit-line-quantity.md) | ORD-03 | Ordering |
 | [Menu item classification: course and station](menu-item-classification.md) | CAT-14, CAT-15 | Catalog |
 | [Channel pricing — dine-in vs takeaway](channel-pricing.md) | CAT-06 | Catalog |
-| [Floor-plan editor: table and room CRUD](floor-plan-editor.md) | FLR-03 | Floor |
+| [Floor-plan editor: table/room CRUD, seating groups, multiple floors](floor-plan-editor.md) | FLR-03, FLR-05, FLR-07 | Floor |
+| [Effective-dated tax rules](tax-rules.md) | CAT-07, CAT-08 | Catalog |
+| [Realtime floor updates](realtime-floor-updates.md) | API-16, API-17 | Web |
