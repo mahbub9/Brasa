@@ -61,6 +61,8 @@ export interface RoomDto {
   id: string;
   name: string;
   displayOrder: number;
+  /** Which physical storey this room sits on (FLR-07) -- 0 ground floor, positive above it, negative below. */
+  floorLevel: number;
   tables: TableDto[];
 }
 

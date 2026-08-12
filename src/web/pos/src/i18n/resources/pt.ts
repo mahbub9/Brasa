@@ -19,6 +19,7 @@ export const pt = {
     // src/lib/tableLabel.ts. Table.Label itself is unchanged; only the
     // on-screen rendering goes through this.
     tableLabel: 'Mesa {{number}}',
+    floorBadge: 'Piso {{level}}',
     state: {
       Free: 'Livre',
       Occupied: 'Ocupada',

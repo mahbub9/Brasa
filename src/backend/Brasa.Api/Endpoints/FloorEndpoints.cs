@@ -75,7 +75,7 @@ public static class FloorEndpoints
         var tablesByRoom = tables.ToLookup(t => t.RoomId);
 
         var dto = rooms
-            .Select(r => new RoomDto(r.Id, r.Name, r.DisplayOrder, [.. tablesByRoom[r.Id].Select(t => t.ToDto())]))
+            .Select(r => new RoomDto(r.Id, r.Name, r.DisplayOrder, r.FloorLevel, [.. tablesByRoom[r.Id].Select(t => t.ToDto())]))
             .ToList();
 
         return Results.Ok(dto);
@@ -278,14 +278,14 @@ public static class FloorEndpoints
             return Error.Validation("floor.invalid_room_name", "Room name must not be empty.").ToProblem();
         }
 
-        var room = new Room(request.Name.Trim(), request.DisplayOrder);
+        var room = new Room(request.Name.Trim(), request.DisplayOrder, request.FloorLevel);
         db.Rooms.Add(room);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(new RoomDto(room.Id, room.Name, room.DisplayOrder, []));
+        return Results.Ok(new RoomDto(room.Id, room.Name, room.DisplayOrder, room.FloorLevel, []));
     }
 
-    /// <summary>Renames or reorders a room. Independent of its tables — see <see cref="Room.Update"/>.</summary>
+    /// <summary>Renames, reorders or moves a room to a different floor. Independent of its tables — see <see cref="Room.Update"/>.</summary>
     private static async Task<IResult> UpdateRoomAsync(
         Guid roomId,
         UpdateRoomRequest request,
@@ -298,7 +298,7 @@ public static class FloorEndpoints
             return Error.NotFound("floor.room_not_found", $"Room {roomId} was not found.").ToProblem();
         }
 
-        var updateResult = room.Update(request.Name, request.DisplayOrder);
+        var updateResult = room.Update(request.Name, request.DisplayOrder, request.FloorLevel);
         if (updateResult.IsFailure)
         {
             return updateResult.Error.ToProblem();
@@ -307,7 +307,7 @@ public static class FloorEndpoints
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var tables = await db.Tables.Where(t => t.RoomId == room.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
-        return Results.Ok(new RoomDto(room.Id, room.Name, room.DisplayOrder, [.. tables.Select(t => t.ToDto())]));
+        return Results.Ok(new RoomDto(room.Id, room.Name, room.DisplayOrder, room.FloorLevel, [.. tables.Select(t => t.ToDto())]));
     }
 
     /// <summary>

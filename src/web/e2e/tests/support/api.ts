@@ -347,13 +347,15 @@ export function deleteTableResponse(request: APIRequestContext, tableId: string)
 interface RoomFields {
   name: string;
   displayOrder: number;
+  /** Which physical storey (FLR-07) -- defaults to 0 (ground floor) when omitted, same as the backend's own default. */
+  floorLevel?: number;
 }
 
 /** Raw response so callers can assert on status/body for the failure cases too (FLR-03's room-CRUD follow-up). */
 export function createRoomResponse(request: APIRequestContext, fields: RoomFields) {
   return request.post(`${apiBaseUrl}/rooms`, {
     headers: { 'Idempotency-Key': idempotencyKey() },
-    data: fields,
+    data: { ...fields, floorLevel: fields.floorLevel ?? 0 },
   });
 }
 
@@ -369,7 +371,7 @@ export async function createRoom(request: APIRequestContext, fields: RoomFields)
 export function updateRoomResponse(request: APIRequestContext, roomId: string, fields: RoomFields) {
   return request.put(`${apiBaseUrl}/rooms/${roomId}`, {
     headers: { 'Idempotency-Key': idempotencyKey() },
-    data: fields,
+    data: { ...fields, floorLevel: fields.floorLevel ?? 0 },
   });
 }
 

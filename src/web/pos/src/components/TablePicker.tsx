@@ -24,6 +24,18 @@ export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTake
   const [showTakeaway, setShowTakeaway] = useState(false);
   const [takeawayLabel, setTakeawayLabel] = useState('');
 
+  // A floor heading only earns its place once a tenant's own rooms
+  // actually span more than one level (FLR-07) -- most restaurants are
+  // single-storey, so the common case renders exactly as it always has.
+  // Each floor's rooms keep the backend's own DisplayOrder sequence;
+  // only the floor groups themselves are sorted, ascending.
+  const showFloors = new Set(rooms.map((r) => r.floorLevel)).size > 1;
+  const floorGroups: { floorLevel: number; rooms: RoomDto[] }[] = showFloors
+    ? [...new Set(rooms.map((r) => r.floorLevel))]
+        .sort((a, b) => a - b)
+        .map((floorLevel) => ({ floorLevel, rooms: rooms.filter((r) => r.floorLevel === floorLevel) }))
+    : [{ floorLevel: 0, rooms }];
+
   function handleTableClick(table: TableDto) {
     if (table.state === 'Free') {
       setSelectedTableId(table.id);
@@ -68,48 +80,57 @@ export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTake
       </div>
 
       {rooms.length === 0 && <p className="empty-state">{t('floor.empty')}</p>}
-      {rooms.map((room) => (
-        <section key={room.id} className="floor-room">
-          <h2>{room.name}</h2>
-          <div className="floor-tables">
-            {room.tables.map((table) => (
-              <div key={table.id} className={`floor-table floor-table-${table.state}`}>
-                <button
-                  type="button"
-                  data-testid={`table-${table.label}`}
-                  disabled={busy || table.state === 'Occupied' || table.state === 'BillRequested'}
-                  onClick={() => handleTableClick(table)}
-                >
-                  <span className="floor-table-label">{formatTableLabel(table.label, t)}</span>
-                  <span className="floor-table-seats">{t('floor.seats', { count: table.seats })}</span>
-                  <span className="floor-table-state">{t(`floor.state.${table.state}`)}</span>
-                </button>
-
-                {selectedTableId === table.id && (
-                  <div className="floor-table-confirm" data-testid="table-confirm">
-                    <label>
-                      {t('floor.covers')}
-                      <input
-                        type="number"
-                        min={1}
-                        value={coverCount}
-                        onChange={(e) => setCoverCount(Math.max(1, Number(e.target.value)))}
-                      />
-                    </label>
+      {floorGroups.map((group) => (
+        <div key={group.floorLevel} className="floor-level-group">
+          {showFloors && (
+            <h1 className="floor-level-heading" data-testid={`floor-level-${group.floorLevel}`}>
+              {t('floor.floorBadge', { level: group.floorLevel })}
+            </h1>
+          )}
+          {group.rooms.map((room) => (
+            <section key={room.id} className="floor-room">
+              <h2>{room.name}</h2>
+              <div className="floor-tables">
+                {room.tables.map((table) => (
+                  <div key={table.id} className={`floor-table floor-table-${table.state}`}>
                     <button
                       type="button"
-                      data-testid="confirm-open-table"
-                      disabled={busy}
-                      onClick={() => onOpenTable(table.id, coverCount)}
+                      data-testid={`table-${table.label}`}
+                      disabled={busy || table.state === 'Occupied' || table.state === 'BillRequested'}
+                      onClick={() => handleTableClick(table)}
                     >
-                      {busy ? t('floor.opening') : t('floor.open')}
+                      <span className="floor-table-label">{formatTableLabel(table.label, t)}</span>
+                      <span className="floor-table-seats">{t('floor.seats', { count: table.seats })}</span>
+                      <span className="floor-table-state">{t(`floor.state.${table.state}`)}</span>
                     </button>
+
+                    {selectedTableId === table.id && (
+                      <div className="floor-table-confirm" data-testid="table-confirm">
+                        <label>
+                          {t('floor.covers')}
+                          <input
+                            type="number"
+                            min={1}
+                            value={coverCount}
+                            onChange={(e) => setCoverCount(Math.max(1, Number(e.target.value)))}
+                          />
+                        </label>
+                        <button
+                          type="button"
+                          data-testid="confirm-open-table"
+                          disabled={busy}
+                          onClick={() => onOpenTable(table.id, coverCount)}
+                        >
+                          {busy ? t('floor.opening') : t('floor.open')}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
+            </section>
+          ))}
+        </div>
       ))}
     </div>
   );

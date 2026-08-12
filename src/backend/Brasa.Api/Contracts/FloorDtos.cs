@@ -19,14 +19,18 @@ public sealed record TableDto(
     string State,
     Guid? GroupId);
 
-/// <summary>A room with its tables, as returned to clients.</summary>
-public sealed record RoomDto(Guid Id, string Name, int DisplayOrder, IReadOnlyList<TableDto> Tables);
+/// <summary>
+/// A room with its tables, as returned to clients. <c>FloorLevel</c> is
+/// which physical storey it sits on (FLR-07) — <c>0</c> ground floor,
+/// positive above it, negative below.
+/// </summary>
+public sealed record RoomDto(Guid Id, string Name, int DisplayOrder, int FloorLevel, IReadOnlyList<TableDto> Tables);
 
-/// <summary>Request body to create a room (FLR-03's room-CRUD follow-up).</summary>
-public sealed record CreateRoomRequest(string Name, int DisplayOrder);
+/// <summary>Request body to create a room (FLR-03's room-CRUD follow-up). <c>FloorLevel</c> defaults to <c>0</c> (FLR-07).</summary>
+public sealed record CreateRoomRequest(string Name, int DisplayOrder, int FloorLevel = 0);
 
-/// <summary>Request body to rename or reorder a room (FLR-03's room-CRUD follow-up).</summary>
-public sealed record UpdateRoomRequest(string Name, int DisplayOrder);
+/// <summary>Request body to rename, reorder or move a room to a different floor (FLR-03's room-CRUD follow-up; FLR-07).</summary>
+public sealed record UpdateRoomRequest(string Name, int DisplayOrder, int FloorLevel);
 
 /// <summary>
 /// Request body to add a table to a room (FLR-03). <c>Shape</c> is a

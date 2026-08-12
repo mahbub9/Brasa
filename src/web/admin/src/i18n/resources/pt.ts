@@ -76,6 +76,8 @@ export const pt = {
     roomNamePlaceholder: 'Nome da sala, ex.: "Esplanada"',
     deleteRoom: 'Eliminar sala',
     cannotDeleteRoomNotEmpty: 'Remova primeiro todas as mesas desta sala.',
+    floorLevel: 'Piso',
+    floorBadge: 'Piso {{level}}',
     shapeOption: {
       Round: 'Redonda',
       Square: 'Quadrada',

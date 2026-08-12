@@ -79,6 +79,8 @@ export const en = {
     roomNamePlaceholder: 'Room name, e.g. "Esplanada"',
     deleteRoom: 'Delete room',
     cannotDeleteRoomNotEmpty: 'Remove every table from this room first.',
+    floorLevel: 'Floor level',
+    floorBadge: 'Floor {{level}}',
     shapeOption: {
       Round: 'Round',
       Square: 'Square',

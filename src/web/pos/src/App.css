@@ -146,6 +146,23 @@ main {
   cursor: not-allowed;
 }
 
+/* FLR-07: only rendered once a tenant's own rooms actually span more than
+   one physical floor -- see TablePicker's own remarks. */
+.floor-level-group {
+  margin-top: 2rem;
+}
+
+.floor-level-group:first-of-type {
+  margin-top: 0;
+}
+
+.floor-level-heading {
+  font-size: 1.3rem;
+  border-bottom: 2px solid var(--border);
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.5rem;
+}
+
 .floor-room h2 {
   font-size: 1.05rem;
   color: var(--muted);

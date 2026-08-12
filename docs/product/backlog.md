@@ -42,7 +42,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 1 | 16 | I3 |
 | **CAT** | Catalog & menu | 16 | 19 | I0 (rest: I1) |
-| **FLR** | Floor plan & tables | 4 | 7 | I1 |
+| **FLR** | Floor plan & tables | 5 | 7 | I1 |
 | **ORD** | Ordering | 16 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
@@ -55,7 +55,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 8 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **97** | **292** | |
+| | **Total** | **98** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -408,7 +408,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | FLR-04 | Table states (free, occupied, bill requested, dirty) | ✅ all four wired end-to-end through `pos`, including `BillRequested` now: `POST /tables/{id}/request-bill` + a "Pedir conta" button, distinct from the pre-bill preview (ORD-18/19, "Ver conta") — that stays a read-only `GET`, this is the explicit floor-plan signal for staff. **Verified live** in a real browser: clicking it flags the table `BillRequested` on `GET /floor`; a free table 409s (`floor.table_not_occupied`), an unknown table 404s |
 | FLR-05 | Table merge / split for large parties | ✅ Scoped to a floor-plan seating group — pushing 2+ *free* tables together into one unit for a large party, not a full order-merge (that already exists, separately, as `ORD` table-transfer/merge-orders). `Table.GroupId` (a plain `Guid?`, no FK — the same opaque-reference convention `OrderLine.MenuItemId` already established) via `POST /table-groups` / `DELETE /table-groups/{id}`, both requiring every table to be `Free` first. Deliberately given real teeth rather than staying cosmetic: `Table.Occupy()` itself now refuses a grouped table (`floor.table_grouped`) — a grouped table shown as `Free` with nothing stopping it being seated individually would have actively contradicted the feature's own purpose. Cascading `Occupy`/`Clear`/`Release` across a group's siblings was deliberately *not* built (a materially larger change touching every already-shipped table-state endpoint) — grouping only blocks individual seating for now, a named gap. No client UI yet — no floor-plan multi-select exists in `admin`/`pos` today, same "mechanism before the trigger" call CAT-05/CAT-10/CAT-16 each made. **Verified live**: `table-groups.spec.ts` — grouping blocks `POST /orders` on every member table with `floor.table_grouped`, ungrouping restores ordinary seating; rejects fewer than 2 tables (`floor.table_group_too_small`), an unknown table (`floor.table_not_found`), a non-free table (`floor.table_not_free`), a table already in another group (`floor.table_already_grouped`), and 404s deleting an unknown group (`floor.table_group_not_found`) |
 | FLR-06 | Section assignment to waiters | ⬜ depends on IDN |
-| FLR-07 | Multi-floor support | ⬜ |
+| FLR-07 | Multi-floor support | ✅ `Room.FloorLevel: int` (default `0`, so every existing/seeded room needed no data migration) — `0` ground floor, positive above it, negative below (a basement or cave). Deliberately not a separate `Floor` entity: every field a floor needs (which rooms, which tables) is computed from the rooms that carry its level, the same "no entity where a plain field says the same thing" call FLR-05's `Table.GroupId` already made. `POST`/`PUT /rooms` both accept it (`PUT` requires it explicitly, `POST` defaults to `0`). Given real teeth as a **display** concern, not an access one — a floor badge/heading only ever earns its place once a tenant's own rooms actually span more than one level; seeded restaurants (single-storey) render exactly as before, byte-for-byte. `admin`'s room editor shows a "Floor N" badge on every room once ambiguity exists (labelling *every* room, not just the odd one out, once there is more than one — otherwise "no badge" would be a second, silent way to mean "ground floor"), plus a floor-level number input on add/edit; `pos`'s table picker groups rooms under a floor heading the same way. **Verified live**: `floor-multi-level.spec.ts` — floorLevel round-trips through create/`GET /floor`/update; omitting it on create defaults to `0`; `admin`'s floor badge appears on every room (incl. the seeded ground-floor ones) once a second floor is created; editing a room's floor level through the UI round-trips to the API; `pos`'s table picker shows both floor headings and the new room under its own |
 
 ## ORD — Ordering
 

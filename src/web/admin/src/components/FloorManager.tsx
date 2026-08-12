@@ -20,13 +20,19 @@ const SHAPES: TableShape[] = ['Round', 'Square', 'Rectangle'];
 export function FloorManager({ rooms, onReload, onErrorChange }: FloorManagerProps) {
   const { t } = useTranslation();
 
+  // A "Floor N" badge only earns its place once a tenant's own rooms
+  // actually span more than one level (FLR-07) -- most restaurants are
+  // single-storey, and showing "Floor 0" on every room when there is only
+  // ever one floor would be pure noise, not information.
+  const showFloors = new Set(rooms.map((r) => r.floorLevel)).size > 1;
+
   return (
     <div className="floor-manager">
       {rooms.length === 0 && <p className="empty-state">{t('floor.empty')}</p>}
 
       {rooms.map((room) => (
         <section key={room.id} className="floor-manager-room" data-testid={`room-${room.name}`}>
-          <FloorManagerRoomHeading room={room} onReload={onReload} onErrorChange={onErrorChange} />
+          <FloorManagerRoomHeading room={room} showFloors={showFloors} onReload={onReload} onErrorChange={onErrorChange} />
 
           {room.tables.length === 0 ? (
             <p className="empty-state">{t('floor.noTables')}</p>
@@ -49,15 +55,17 @@ export function FloorManager({ rooms, onReload, onErrorChange }: FloorManagerPro
 
 interface FloorManagerRoomHeadingProps {
   room: RoomDto;
+  showFloors: boolean;
   onReload: () => void;
   onErrorChange: (message: string | null) => void;
 }
 
-function FloorManagerRoomHeading({ room, onReload, onErrorChange }: FloorManagerRoomHeadingProps) {
+function FloorManagerRoomHeading({ room, showFloors, onReload, onErrorChange }: FloorManagerRoomHeadingProps) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState(false);
   const [nameDraft, setNameDraft] = useState(room.name);
+  const [floorLevelDraft, setFloorLevelDraft] = useState(String(room.floorLevel));
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const canDelete = room.tables.length === 0;
 
@@ -74,8 +82,12 @@ function FloorManagerRoomHeading({ room, onReload, onErrorChange }: FloorManager
   }
 
   function saveRename() {
+    const floorLevel = Number(floorLevelDraft);
+    if (Number.isNaN(floorLevel)) {
+      return;
+    }
     void run(async () => {
-      await api.updateRoom(room.id, { name: nameDraft, displayOrder: room.displayOrder });
+      await api.updateRoom(room.id, { name: nameDraft, displayOrder: room.displayOrder, floorLevel });
       setEditing(false);
       onReload();
     });
@@ -98,6 +110,14 @@ function FloorManagerRoomHeading({ room, onReload, onErrorChange }: FloorManager
           disabled={busy}
           onChange={(e) => setNameDraft(e.target.value)}
         />
+        <input
+          type="number"
+          value={floorLevelDraft}
+          aria-label={t('floor.floorLevel')}
+          data-testid={`room-floor-level-input-${room.name}`}
+          disabled={busy}
+          onChange={(e) => setFloorLevelDraft(e.target.value)}
+        />
         <button type="button" data-testid={`room-name-save-${room.name}`} disabled={busy} onClick={saveRename}>
           {t('common.save')}
         </button>
@@ -106,6 +126,7 @@ function FloorManagerRoomHeading({ room, onReload, onErrorChange }: FloorManager
           disabled={busy}
           onClick={() => {
             setNameDraft(room.name);
+            setFloorLevelDraft(String(room.floorLevel));
             setEditing(false);
           }}
         >
@@ -124,10 +145,16 @@ function FloorManagerRoomHeading({ room, onReload, onErrorChange }: FloorManager
         disabled={busy}
         onClick={() => {
           setNameDraft(room.name);
+          setFloorLevelDraft(String(room.floorLevel));
           setEditing(true);
         }}
       >
         <h2>{room.name}</h2>
+        {showFloors && (
+          <span className="badge badge-neutral" data-testid={`room-floor-badge-${room.name}`}>
+            {t('floor.floorBadge', { level: room.floorLevel })}
+          </span>
+        )}
       </button>
 
       {confirmingDelete ? (
@@ -166,17 +193,23 @@ function AddRoomForm({ nextDisplayOrder, onReload, onErrorChange }: AddRoomFormP
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
+  const [floorLevel, setFloorLevel] = useState('0');
 
   function reset() {
     setName('');
+    setFloorLevel('0');
     setAdding(false);
   }
 
   function submit() {
+    const floorLevelNumber = Number(floorLevel);
+    if (Number.isNaN(floorLevelNumber)) {
+      return;
+    }
     setBusy(true);
     onErrorChange(null);
     api
-      .createRoom({ name, displayOrder: nextDisplayOrder })
+      .createRoom({ name, displayOrder: nextDisplayOrder, floorLevel: floorLevelNumber })
       .then(() => {
         reset();
         onReload();
@@ -202,6 +235,14 @@ function AddRoomForm({ nextDisplayOrder, onReload, onErrorChange }: AddRoomFormP
         data-testid="new-room-name"
         disabled={busy}
         onChange={(e) => setName(e.target.value)}
+      />
+      <input
+        type="number"
+        value={floorLevel}
+        aria-label={t('floor.floorLevel')}
+        data-testid="new-room-floor-level"
+        disabled={busy}
+        onChange={(e) => setFloorLevel(e.target.value)}
       />
       <button type="button" data-testid="new-room-save" disabled={busy || name.trim() === ''} onClick={submit}>
         {t('common.save')}

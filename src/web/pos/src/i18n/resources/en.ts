@@ -14,6 +14,7 @@ export const en = {
     takeawayLabelPlaceholder: 'Name or ticket number (optional)',
     takeawayDefaultLabel: 'Takeaway',
     tableLabel: 'Table {{number}}',
+    floorBadge: 'Floor {{level}}',
     state: {
       Free: 'Free',
       Occupied: 'Occupied',

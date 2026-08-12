@@ -104,6 +104,8 @@ export interface RoomDto {
   id: string;
   name: string;
   displayOrder: number;
+  /** Which physical storey this room sits on (FLR-07) -- 0 ground floor, positive above it, negative below. */
+  floorLevel: number;
   tables: TableDto[];
 }
 
@@ -126,11 +128,13 @@ export interface UpdateTableRequest {
 export interface CreateRoomRequest {
   name: string;
   displayOrder: number;
+  floorLevel: number;
 }
 
 export interface UpdateRoomRequest {
   name: string;
   displayOrder: number;
+  floorLevel: number;
 }
 
 /** RFC 9457 problem response shape used for every API failure. */

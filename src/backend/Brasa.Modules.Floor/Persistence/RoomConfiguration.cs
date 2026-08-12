@@ -14,5 +14,6 @@ internal sealed class RoomConfiguration : IEntityTypeConfiguration<Room>
 
         builder.Property(r => r.Name).HasMaxLength(200).IsRequired();
         builder.Property(r => r.DisplayOrder).IsRequired();
+        builder.Property(r => r.FloorLevel).IsRequired();
     }
 }

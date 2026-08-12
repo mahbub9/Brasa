@@ -213,6 +213,15 @@
   color: var(--danger);
 }
 
+/* Purely informational, not a status indicator -- the floor-level tag
+   (FLR-07) reuses the pill shape without borrowing on/off's good/bad
+   color meaning. */
+.badge-neutral {
+  background: var(--border);
+  color: var(--muted);
+  margin-left: 0.5rem;
+}
+
 .menu-manager-category-heading button {
   margin-left: auto;
 }
