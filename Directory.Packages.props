@@ -16,6 +16,13 @@
     <PackageVersion Include="Microsoft.OpenApi" Version="2.11.0" />
     <PackageVersion Include="Asp.Versioning.Http" Version="10.2.1" />
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.10" />
+    <!-- CAT-17 Excel import — read-only, minimal dependency footprint (no
+         transitive vulnerabilities as of this pin, unlike ClosedXML/NPOI). -->
+    <PackageVersion Include="ExcelDataReader" Version="3.9.0" />
+    <!-- ExcelDataReader needs CodePagesEncodingProvider registered even for
+         .xlsx — .NET Core dropped the legacy codepages it still probes
+         internally. First-party Microsoft BCL package. -->
+    <PackageVersion Include="System.Text.Encoding.CodePages" Version="10.0.10" />
   </ItemGroup>
 
   <ItemGroup Label="Persistence">

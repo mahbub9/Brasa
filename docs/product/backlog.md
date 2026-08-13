@@ -41,7 +41,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **API** | API platform & mobile readiness | 15 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 3 | 16 | I3 |
-| **CAT** | Catalog & menu | 17 | 19 | I0 (rest: I1) |
+| **CAT** | Catalog & menu | 18 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 6 | 7 | I1 |
 | **ORD** | Ordering | 20 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
@@ -55,7 +55,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 9 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **110** | **292** | |
+| | **Total** | **111** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -414,7 +414,53 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > removes a real file through the real browser, confirmed via a
 > follow-up API call. Full suite green (64 backend, 168 E2E, one
 > confirmed pre-existing QA-02 table-pool flake, clean in isolation) —
-> the pre-existing 163 all still pass unchanged.
+> the pre-existing 163 all still pass unchanged. Course firing
+> (ORD-07/08/09) shipped the same session — see those rows' own detail
+> above; full suite green (64 backend, 173 E2E) once it landed.
+> CAT-17's own remaining gap ("Excel not built") is closed too —
+> `POST /menu/items/import/excel` accepts a real `.xlsx` file
+> (`ExcelDataReader`, chosen over ClosedXML/NPOI specifically because it
+> carries no transitive vulnerabilities, see below) and shares the exact
+> same `ImportRowsAsync` row-processing pipeline the CSV endpoint already
+> used, once `ExcelImportParser` turns the first worksheet into the
+> identical row shape `CsvParser` produces — every validation, every
+> error code, the per-row-independence guarantee, all of it now applies
+> to both formats from one place, not two parallel implementations.
+> `admin`'s single import control now routes by file extension rather
+> than gaining a second control. Two real, non-obvious problems surfaced
+> along the way, neither about the CSV/Excel logic itself: first,
+> `ClosedXML` (this task's first attempt) pulls in `SSH.NET` 2025.1.0
+> transitively, which the zero-warning build gate correctly refused —
+> switched to `ExcelDataReader`, a read-only, dependency-light
+> alternative, since this codebase never needs to *write* Excel, only
+> read it. Second, and unrelated to either library: NuGet's live
+> vulnerability advisory feed flagged that same `SSH.NET` version in
+> `Testcontainers` (already present all session, pulled in for optional
+> remote-Docker-over-SSH support) between one `dotnet build` and the
+> next, with zero local code changes — confirmed genuinely external by
+> reverting every change and rebuilding a byte-identical tree, still
+> broken. Fixed by pinning a direct `SSH.NET` reference to a patched
+> version in `Brasa.Api.IntegrationTests`, since NuGet treats a
+> dependency's unbracketed version as a floor, not an exact pin — a
+> transitive dependency neither this task nor any earlier one actually
+> introduced, but which was blocking every build regardless (see the new
+> §7 trap entries for both). A third, smaller gotcha specific to Excel
+> itself: ExcelDataReader throws `NotSupportedException: No data is
+> available for encoding 1252` on every `.xlsx` (not just legacy `.xls`)
+> until `Encoding.RegisterProvider(CodePagesEncodingProvider.Instance)`
+> is registered — .NET Core dropped that codepage by default — fixed
+> with a first-party `System.Text.Encoding.CodePages` package and a
+> static constructor on `ExcelImportParser`. **Verified live**:
+> `menu-import-excel.spec.ts` — 2 valid + 2 invalid rows plus a wholly-
+> blank row in one real `.xlsx` (built at test time via `exceljs`, a
+> devDependency of `e2e` only, never shipped) → `created: 2`, the same
+> two row-level errors the CSV spec already proves, the blank row
+> silently skipped rather than reported; an empty file, a non-`.xlsx`
+> file, a genuinely corrupt `.xlsx`, and a header missing a required
+> column each 400 with their own code; the `admin` UI imports a real
+> `.xlsx` end to end. The pre-existing CSV spec (`menu-import.spec.ts`)
+> re-verified unchanged, confirming the shared-pipeline refactor didn't
+> disturb it. Full suite green (64 backend, 176 E2E).
 
 ---
 
@@ -518,7 +564,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | CAT-14 | Course assignment per item | ✅ `PUT /menu/items/{id}/course` — `Course?` (`Starter`/`Main`/`Dessert`/`Drink`), null when not yet assigned (a data-entry gap, same convention as an empty `Allergens` list). Independent of `MenuCategory`: a menu can be organised for browsing by ingredient/style while every item still belongs to exactly one course. No admin UI yet, and course *firing* (ORD-07) isn't built either — ships ahead of both, the tag it will read from once it is. **Verified live**: set/persist/clear, an unrecognised course name and an unknown item both rejected (`catalog.invalid_course`/`catalog.item_not_found`) |
 | CAT-15 | Kitchen station routing per item | ✅ `PUT /menu/items/{id}/station` — `KitchenStation?` (`Grill`/`Bar`/`ColdKitchen`/`Fryer`/`Pastry`), null when not yet assigned. Independent of both `MenuCategory` and `Course` (CAT-14): a starter and a main can both come off the grill. No admin UI yet, and station *routing* (KIT-06) isn't built either — ships ahead of both, the tag it will read from once it is. **Verified live**: set/persist/clear, an unrecognised station name and an unknown item both rejected (`catalog.invalid_station`/`catalog.item_not_found`) |
 | CAT-16 | Menu versioning with effective dates | ✅ Scoped to scheduled future price changes — the other half this title could mean, a full historical-menu audit trail, is a separate, deferred concern (order lines already snapshot their own price/VAT at time of sale, so per-sale history was already solved before this row). `MenuItem.ScheduledPrice`/`ScheduledPriceEffectiveFromUtc` (persisted as two flat fields, not one nested value object — EF Core cannot constructor-bind a complex type nested inside another) via `PUT /menu/items/{id}/scheduled-price`, all-or-nothing like CAT-11's schedule. Deliberately not driven by a background job — nothing runs one yet (Hangfire is OPS-10) — `MenuItem.EffectivePrice(nowUtc)` resolves it lazily on every read instead, the same "computed, never promoted" shape CAT-11 already proved: a change due five minutes ago applies correctly with zero manual step. `GetMenuAsync`/`GetMenuAllAsync`'s `Price` field and `AddLine`/`AddComboLineAsync`'s snapshot all resolve through `EffectivePrice`, not the raw stored value — the guest is charged exactly what the menu just displayed. Only one pending change at a time, only the dine-in price (not `TakeawayPrice`), both documented gaps. **Verified live**: `menu-item-scheduled-price.spec.ts` — a change scheduled ~1.5s out is confirmed *not* active, a real wait elapses it, then `GET /menu` and a real `AddLine` call both reflect the new price with no intervening action; a partial request, a non-future date, an unparsable date, a negative price and an unknown item are all rejected with their own codes |
-| CAT-17 | Bulk import (CSV / Excel) | 🚧 `POST /menu/items/import` — CSV only, Excel not built. Hand-written RFC 4180 parser (`CsvParser`, 8 unit tests — quoting, escaped quotes, embedded newlines, CRLF/LF, blank lines), no new dependency. Rows import independently — an unknown category or an unparsable price is reported per-row (1-indexed against the data rows) rather than failing the whole file. Create-only, not upsert: importing the same file twice creates duplicates. **Verified live**: 2 valid + 2 invalid rows in one file → `created: 2`, two row-level errors with the exact bad value named; empty CSV and a header missing a required column both `400` |
+| CAT-17 | Bulk import (CSV / Excel) | ✅ `POST /menu/items/import` (CSV, hand-written RFC 4180 parser, `CsvParser`, 8 unit tests) and `POST /menu/items/import/excel` (`.xlsx`, `ExcelDataReader`) share one `ImportRowsAsync` pipeline once each turns its file into the same row shape — every validation/behaviour below applies to both. Rows import independently — an unknown category or an unparsable price is reported per-row (1-indexed against the data rows) rather than failing the whole file. Create-only, not upsert: importing the same file twice creates duplicates. `admin`'s single import control routes by file extension. **Verified live**: 2 valid + 2 invalid rows in one file → `created: 2`, two row-level errors with the exact bad value named, both formats; empty file, a header missing a required column, a non-`.xlsx` file and a corrupt `.xlsx` all `400` with their own codes; a wholly-blank Excel row is skipped, not reported as invalid |
 | CAT-18 | Soft delete preserving historical order references | ✅ `MenuItem` only (what `OrderLine.MenuItemId` can reference) — `DELETE /menu/items/{id}`, no admin UI yet. Verified live: deleted item vanishes from `/menu` and can't be re-ordered, but a past order's line keeps its name/price. See `ISoftDeletable` in `docs/architecture/multi-tenancy.md` |
 | CAT-19 | Menu item price editing | ✅ `MenuItem.Reprice` existed with its own negative-price guard since I0, with no endpoint calling it — found the same way as CAT-13's availability gap. `PUT /menu/items/{id}/price` closes it; ships ahead of any UI, same as CAT-02/13/17/18. Safe by construction, not convention: `OrderLine.UnitPrice` snapshots at add-time, so repricing never rewrites a past order. **Verified live**: reprice a seeded item, confirm the *already-open* order's existing line total is unchanged while `GET /menu` shows the new price; negative price and unknown item both rejected (`catalog.invalid_price`/`catalog.item_not_found`) |
 

@@ -25,8 +25,9 @@ as any change to an error code, the same rule as everything else in
 | `catalog.combo_price_not_allocable` | Conflict | 409 | `POST /orders/{id}/combo-lines`'s (CAT-10) combo's components all price at zero, so `Combo.Price` cannot be proportionally allocated across them. |
 | `catalog.image_required` | Validation | 400 | `POST /menu/items/{id}/image`'s (CAT-02) request has no file attached (or an empty one). |
 | `catalog.image_too_large` | Validation | 400 | `POST /menu/items/{id}/image`'s (CAT-02) uploaded file exceeds the 5MB limit. |
-| `catalog.import_empty` | Validation | 400 | `POST /menu/items/import`'s `csv` has no rows at all (not even a header). |
-| `catalog.import_invalid_header` | Validation | 400 | `POST /menu/items/import`'s CSV header is missing a required column (`CategoryName`, `Name`, `Price`, `VatRate`). |
+| `catalog.import_empty` | Validation | 400 | `POST /menu/items/import`'s `csv`, or `POST /menu/items/import/excel`'s uploaded file (CAT-17), has no rows at all (not even a header). |
+| `catalog.import_invalid_file` | Validation | 400 | `POST /menu/items/import/excel`'s (CAT-17) uploaded file isn't a `.xlsx` file, or isn't a well-formed one. |
+| `catalog.import_invalid_header` | Validation | 400 | `POST /menu/items/import`'s CSV or `POST /menu/items/import/excel`'s (CAT-17) Excel header row is missing a required column (`CategoryName`, `Name`, `Price`, `VatRate`). |
 | `catalog.incomplete_schedule` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) days/start/end are only partly set — a schedule is all-or-nothing, not a partial update. |
 | `catalog.incomplete_scheduled_price` | Validation | 400 | `PUT /menu/items/{id}/scheduled-price`'s (CAT-16) `price`/`effectiveFromUtc` are only partly set — both are required together, or both omitted to clear the pending change. |
 | `catalog.invalid_allergen` | Validation | 400 | `PUT /menu/items/{id}/details`'s `allergens` contains a name that isn't a recognised `Allergen`. |

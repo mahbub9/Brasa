@@ -146,6 +146,12 @@ export const api = {
 
   importMenuItems: (csv: string) => post<ImportMenuItemsResponse>('/menu/items/import', { csv }),
 
+  importMenuItemsExcel: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return postForm<ImportMenuItemsResponse>('/menu/items/import/excel', formData);
+  },
+
   createTable: (roomId: string, body: CreateTableRequest) => post<TableDto>(`/rooms/${roomId}/tables`, body),
 
   updateTable: (tableId: string, body: UpdateTableRequest) => put<TableDto>(`/tables/${tableId}`, body),

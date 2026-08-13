@@ -30,8 +30,12 @@ export function MenuManager({ categories, onReload, onErrorChange }: MenuManager
     setImportResult(null);
     onErrorChange(null);
     try {
-      const csv = await file.text();
-      setImportResult(await api.importMenuItems(csv));
+      // Routed by extension, not declared MIME type — browsers report
+      // inconsistent content types for .xlsx (CAT-17's Excel half).
+      const result = file.name.toLowerCase().endsWith('.xlsx')
+        ? await api.importMenuItemsExcel(file)
+        : await api.importMenuItems(await file.text());
+      setImportResult(result);
       onReload();
     } catch (err) {
       onErrorChange(err instanceof ApiError ? err.message : t('error.generic'));
@@ -61,7 +65,7 @@ export function MenuManager({ categories, onReload, onErrorChange }: MenuManager
           {t('menu.importChoose')}
           <input
             type="file"
-            accept=".csv"
+            accept=".csv,.xlsx"
             data-testid="menu-import-input"
             disabled={importing}
             onChange={(e) => {

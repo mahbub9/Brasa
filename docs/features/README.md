@@ -36,6 +36,7 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | [Void a line](void-a-line.md) | ORD-10 | Ordering |
 | [Edit a line's quantity](edit-line-quantity.md) | ORD-03 | Ordering |
 | [Course firing](course-firing.md) | ORD-07, ORD-08, ORD-09 | Ordering |
+| [Menu bulk import (CSV / Excel)](menu-bulk-import.md) | CAT-17 | Catalog |
 | [Menu item photos, description and allergens](menu-item-photos-and-details.md) | CAT-02 | Catalog |
 | [Menu item classification: course and station](menu-item-classification.md) | CAT-14, CAT-15 | Catalog |
 | [Channel pricing — dine-in vs takeaway](channel-pricing.md) | CAT-06 | Catalog |

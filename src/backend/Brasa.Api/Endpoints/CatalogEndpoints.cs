@@ -67,6 +67,13 @@ public static class CatalogEndpoints
             .WithSummary("Bulk-creates menu items from a CSV file (CAT-17).")
             .Produces<ImportMenuItemsResponse>();
 
+        group.MapPost("/menu/items/import/excel", ImportMenuItemsExcelAsync)
+            .WithName("ImportMenuItemsExcel")
+            .WithSummary("Bulk-creates menu items from an Excel (.xlsx) file (CAT-17). Same columns and per-row behaviour as the CSV import.")
+            .Accepts<IFormFile>("multipart/form-data")
+            .Produces<ImportMenuItemsResponse>()
+            .DisableAntiforgery();
+
         group.MapPut("/menu/items/{itemId:guid}/availability", UpdateMenuItemAvailabilityAsync)
             .WithName("UpdateMenuItemAvailability")
             .WithSummary("86's a menu item, or brings it back (CAT-13).")
@@ -740,6 +747,59 @@ public static class CatalogEndpoints
             return Error.Validation("catalog.import_empty", "The CSV has no rows.").ToProblem();
         }
 
+        return await ImportRowsAsync(rows, db, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Bulk-creates menu items from an Excel file (CAT-17's Excel half) —
+    /// same columns, same per-row independence, same
+    /// <see cref="ImportMenuItemsResponse"/> shape as the CSV path above;
+    /// only how the rows get read differs (<see cref="ExcelImportParser"/>).
+    /// </summary>
+    private static async Task<IResult> ImportMenuItemsExcelAsync(
+        IFormFile? file,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
+        var validation = ExcelImportParser.Validate(file);
+        if (validation.IsFailure)
+        {
+            return validation.Error.ToProblem();
+        }
+
+        IReadOnlyList<IReadOnlyList<string>> rows;
+        try
+        {
+            await using var stream = file!.OpenReadStream();
+            rows = ExcelImportParser.Parse(stream);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // A corrupt or non-Excel upload is an expected failure at this
+            // boundary (untrusted external file input), not a bug — see
+            // ExcelImportParser.Parse's own remarks.
+            return Error.Validation(
+                "catalog.import_invalid_file", $"Could not read the Excel file: {ex.Message}").ToProblem();
+        }
+
+        if (rows.Count == 0)
+        {
+            return Error.Validation("catalog.import_empty", "The Excel file has no rows.").ToProblem();
+        }
+
+        return await ImportRowsAsync(rows, db, cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// The row-processing pipeline shared by the CSV and Excel import
+    /// endpoints above — everything past "rows exist" is identical
+    /// regardless of which file format produced them.
+    /// </summary>
+    private static async Task<IResult> ImportRowsAsync(
+        IReadOnlyList<IReadOnlyList<string>> rows,
+        CatalogDbContext db,
+        CancellationToken cancellationToken)
+    {
         var header = rows[0];
         var columnIndex = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         for (var i = 0; i < header.Count; i++)
@@ -752,7 +812,7 @@ public static class CatalogEndpoints
         {
             return Error.Validation(
                 "catalog.import_invalid_header",
-                $"CSV header is missing required column(s): {string.Join(", ", missingColumns)}.").ToProblem();
+                $"Header row is missing required column(s): {string.Join(", ", missingColumns)}.").ToProblem();
         }
 
         var hasDescription = columnIndex.TryGetValue("Description", out var descriptionIndex);

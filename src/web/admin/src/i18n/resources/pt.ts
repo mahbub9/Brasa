@@ -57,7 +57,7 @@ export const pt = {
     deleteItem: 'Eliminar',
     deleteConfirm: 'Confirmar eliminação?',
     deleted: 'Eliminado.',
-    importTitle: 'Importar itens (CSV)',
+    importTitle: 'Importar itens (CSV ou Excel)',
     importButton: 'Importar',
     importChoose: 'Escolher ficheiro…',
     importCreated: '{{count}} itens criados.',

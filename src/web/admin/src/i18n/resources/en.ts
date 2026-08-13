@@ -60,7 +60,7 @@ export const en = {
     deleteItem: 'Delete',
     deleteConfirm: 'Confirm delete?',
     deleted: 'Deleted.',
-    importTitle: 'Import items (CSV)',
+    importTitle: 'Import items (CSV or Excel)',
     importButton: 'Import',
     importChoose: 'Choose file…',
     importCreated: '{{count}} items created.',

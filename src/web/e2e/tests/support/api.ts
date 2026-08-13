@@ -98,6 +98,20 @@ export function importMenuItemsResponse(request: APIRequestContext, csv: string)
   });
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-17's Excel half). */
+export function importMenuItemsExcelResponse(request: APIRequestContext, fileName: string, buffer: Buffer) {
+  return request.post(`${apiBaseUrl}/menu/items/import/excel`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    multipart: {
+      file: {
+        name: fileName,
+        mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        buffer,
+      },
+    },
+  });
+}
+
 /** Deletes (soft) a menu item — CAT-18. Used to give an imported test item back when a spec is done with it. */
 export async function deleteMenuItem(request: APIRequestContext, itemId: string): Promise<void> {
   const response = await request.delete(`${apiBaseUrl}/menu/items/${itemId}`, {

@@ -10,6 +10,13 @@
     <PackageReference Include="Microsoft.OpenApi" />
     <PackageReference Include="Asp.Versioning.Http" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="ExcelDataReader" />
+    <!-- NU1510 (package pruning) flags this as redundant with the shared
+         framework's reference assembly, but the runtime provider it
+         registers (ExcelImportParser's static constructor) isn't present
+         at runtime without the real package — genuinely needed, not a
+         stale reference. -->
+    <PackageReference Include="System.Text.Encoding.CodePages" NoWarn="NU1510" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
