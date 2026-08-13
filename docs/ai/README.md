@@ -802,6 +802,35 @@ there is actually met.
   caught, only a live call. Fixed with `.DisableAntiforgery()` chained onto
   the route mapping — the correct call for an endpoint that was never
   protected by antiforgery to begin with, not a workaround.
+- **A `dotnet build` that was green minutes earlier can fail solution-wide
+  with zero code changes, because NuGet's vulnerability advisory feed
+  updates live and is checked on every restore.** Hit while adding a new
+  package to `Brasa.Api` for an unrelated task: the very next `dotnet
+  build Brasa.slnx` failed with `NU1903` on `SSH.NET` 2025.1.0
+  (GHSA-q939-rpr3-3284) in `Brasa.Api.IntegrationTests`, a package this
+  project never references directly — it's an optional remote-Docker-
+  over-SSH dependency `Testcontainers` 4.13.0 pulls in, present all
+  session. Confirmed genuinely pre-existing and unrelated by reverting
+  every local change and rebuilding a byte-identical tree: still failed,
+  meaning the NuGet advisory database itself had just been updated
+  between builds, not anything in this repo. Fixed the correct way per
+  hard rule 6 (fix the warning, don't suppress it) by adding a **direct**
+  `<PackageReference Include="SSH.NET" />` to
+  `Brasa.Api.IntegrationTests.csproj` pinned to `2026.0.0` in
+  `Directory.Packages.props` — NuGet treats a dependency's unbracketed
+  version number as a floor, not an exact pin, so a direct reference to a
+  higher version wins over Testcontainers' own transitive one. Also
+  surfaced a latent gap in this repo's existing pin discipline: the
+  `SQLitePCLRaw.*` "Pinned: transitive …" comments in
+  `Directory.Packages.props` add a `<PackageVersion>` entry but no
+  project anywhere holds a matching `<PackageReference>` — under Central
+  Package Management, an unreferenced `PackageVersion` is inert metadata,
+  it does **not** constrain a transitive dependency's resolved version.
+  Whether those particular pins are still doing anything is unverified;
+  not fixed here, since it wasn't what broke the build, but worth
+  checking before trusting any "pinned: transitive" comment in this file
+  at face value — check for a matching direct `PackageReference` before
+  assuming a comment like this one is load-bearing.
 
 ## 8. Environment
 

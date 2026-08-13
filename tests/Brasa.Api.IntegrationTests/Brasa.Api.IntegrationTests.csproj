@@ -13,6 +13,12 @@
     <PackageReference Include="Shouldly" />
     <!-- Real PostgreSQL per test run: RLS behaviour cannot be exercised in-memory. -->
     <PackageReference Include="Testcontainers.PostgreSql" />
+    <!-- Direct override: Testcontainers 4.13.0 pulls SSH.NET 2025.1.0 (optional
+         remote-Docker-over-SSH support), which carries GHSA-q939-rpr3-3284
+         (high). No Testcontainers release fixes this yet; force the patched
+         SSH.NET directly since NuGet treats its unbracketed dependency
+         version as a minimum, not an exact pin. -->
+    <PackageReference Include="SSH.NET" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
   </ItemGroup>
 
