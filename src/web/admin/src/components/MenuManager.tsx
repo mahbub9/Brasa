@@ -1,7 +1,7 @@
 import { formatMoney } from '@brasa/ui/lib/money';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api, ApiError } from '../api/client';
+import { api, apiOrigin, ApiError } from '../api/client';
 import type { AdminMenuCategoryDto, ImportMenuItemsResponse, MenuItemDto } from '../api/types';
 
 interface MenuManagerProps {
@@ -154,6 +154,26 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
     }
   }
 
+  async function handleUploadImage(file: File) {
+    setBusy(true);
+    onErrorChange(null);
+    try {
+      await api.uploadItemImage(item.id, file);
+      onReload();
+    } catch (err) {
+      onErrorChange(err instanceof ApiError ? err.message : t('error.generic'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function removeImage() {
+    void run(async () => {
+      await api.removeItemImage(item.id);
+      onReload();
+    });
+  }
+
   function toggleAvailability() {
     void run(async () => {
       await api.setItemAvailability(item.id, { isAvailable: !item.isAvailable });
@@ -237,6 +257,37 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
     <li className="menu-manager-item" data-testid={`item-${item.name}`}>
       <div className="menu-manager-item-row">
         <span className="menu-manager-item-name">{item.name}</span>
+
+        <span className="menu-manager-item-image">
+          {item.imageUrl ? (
+            <>
+              <img
+                src={`${apiOrigin}${item.imageUrl}`}
+                alt=""
+                className="menu-manager-item-thumb"
+                data-testid={`item-image-${item.name}`}
+              />
+              <button type="button" data-testid={`remove-image-${item.name}`} disabled={busy} onClick={removeImage}>
+                {t('menu.removeImage')}
+              </button>
+            </>
+          ) : (
+            <label className="menu-manager-item-image-upload">
+              {t('menu.addImage')}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                data-testid={`upload-image-${item.name}`}
+                disabled={busy}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void handleUploadImage(file);
+                  e.target.value = '';
+                }}
+              />
+            </label>
+          )}
+        </span>
 
         {editingPrice ? (
           <span className="menu-manager-item-price-edit">

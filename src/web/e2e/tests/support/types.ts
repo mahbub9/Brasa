@@ -40,6 +40,8 @@ export interface MenuItemDto {
   id: string;
   name: string;
   description: string | null;
+  /** Path to an uploaded photo (CAT-02), relative to the API's own origin, not `/api/v1`. Null if none set. */
+  imageUrl: string | null;
   price: MoneyDto;
   takeawayPrice: MoneyDto | null;
   vatRatePercent: number;

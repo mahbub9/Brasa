@@ -41,7 +41,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **API** | API platform & mobile readiness | 15 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 3 | 16 | I3 |
-| **CAT** | Catalog & menu | 16 | 19 | I0 (rest: I1) |
+| **CAT** | Catalog & menu | 17 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 6 | 7 | I1 |
 | **ORD** | Ordering | 17 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
@@ -55,7 +55,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 9 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **106** | **292** | |
+| | **Total** | **107** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -382,6 +382,39 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > unrelated spec each run, clean in isolation both times) — the existing
 > 160 all still pass unchanged, confirming the non-blocking design
 > really doesn't disturb anything that never signs in.
+> CAT-02's own image-upload gap ("needs file storage infra") is closed
+> now too — `POST`/`DELETE /menu/items/{id}/image`, local disk under a
+> new `MenuItemImageStorage`, the same honestly-scoped "no real infra
+> credentials, skip it like OPS-11" reasoning applied to storage instead
+> of deployment. GUID-named files (never the caller's own filename),
+> served back through `UseStaticFiles` at `/uploads/menu-items/…` —
+> outside `/api/v1` entirely, so both `pos` and `admin` gained a small
+> `apiOrigin` export (the API base URL's own origin) to build a fetchable
+> `<img src>` from a path that isn't API data. Saves the new file and
+> persists the new `ImageUrl` before ever deleting whichever file it
+> replaces, so a failed upload degrades to "still has the old photo,"
+> never "has no photo." Building it surfaced a real gotcha, caught live
+> by the E2E suite rather than at compile time: ASP.NET Core silently
+> attaches antiforgery request-validation metadata to any Minimal API
+> endpoint that binds an `IFormFile`, even in an app that registers no
+> antiforgery services at all (hard rule 7 — no cookies here) — every
+> upload 500'd with `ThrowMissingAntiforgeryMiddlewareException` until
+> `.DisableAntiforgery()` was added to the route mapping. `admin`'s menu
+> editor gets a thumbnail + remove button when a photo is set, or a
+> styled upload control (a hidden native `<input type="file">` behind a
+> clickable label) when none is; `pos`'s menu grid renders the same
+> thumbnail read-only. **Verified live**: `menu-item-image.spec.ts` — a
+> real uploaded PNG's returned URL is genuinely fetchable through
+> `UseStaticFiles`, not just present in the DTO; replacing a photo
+> deletes the old file from disk (confirmed 404 on its old URL
+> afterward); an empty file, an oversized (>5MB) file, a disallowed
+> content type and an unknown item are each rejected with their own code
+> (`catalog.image_required`/`catalog.image_too_large`/`catalog.invalid_image_type`/`catalog.item_not_found`);
+> removing a never-set image is a no-op; the `admin` UI uploads and
+> removes a real file through the real browser, confirmed via a
+> follow-up API call. Full suite green (64 backend, 168 E2E, one
+> confirmed pre-existing QA-02 table-pool flake, clean in isolation) —
+> the pre-existing 163 all still pass unchanged.
 
 ---
 
@@ -470,7 +503,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ID | Task | Status |
 |---|---|---|
 | CAT-01 | Menu categories, ordering, visibility | ✅ `MenuCategory.IsVisible` had no setter at all until now — nothing could ever set it to anything but its default `true`, despite this row's own title naming "visibility" as in scope and being marked done. `PUT /menu/categories/{id}/visibility` (found by the same sweep as FLR-04/CAT-13/CAT-19 — a domain gap one level up, a category rather than an item) closes it: hiding a category removes it *and every item under it* from `GET /menu` in one call. Ships ahead of any UI. **Verified live**: hide → category and its items vanish from the menu; show → both restored; unknown category `404`s (`catalog.category_not_found`) |
-| CAT-02 | Menu items — name, description, image, allergens | 🚧 `PUT /menu/items/{id}/details` sets description + declared allergens (14 fixed EU-regulated allergens, Regulation (EU) No 1169/2011 — stable taxonomy, not a Portugal-specific figure needing an accountant's confirmation like `VatRate`); rendered on the `pos` menu screen. Image upload still not built — needs file storage infra |
+| CAT-02 | Menu items — name, description, image, allergens | ✅ `PUT /menu/items/{id}/details` sets description + declared allergens (14 fixed EU-regulated allergens, Regulation (EU) No 1169/2011 — stable taxonomy, not a Portugal-specific figure needing an accountant's confirmation like `VatRate`); rendered on the `pos` menu screen. `POST`/`DELETE /menu/items/{id}/image` upload/remove a photo — local disk storage (`MenuItemImageStorage`), an honest dev-only placeholder: no S3/Blob credentials in this environment (same reasoning as skipping OPS-11), no per-tenant isolation yet |
 | CAT-03 | Modifier groups (required / optional, min / max) | ✅ `ModifierGroup` belongs to one `MenuItem` (not yet shared across items — see its doc comment); server enforces min/max on `POST /orders/{id}/lines`, not just the UI |
 | CAT-04 | Modifiers with price deltas | ✅ `Modifier.PriceDelta` (can be negative — e.g. "Meia dose"); snapshotted onto `OrderLineModifier` at the time of sale, folded into `LineTotal` and the fiscal document's gross total |
 | CAT-05 | Price lists per site | ✅ A narrow first slice, unblocked by IDN-01's `Site` — `PriceList` (`SiteId`, `Name`) owns `PriceListEntry` rows (`MenuItemId`, `Price`), the same ownership shape `MenuItem`/`ModifierGroup` already use. `POST`/`GET /price-lists`, `GET /sites/{id}/price-lists`, `POST /price-lists/{id}/entries` (rejects a second entry for the same item — one price per item per list, backed by both a domain guard and a DB unique index), `GET /price-lists/{id}/effective-price/{menuItemId}` (the list's own override, or the item's ordinary price when none is set — the actual resolution logic, not just storage). No rename/delete/remove-entry yet. `SiteId`/`MenuItemId` are plain opaque references, never a live join — the same pattern `Order.TableId`/`OrderLine.MenuItemId` already use; the create/list-for-site endpoints compose `CatalogDbContext` and `IdentityDbContext` in the same handler to confirm a site is real, sanctioned at the API layer per module-boundaries.md rule 5. Nothing in `AddLine` or either web client resolves an effective price through this yet — there is no site-selection concept in `pos`/`admin` today, so this ships the pricing model itself, the same "mechanism before the trigger" shape CAT-14/15 already established. **Verified live**: `price-lists.spec.ts` — a fresh item resolves to its ordinary price before any override, then to the list's own price once one is added; the entry persists across a refetch and appears in the site's list; a duplicate entry, a negative price, an unknown item and an unknown price list are all rejected with their own codes |

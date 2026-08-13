@@ -27,6 +27,14 @@ import type {
 // src/backend/Brasa.Api/Properties/launchSettings.json.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5216/api/v1';
 
+/**
+ * The API's own origin, without the `/api/v1` suffix — `MenuItemDto.imageUrl`
+ * (CAT-02) is a path relative to the API host root (`/uploads/menu-items/...`,
+ * served by `UseStaticFiles`), not under `/api/v1` like every JSON endpoint,
+ * so a client needs this to build a fetchable `<img src>`.
+ */
+export const apiOrigin = new URL(API_BASE_URL).origin;
+
 /** Thrown for any non-2xx response, carrying the server's stable error code. */
 export class ApiError extends Error {
   readonly status: number;
@@ -41,11 +49,15 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // A FormData body (image upload) must NOT get an explicit Content-Type --
+  // the browser sets its own multipart boundary, which a hardcoded
+  // 'application/json' would silently break.
+  const isFormData = init?.body instanceof FormData;
   const response = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers: {
       Accept: 'application/json',
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...(init?.body && !isFormData ? { 'Content-Type': 'application/json' } : {}),
       ...init?.headers,
     },
   });
@@ -90,6 +102,15 @@ function del<T>(path: string): Promise<T> {
   });
 }
 
+/** Multipart upload (CAT-02's menu item photo) -- see request()'s own FormData handling. */
+function postForm<T>(path: string, formData: FormData): Promise<T> {
+  return request<T>(path, {
+    method: 'POST',
+    headers: { 'Idempotency-Key': newIdempotencyKey() },
+    body: formData,
+  });
+}
+
 export const api = {
   getMenu: () => request<AdminMenuCategoryDto[]>('/menu/all'),
 
@@ -114,6 +135,14 @@ export const api = {
     put(`/menu/categories/${categoryId}/visibility`, body),
 
   deleteItem: (itemId: string) => del<void>(`/menu/items/${itemId}`),
+
+  uploadItemImage: (itemId: string, file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return postForm<MenuItemDto>(`/menu/items/${itemId}/image`, formData);
+  },
+
+  removeItemImage: (itemId: string) => del<MenuItemDto>(`/menu/items/${itemId}/image`),
 
   importMenuItems: (csv: string) => post<ImportMenuItemsResponse>('/menu/items/import', { csv }),
 

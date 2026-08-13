@@ -23,6 +23,8 @@ as any change to an error code, the same rule as everything else in
 | `catalog.combo_has_no_components` | Validation | 400 | `POST /orders/{id}/combo-lines`'s (CAT-10) combo has zero components — nothing to ring up. |
 | `catalog.combo_not_found` | NotFound | 404 | The combo id in the request doesn't exist (CAT-10). |
 | `catalog.combo_price_not_allocable` | Conflict | 409 | `POST /orders/{id}/combo-lines`'s (CAT-10) combo's components all price at zero, so `Combo.Price` cannot be proportionally allocated across them. |
+| `catalog.image_required` | Validation | 400 | `POST /menu/items/{id}/image`'s (CAT-02) request has no file attached (or an empty one). |
+| `catalog.image_too_large` | Validation | 400 | `POST /menu/items/{id}/image`'s (CAT-02) uploaded file exceeds the 5MB limit. |
 | `catalog.import_empty` | Validation | 400 | `POST /menu/items/import`'s `csv` has no rows at all (not even a header). |
 | `catalog.import_invalid_header` | Validation | 400 | `POST /menu/items/import`'s CSV header is missing a required column (`CategoryName`, `Name`, `Price`, `VatRate`). |
 | `catalog.incomplete_schedule` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) days/start/end are only partly set — a schedule is all-or-nothing, not a partial update. |
@@ -31,6 +33,7 @@ as any change to an error code, the same rule as everything else in
 | `catalog.invalid_combo_name` | Validation | 400 | `POST /combos`'s (CAT-10) `name` is missing, empty or whitespace. |
 | `catalog.invalid_course` | Validation | 400 | `PUT /menu/items/{id}/course`'s `course` isn't a recognised `Course` name. |
 | `catalog.invalid_day_of_week` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) `daysOfWeek` contains a name that isn't a recognised day. |
+| `catalog.invalid_image_type` | Validation | 400 | `POST /menu/items/{id}/image`'s (CAT-02) uploaded file's declared content type isn't JPEG, PNG or WebP. |
 | `catalog.invalid_schedule` | Validation | 400 | `PUT /menu/items/{id}/schedule`'s (CAT-11) window is empty or backwards (`startTime >= endTime`). |
 | `catalog.invalid_scheduled_price_date` | Validation | 400 | `PUT /menu/items/{id}/scheduled-price`'s (CAT-16) `effectiveFromUtc` isn't a valid instant. |
 | `catalog.invalid_station` | Validation | 400 | `PUT /menu/items/{id}/station`'s `station` isn't a recognised `KitchenStation` name. |

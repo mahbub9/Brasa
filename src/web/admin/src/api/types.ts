@@ -24,6 +24,8 @@ export interface MenuItemDto {
   id: string;
   name: string;
   description: string | null;
+  /** Path to an uploaded photo (CAT-02), e.g. "/uploads/menu-items/{id}.jpg", or null if none set. */
+  imageUrl: string | null;
   price: MoneyDto;
   takeawayPrice: MoneyDto | null;
   vatRatePercent: number;

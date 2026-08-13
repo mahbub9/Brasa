@@ -53,6 +53,15 @@ public sealed class MenuItem : Entity, ISoftDeletable
     public string? Description { get; private set; }
 
     /// <summary>
+    /// Path to an uploaded photo, e.g. <c>/uploads/menu-items/{guid}.jpg</c>
+    /// (CAT-02) — never a raw filesystem path, and never the file's bytes;
+    /// storage itself is <c>Brasa.Api.MenuItemImageStorage</c>'s concern, an
+    /// API-layer detail this domain type has no business knowing about. Null
+    /// is a data-entry gap, the same convention as <see cref="Description"/>.
+    /// </summary>
+    public string? ImageUrl { get; private set; }
+
+    /// <summary>
     /// Allergens present, from the fixed EU-regulated set (CAT-02). Empty
     /// when none declared yet — that is a data-entry gap, not "contains
     /// nothing," so a menu screen must not render it as a safety claim.
@@ -257,6 +266,14 @@ public sealed class MenuItem : Entity, ISoftDeletable
     {
         Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
     }
+
+    /// <summary>
+    /// Sets or clears the uploaded photo's URL (CAT-02). Null clears it — the
+    /// caller (<c>Brasa.Api</c>'s upload/remove endpoints) is responsible for
+    /// actually saving or deleting the file itself; this only records where
+    /// the current one lives, if any.
+    /// </summary>
+    public void SetImageUrl(string? imageUrl) => ImageUrl = imageUrl;
 
     /// <summary>
     /// Replaces the full declared allergen set (CAT-02) — not additive, so a

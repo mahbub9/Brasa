@@ -37,6 +37,8 @@ export const pt = {
     takeaway: 'Levantamento',
     sameAsDineIn: 'Igual ao consumo local',
     addTakeawayPrice: 'Adicionar preço de levantamento',
+    addImage: 'Adicionar foto',
+    removeImage: 'Remover foto',
     addSchedule: 'Adicionar horário',
     scheduleStart: 'Início',
     scheduleEnd: 'Fim',

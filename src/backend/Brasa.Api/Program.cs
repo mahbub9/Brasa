@@ -28,6 +28,7 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Metrics;
@@ -129,6 +130,11 @@ builder.Services.AddSingleton<TestableClock>();
 builder.Services.AddSingleton<IClock>(sp => sp.GetRequiredService<TestableClock>());
 builder.Services.AddBrasaTenancy();
 builder.Services.AddMemoryCache();
+
+// CAT-02 — local-disk menu item photo storage. See MenuItemImageStorage's
+// own remarks for why this is a dev/demo-scoped placeholder, not a real
+// production upload pipeline.
+builder.Services.AddSingleton<MenuItemImageStorage>();
 
 // API-07 — per-client-id version policy, keyed by the X-Brasa-Client
 // header's client-id (ClientVersionMiddleware). Config-bound rather than a
@@ -293,6 +299,17 @@ else
 {
     app.UseHttpsRedirection();
 }
+
+// CAT-02 — serves uploaded menu item photos back at /uploads/menu-items/*.
+// No auth gate (this API has none yet at all) and no tenant scoping (a
+// known, named gap — see MenuItemImageStorage's own remarks); a real
+// multi-tenant deployment needs more than one shared local folder.
+var imageStorage = app.Services.GetRequiredService<MenuItemImageStorage>();
+app.UseStaticFiles(new StaticFileOptions
+{
+    FileProvider = new PhysicalFileProvider(imageStorage.RootPath),
+    RequestPath = "/uploads/menu-items",
+});
 
 app.UseRouting();
 app.UseCors(WebClientsCorsPolicy);

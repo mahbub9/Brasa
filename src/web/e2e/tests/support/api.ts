@@ -280,6 +280,49 @@ export async function updateMenuItemScheduledPrice(
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-02). */
+export function uploadMenuItemImageResponse(
+  request: APIRequestContext,
+  itemId: string,
+  fileName: string,
+  mimeType: string,
+  buffer: Buffer,
+) {
+  return request.post(`${apiBaseUrl}/menu/items/${itemId}/image`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    multipart: { file: { name: fileName, mimeType, buffer } },
+  });
+}
+
+export async function uploadMenuItemImage(
+  request: APIRequestContext,
+  itemId: string,
+  fileName: string,
+  mimeType: string,
+  buffer: Buffer,
+): Promise<MenuItemDto> {
+  const response = await uploadMenuItemImageResponse(request, itemId, fileName, mimeType, buffer);
+  if (!response.ok()) {
+    throw new Error(`POST /menu/items/${itemId}/image failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (CAT-02). */
+export function removeMenuItemImageResponse(request: APIRequestContext, itemId: string) {
+  return request.delete(`${apiBaseUrl}/menu/items/${itemId}/image`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+  });
+}
+
+export async function removeMenuItemImage(request: APIRequestContext, itemId: string): Promise<MenuItemDto> {
+  const response = await removeMenuItemImageResponse(request, itemId);
+  if (!response.ok()) {
+    throw new Error(`DELETE /menu/items/${itemId}/image failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Fetches the live seeded floor plan. */
 export async function getFloor(request: APIRequestContext): Promise<RoomDto[]> {
   const response = await request.get(`${apiBaseUrl}/floor`);

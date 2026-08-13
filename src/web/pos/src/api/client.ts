@@ -22,6 +22,14 @@ import type {
 // src/backend/Brasa.Api/Properties/launchSettings.json.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5216/api/v1';
 
+/**
+ * The API's own origin, without the `/api/v1` suffix — `MenuItemDto.imageUrl`
+ * (CAT-02) is a path relative to the API host root (served by
+ * `UseStaticFiles`), not under `/api/v1` like every JSON endpoint, so
+ * `MenuGrid` needs this to build a fetchable `<img src>`.
+ */
+export const apiOrigin = new URL(API_BASE_URL).origin;
+
 /** Thrown for any non-2xx response, carrying the server's stable error code. */
 export class ApiError extends Error {
   readonly status: number;

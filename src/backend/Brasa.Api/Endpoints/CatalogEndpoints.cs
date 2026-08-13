@@ -45,6 +45,23 @@ public static class CatalogEndpoints
             .WithSummary("Sets a menu item's description and declared allergens (CAT-02).")
             .Produces<MenuItemDto>();
 
+        group.MapPost("/menu/items/{itemId:guid}/image", UploadMenuItemImageAsync)
+            .WithName("UploadMenuItemImage")
+            .WithSummary("Uploads (or replaces) a menu item's photo (CAT-02). JPEG/PNG/WebP, 5MB max.")
+            .Accepts<IFormFile>("multipart/form-data")
+            .Produces<MenuItemDto>()
+            // ASP.NET Core auto-attaches antiforgery metadata to any endpoint that
+            // binds an IFormFile, even in a cookie-less, non-antiforgery API like
+            // this one -- without this it throws at request time because no
+            // antiforgery middleware is registered (see hard rule 7: no cookie
+            // auth, no web-only assumptions).
+            .DisableAntiforgery();
+
+        group.MapDelete("/menu/items/{itemId:guid}/image", RemoveMenuItemImageAsync)
+            .WithName("RemoveMenuItemImage")
+            .WithSummary("Removes a menu item's photo, if one is set (CAT-02).")
+            .Produces<MenuItemDto>();
+
         group.MapPost("/menu/items/import", ImportMenuItemsAsync)
             .WithName("ImportMenuItems")
             .WithSummary("Bulk-creates menu items from a CSV file (CAT-17).")
@@ -233,6 +250,77 @@ public static class CatalogEndpoints
         item.SetDescription(request.Description);
         item.SetAllergens(allergens);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(item.ToDto(clock.UtcNow));
+    }
+
+    /// <summary>
+    /// Uploads (or replaces) a menu item's photo (CAT-02) — local disk only,
+    /// see <see cref="MenuItemImageStorage"/>'s own remarks for why. Saves
+    /// the new file <em>before</em> deleting whichever one it replaces, so a
+    /// failed upload never destroys a working image; deletes the old file
+    /// only after the new URL is safely persisted.
+    /// </summary>
+    private static async Task<IResult> UploadMenuItemImageAsync(
+        Guid itemId,
+        IFormFile? file,
+        CatalogDbContext db,
+        MenuItemImageStorage imageStorage,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        var validation = MenuItemImageStorage.Validate(file);
+        if (validation.IsFailure)
+        {
+            return validation.Error.ToProblem();
+        }
+
+        var previousImageUrl = item.ImageUrl;
+        var newImageUrl = await imageStorage.SaveAsync(file!, cancellationToken).ConfigureAwait(false);
+
+        item.SetImageUrl(newImageUrl);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        imageStorage.Delete(previousImageUrl);
+
+        return Results.Ok(item.ToDto(clock.UtcNow));
+    }
+
+    /// <summary>Removes a menu item's photo, if one is set (CAT-02). A no-op, not an error, when none is set.</summary>
+    private static async Task<IResult> RemoveMenuItemImageAsync(
+        Guid itemId,
+        CatalogDbContext db,
+        MenuItemImageStorage imageStorage,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var item = await db.Items
+            .Include(i => i.ModifierGroups)
+            .ThenInclude(g => g.Modifiers)
+            .FirstOrDefaultAsync(i => i.Id == itemId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (item is null)
+        {
+            return Error.NotFound("catalog.item_not_found", $"Menu item {itemId} was not found.").ToProblem();
+        }
+
+        var previousImageUrl = item.ImageUrl;
+        item.SetImageUrl(null);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        imageStorage.Delete(previousImageUrl);
 
         return Results.Ok(item.ToDto(clock.UtcNow));
     }

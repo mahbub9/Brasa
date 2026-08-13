@@ -1,5 +1,6 @@
 import { formatMoney } from '@brasa/ui/lib/money';
 import { useTranslation } from 'react-i18next';
+import { apiOrigin } from '../api/client';
 import type { MenuCategoryDto, MenuItemDto } from '../api/types';
 
 interface MenuGridProps {
@@ -31,6 +32,9 @@ export function MenuGrid({ categories, onSelectItem, disabled, isTakeaway }: Men
                 disabled={disabled}
                 onClick={() => onSelectItem(item)}
               >
+                {item.imageUrl && (
+                  <img src={`${apiOrigin}${item.imageUrl}`} alt="" className="menu-item-image" data-testid={`menu-item-image-${item.name}`} />
+                )}
                 <span className="menu-item-name">{item.name}</span>
                 {item.description && <span className="menu-item-description">{item.description}</span>}
                 <span className="menu-item-price">

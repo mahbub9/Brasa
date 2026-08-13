@@ -444,6 +444,13 @@ main {
   cursor: not-allowed;
 }
 
+.menu-item-image {
+  width: 100%;
+  height: 6rem;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
 .menu-item-name {
   font-weight: 600;
 }

@@ -72,6 +72,7 @@ pgdata/
 logs/
 *.log
 infra/backups/
+src/backend/Brasa.Api/uploads/
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  OS

@@ -267,6 +267,34 @@
   border-radius: 6px;
 }
 
+.menu-manager-item-image {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.menu-manager-item-thumb {
+  width: 2.5rem;
+  height: 2.5rem;
+  object-fit: cover;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
+.menu-manager-item-image-upload {
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 0.2rem 0.5rem;
+  color: var(--brasa);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.menu-manager-item-image-upload input {
+  display: none;
+}
+
 .menu-manager-item-takeaway-price {
   display: flex;
   align-items: center;

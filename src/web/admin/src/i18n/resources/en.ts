@@ -40,6 +40,8 @@ export const en = {
     takeaway: 'Takeaway',
     sameAsDineIn: 'Same as dine-in',
     addTakeawayPrice: 'Add takeaway price',
+    addImage: 'Add photo',
+    removeImage: 'Remove photo',
     addSchedule: 'Add schedule',
     scheduleStart: 'Start',
     scheduleEnd: 'End',
