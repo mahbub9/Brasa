@@ -27,7 +27,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 **Legend** ✅ done · 🚧 in progress · ⬜ todo · 🔒 blocked · ⏭ deferred past MVP
 
-**Last updated:** 2026-08-10
+**Last updated:** 2026-08-13
 
 ---
 
@@ -40,10 +40,10 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
 | **API** | API platform & mobile readiness | 15 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
-| **IDN** | Identity & access | 2 | 16 | I3 |
+| **IDN** | Identity & access | 3 | 16 | I3 |
 | **CAT** | Catalog & menu | 16 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 5 | 7 | I1 |
-| **ORD** | Ordering | 16 | 22 | I0 (rest: I2) |
+| **ORD** | Ordering | 17 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
@@ -55,7 +55,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 9 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **102** | **292** | |
+| | **Total** | **104** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -291,6 +291,29 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > needs a real answer to a genuine product question ("how do you fairly
 > divide 10% off the table between two guests who ordered different
 > things?") that guessing at would be worse than leaving unaddressed.
+> Staff can now sign in with a PIN too (IDN-08/09) — PBKDF2-hashed
+> (`Rfc2898DeriveBytes`, 210k iterations, no new dependency), locking out
+> after 5 consecutive wrong guesses for 15 minutes, rotated by an admin
+> reset. Verifies a *known* staff id's PIN rather than a blind PIN pad
+> searching everyone at a site — the latter would incorrectly penalise
+> every non-matching staff member's own lockout counter on someone else's
+> wrong guess, so it was deliberately not built that way. `admin` gets a
+> real "Equipa" screen (add staff, see who's locked, reset a PIN); no
+> `pos`/terminal sign-in flow yet, and nothing gated on it — until now.
+> Manager authorisation (IDN-11) is that real gate, wired into both void
+> (ORD-10) and discount (ORD-11) the same session it became possible:
+> every void/discount request now carries a manager's own staff id and
+> PIN, checked against a real `StaffRole.Manager` *before* the PIN is even
+> verified (so a Staff-role credential is rejected without spending any of
+> that person's own lockout budget), then verified through the exact same
+> `Staff.VerifyPin` mechanism the sign-in endpoint itself uses — same
+> lockout rules, no session, a fresh proof on every privileged call. The
+> registry's `ErrorType.Forbidden` (403) — reserved since API-03, never
+> constructed until now — finally gets a real call site:
+> `identity.staff_not_manager`. Still no pos/admin UI prompting for the
+> credential (no staff-picker exists in either client yet), so this ships
+> the gate itself, proven at the API level exactly the way ORD-10/11
+> themselves shipped ahead of *their* triggers.
 
 ---
 
@@ -367,7 +390,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | IDN-08 | Staff PIN sign-in on a paired terminal | 🚧 The PIN-verification half only — "on a paired terminal" is not: no terminal pairing exists (IDN-07), so `POST /staff/{id}/verify-pin` checks a PIN against a *known* staff id, not "identify me by PIN alone with no picker." That broader UX was deliberately not chosen — without knowing who's attempting, a failed PIN can't be attributed to the right person's lockout counter. See IDN-09 and the feature page for the full mechanism |
 | IDN-09 | PIN hashing, lockout, and rotation policy | ✅ `Staff` (Identity module, site-scoped like `Terminal`) — PBKDF2-HMAC-SHA256 (`Rfc2898DeriveBytes`, no new dependency, 210k iterations per OWASP's 2023 minimum), locks out after 5 consecutive incorrect PINs for 15 minutes (even a *correct* PIN is refused while locked), and `PUT /staff/{id}/pin` rotates a PIN and clears any lockout — an admin reset, not self-service, same "ships ahead of manager authorisation" shape every other admin mutation in this codebase has today. Not wired into any endpoint's own authorization decision — ORD-10 (void)/ORD-11 (discount) both still have "no manager-authorisation gate yet" as their own named, deferred gap (IDN-11). **Verified live**: `staff.spec.ts` — a correct PIN verifies; an incorrect one is rejected (`identity.pin_incorrect`); 5 consecutive failures lock the account so even the *correct* PIN is then refused (`identity.staff_locked`); resetting the PIN clears the lockout and the new PIN works immediately; an empty name, a malformed PIN (too short/long/non-digit), an unrecognised role and unknown site/staff ids are all rejected with their own codes; `admin`'s new staff screen adds a staff member and resets their PIN through the real UI, both proven to actually take effect via a follow-up API call, not just "the UI showed no error" |
 | IDN-10 | Roles & permissions model | ⬜ |
-| IDN-11 | Manager-authorisation flow for privileged actions (voids, discounts) | ⬜ |
+| IDN-11 | Manager-authorisation flow for privileged actions (voids, discounts) | ✅ The real trigger ORD-10/ORD-11 both shipped ahead of. `POST /orders/{id}/lines/{lineId}/void`, `PUT /orders/{id}/lines/{lineId}/discount` and `PUT /orders/{id}/discount` now all require `managerStaffId`/`managerPin` in the body — `OrderEndpoints.AuthorizeManagerAsync` composes Identity into Ordering at the API layer (module-boundaries.md rule 5, same shape `PriceListEndpoints` already uses for Catalog+Identity), checks the credential names a real `StaffRole.Manager` *before* ever touching `Staff.VerifyPin` (a Staff-role id is rejected outright, without spending any of that person's own lockout budget), then reuses `Staff.VerifyPin` exactly as `POST /staff/{id}/verify-pin` does — same lockout mechanics, same "known id, not blind PIN entry" shape IDN-08/09 already established. A per-call credential, not a session or a login: nothing is cached, every privileged call re-proves it. `identity.staff_not_manager` is the registry's first real `ErrorType.Forbidden` (403) call site — the type existed since API-03 but had never been constructed until now. No pos/admin UI prompts for a manager PIN yet (no staff-picker exists in either client — WEB-07 is still unbuilt), so this ships the gate itself, verified live only. **Verified live**: `manager-authorization.spec.ts` — a non-manager staff credential is rejected (`identity.staff_not_manager`) without touching the line; an unknown `managerStaffId` (`identity.staff_not_found`) and a manager's own wrong PIN (`identity.pin_incorrect`) are both rejected, then the correct PIN succeeds; the same gate covers line and order discounts; 5 consecutive wrong PINs against an isolated manager lock them out (`identity.staff_locked`) even for their own correct PIN afterward, mirroring IDN-09's own lockout test exactly. `void-line.spec.ts`/`discounts.spec.ts` continue passing unchanged, now exercising the real gate via a seeded-manager default in the test helpers rather than no gate at all. |
 | IDN-12 | Consumer identity realm for the public surface | ⬜ |
 | IDN-13 | Tenant provisioning / onboarding | ⬜ |
 | IDN-14 | Push token registration endpoints | ⬜ |
@@ -423,8 +446,8 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ORD-07 | Courses and course firing | ⬜ |
 | ORD-08 | Send to kitchen (partial and full) | ⬜ |
 | ORD-09 | Order line status tracking | ⬜ |
-| ORD-10 | Void a line, with reason and manager authorisation | 🚧 `POST /orders/{id}/lines/{lineId}/void` — the void itself, not the manager authorisation half of this row's own title: no gate exists yet, ships ahead of that trigger the same way ORD-11's discounts did (IDN-11 is the real gate once staff accounts and roles exist). `reason` is required, rejected outright if missing/blank. The line is never deleted — `ItemName`/`UnitPrice`/`Quantity` stay exactly as rung up, an audit trail of what was ordered and then cancelled; only `LineTotal` drops to zero. `BuildFiscalLines` (shared with ORD-11) omits a voided line entirely, so it never reaches the issued fiscal document, while the pre-bill still lists it (with `isVoided: true`) for staff visibility. Found and correctly handled a real edge case along the way: voiding every line on an order leaves `Order.Close()`'s own guard satisfied (it only counts lines, not non-voided ones) but `IFiscalProvider.IssueSimplifiedInvoiceAsync`'s pre-existing `fiscal.no_lines` guard then rejects it — the order correctly stays `Open` in the database, since `CloseOrderAsync` doesn't persist the `Close()` transition until the fiscal document is actually issued. `SplitByItem` (ORD-16)'s by-item preview now correctly gives a voided line's units a zero share too (fixed same day, alongside the equivalent line-discount gap). **Verified live**: void zeroes the line and drops the order total by exactly that amount, a missing/blank reason and a double-void are both rejected, the pre-bill/fiscal-document reconciliation invariant holds with a voided line in the mix, and closing a fully-voided order correctly 400s without corrupting order state |
-| ORD-11 | Discounts — line, order, percentage and fixed | ✅ `PUT /orders/{id}/lines/{lineId}/discount` and `PUT /orders/{id}/discount` — both fields null clears an existing discount; a percentage must be in (0, 100], a fixed amount must be positive and not exceed the total it's applied to (rejected, never silently clamped). Composes: an order-level discount applies on top of the already line-discounted subtotal. No manager-authorisation gate yet — ships ahead of that trigger, same as CAT-13/19; IDN-11 is the real gate once staff accounts and roles exist. `SplitByItem`'s preview reflects a line-level discount correctly (fixed same day); an order-level discount is still not prorated into it — `SplitEvenly`/`SplitByCover` do, automatically, via `Total`. **Verified live**: line + order discount composing correctly, clearing, every rejection path (bad type, out-of-range percentage, oversized fixed, one-of-the-pair, unknown line, closed order), and — the fiscally load-bearing check — `document.GrossTotal` still equals `order.Total` to the cent through `CloseOrderAsync` with a discount applied, and the pre-bill's VAT breakdown still sums to the same total (`discounts.spec.ts`) |
+| ORD-10 | Void a line, with reason and manager authorisation | ✅ `POST /orders/{id}/lines/{lineId}/void` — both halves of this row's own title now: manager authorisation (IDN-11) gates every void, requiring a real Manager-role staff id and their correct PIN in the same request. `reason` is required, rejected outright if missing/blank. The line is never deleted — `ItemName`/`UnitPrice`/`Quantity` stay exactly as rung up, an audit trail of what was ordered and then cancelled; only `LineTotal` drops to zero. `BuildFiscalLines` (shared with ORD-11) omits a voided line entirely, so it never reaches the issued fiscal document, while the pre-bill still lists it (with `isVoided: true`) for staff visibility. Found and correctly handled a real edge case along the way: voiding every line on an order leaves `Order.Close()`'s own guard satisfied (it only counts lines, not non-voided ones) but `IFiscalProvider.IssueSimplifiedInvoiceAsync`'s pre-existing `fiscal.no_lines` guard then rejects it — the order correctly stays `Open` in the database, since `CloseOrderAsync` doesn't persist the `Close()` transition until the fiscal document is actually issued. `SplitByItem` (ORD-16)'s by-item preview now correctly gives a voided line's units a zero share too (fixed same day, alongside the equivalent line-discount gap). **Verified live**: void zeroes the line and drops the order total by exactly that amount, a missing/blank reason and a double-void are both rejected, the pre-bill/fiscal-document reconciliation invariant holds with a voided line in the mix, and closing a fully-voided order correctly 400s without corrupting order state |
+| ORD-11 | Discounts — line, order, percentage and fixed | ✅ `PUT /orders/{id}/lines/{lineId}/discount` and `PUT /orders/{id}/discount` — both fields null clears an existing discount; a percentage must be in (0, 100], a fixed amount must be positive and not exceed the total it's applied to (rejected, never silently clamped). Composes: an order-level discount applies on top of the already line-discounted subtotal. Gated by real manager authorisation now (IDN-11) — every call requires a Manager-role staff id and their correct PIN. `SplitByItem`'s preview reflects a line-level discount correctly (fixed same day); an order-level discount is still not prorated into it — `SplitEvenly`/`SplitByCover` do, automatically, via `Total`. **Verified live**: line + order discount composing correctly, clearing, every rejection path (bad type, out-of-range percentage, oversized fixed, one-of-the-pair, unknown line, closed order), and — the fiscally load-bearing check — `document.GrossTotal` still equals `order.Total` to the cent through `CloseOrderAsync` with a discount applied, and the pre-bill's VAT breakdown still sums to the same total (`discounts.spec.ts`) |
 | ORD-12 | Transfer table | ✅ `POST /orders/{id}/transfer` — moves an open order to a different `Free` table. Order status checked before either table is touched; the old table's `Release()` and the new table's `Occupy()` then commit atomically together in one `FloorDbContext.SaveChangesAsync` |
 | ORD-13 | Transfer individual lines between tables | ✅ `POST /orders/{id}/lines/{lineId}/transfer` — moves one line onto a different open order. Pure Ordering, no Floor involvement (unlike ORD-12). No `pos` UI yet — deliberately: picking *another* currently-open order is a real product-design question, same scoping call already made for ORD-22 |
 | ORD-14 | Merge orders | ✅ `POST /orders/{id}/merge` — moves every line from a secondary open order into the primary, marks the secondary `Merged` (new terminal status, distinct from `Closed`: no fiscal document was ever issued for it), frees its table directly via `Release()`. No `pos` UI yet, same scoping call as ORD-13 |
@@ -656,7 +679,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | DOC-07 | Feature page template | ✅ |
 | DOC-08 | API contract for multi-platform clients | ✅ |
 | DOC-09 | Backlog and progress tracking (this page) | ✅ |
-| DOC-10 | Per-feature pages, written as features land | 🚧 8 pages exist (`docs/features/discounts.md`, `void-a-line.md`, `edit-line-quantity.md`, `menu-item-classification.md`, `channel-pricing.md`, `floor-plan-editor.md`, `tax-rules.md`, `realtime-floor-updates.md`) against dozens of shipped backlog items — the "written as the feature is built" policy hasn't actually been followed until now; these eight are a start on backfilling it, not the policy catching up on its own. `floor-plan-editor.md` was extended in place (FLR-05/FLR-07 are the same screen/concept as FLR-03, not a fresh page each), and `channel-pricing.md`'s own forward-reference to `TaxRule` now links to the real page. All eight indexed in `docs/features/README.md` and the VitePress sidebar; docs site build verified clean |
+| DOC-10 | Per-feature pages, written as features land | 🚧 10 pages exist (`docs/features/discounts.md`, `void-a-line.md`, `edit-line-quantity.md`, `menu-item-classification.md`, `channel-pricing.md`, `floor-plan-editor.md`, `tax-rules.md`, `realtime-floor-updates.md`, `staff-pin-accounts.md`, `manager-authorization.md`) against dozens of shipped backlog items — the "written as the feature is built" policy hasn't actually been followed until now; these ten are a start on backfilling it, not the policy catching up on its own. `floor-plan-editor.md` was extended in place (FLR-05/FLR-07 are the same screen/concept as FLR-03, not a fresh page each); `manager-authorization.md` got its own page rather than being folded into `staff-pin-accounts.md`, since it's a distinct consumer (Ordering's void/discount endpoints) built on top of that mechanism, not the same screen/concept. All ten indexed in `docs/features/README.md` and the VitePress sidebar; docs site build verified clean |
 
 ## MOB — Mobile apps
 

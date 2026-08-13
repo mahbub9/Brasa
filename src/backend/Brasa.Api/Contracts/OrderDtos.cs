@@ -37,11 +37,24 @@ public sealed record SetLineQuantityRequest(int Quantity);
 /// <c>"FixedAmount"</c> (case-insensitive), the same string-not-JSON-enum
 /// convention every enum-shaped field in this API already uses (e.g.
 /// <see cref="OrderDto.Status"/>). Both fields null clears an existing discount.
+/// <c>ManagerStaffId</c>/<c>ManagerPin</c> are the manager-authorisation
+/// credential (IDN-11) — see <see cref="VoidLineRequest"/>'s own remarks.
 /// </summary>
-public sealed record SetDiscountRequest(string? Type, decimal? Value);
+public sealed record SetDiscountRequest(string? Type, decimal? Value, Guid ManagerStaffId, string? ManagerPin);
 
-/// <summary>Request body to void a line (ORD-10). <c>Reason</c> is required — a void with no reason is rejected outright.</summary>
-public sealed record VoidLineRequest(string? Reason);
+/// <summary>
+/// Request body to void a line (ORD-10). <c>Reason</c> is required — a void
+/// with no reason is rejected outright. <c>ManagerStaffId</c>/<c>ManagerPin</c>
+/// are a manager-authorisation credential (IDN-11) — the id of a known
+/// <c>Staff</c> row with <c>Role == Manager</c> and their own correct PIN,
+/// verified the same way <c>POST /staff/{id}/verify-pin</c> does (same
+/// lockout mechanics — a wrong PIN here still advances that manager's own
+/// <c>FailedPinAttempts</c>). Not a session or a login: every privileged call
+/// re-proves it, the same "known id, not blind PIN entry" shape IDN-08/09
+/// already established, so a wrong guess only ever penalises the manager it
+/// actually names.
+/// </summary>
+public sealed record VoidLineRequest(string? Reason, Guid ManagerStaffId, string? ManagerPin);
 
 /// <summary>Request body to move a single line onto a different open order (ORD-13).</summary>
 public sealed record TransferLineRequest(Guid DestinationOrderId);

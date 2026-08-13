@@ -41,3 +41,4 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | [Effective-dated tax rules](tax-rules.md) | CAT-07, CAT-08 | Catalog |
 | [Realtime floor updates](realtime-floor-updates.md) | API-16, API-17 | Web |
 | [Staff PIN accounts](staff-pin-accounts.md) | IDN-08, IDN-09 | Identity |
+| [Manager authorisation for voids and discounts](manager-authorization.md) | IDN-11 | Identity + Ordering |

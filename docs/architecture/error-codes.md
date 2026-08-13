@@ -63,7 +63,8 @@ as any change to an error code, the same rule as everything else in
 | `identity.pin_incorrect` | Validation | 400 | `POST /staff/{id}/verify-pin`'s (IDN-08/09) `pin` doesn't match — advances `FailedPinAttempts`, possibly triggering `identity.staff_locked` on a future attempt. |
 | `identity.site_not_found` | NotFound | 404 | The site id in the request doesn't exist. |
 | `identity.staff_locked` | Conflict | 409 | `POST /staff/{id}/verify-pin`'s (IDN-09) staff member is locked out after 5 consecutive incorrect PINs — retry after the lockout window (15 minutes) elapses, or `PUT /staff/{id}/pin` to reset it immediately. |
-| `identity.staff_not_found` | NotFound | 404 | The staff id in the request doesn't exist (IDN-08/09). |
+| `identity.staff_not_found` | NotFound | 404 | The staff id in the request doesn't exist (IDN-08/09), or (IDN-11) the `managerStaffId` on a void/discount request names an unknown staff member. |
+| `identity.staff_not_manager` | Forbidden | 403 | (IDN-11) A void or discount request's `managerStaffId` names a real staff member whose `role` isn't `Manager` — checked before the PIN is even verified, so it never advances that person's own `FailedPinAttempts`. |
 | `floor.invalid_label` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `label` is missing, empty or whitespace. |
 | `floor.invalid_room_name` | Validation | 400 | `POST /rooms` or `PUT /rooms/{id}`'s (FLR-03) `name` is missing, empty or whitespace. |
 | `floor.invalid_seats` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `seats` is less than 1. |

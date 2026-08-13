@@ -4,6 +4,8 @@ using Brasa.Modules.Catalog.Domain;
 using Brasa.Modules.Catalog.Persistence;
 using Brasa.Modules.Fiscal;
 using Brasa.Modules.Floor.Persistence;
+using Brasa.Modules.Identity.Domain;
+using Brasa.Modules.Identity.Persistence;
 using Brasa.Modules.Ordering.Domain;
 using Brasa.Modules.Ordering.Persistence;
 using Brasa.Shared.Primitives;
@@ -19,10 +21,10 @@ namespace Brasa.Api.Endpoints;
 /// close and be issued a fiscal document.
 /// </summary>
 /// <remarks>
-/// This handler composes the Ordering, Catalog, Floor and Fiscal modules —
-/// reading from more than one module's DbContext in a single request is
-/// exactly what the API layer is for. The modules never do this to each other
-/// directly. See <c>docs/architecture/module-boundaries.md</c>.
+/// This handler composes the Ordering, Catalog, Floor, Fiscal and Identity
+/// modules — reading from more than one module's DbContext in a single
+/// request is exactly what the API layer is for. The modules never do this to
+/// each other directly. See <c>docs/architecture/module-boundaries.md</c>.
 /// </remarks>
 public static class OrderEndpoints
 {
@@ -502,12 +504,21 @@ public static class OrderEndpoints
         Guid lineId,
         SetDiscountRequest request,
         OrderingDbContext db,
+        IdentityDbContext identityDb,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
         if (order is null)
         {
             return OrderNotFound(orderId).ToProblem();
+        }
+
+        var authResult = await AuthorizeManagerAsync(
+            request.ManagerStaffId, request.ManagerPin, identityDb, clock, cancellationToken).ConfigureAwait(false);
+        if (authResult.IsFailure)
+        {
+            return authResult.Error.ToProblem();
         }
 
         var kindResult = ParseDiscountKind(request.Type);
@@ -531,6 +542,7 @@ public static class OrderEndpoints
         Guid lineId,
         VoidLineRequest request,
         OrderingDbContext db,
+        IdentityDbContext identityDb,
         IClock clock,
         CancellationToken cancellationToken)
     {
@@ -538,6 +550,13 @@ public static class OrderEndpoints
         if (order is null)
         {
             return OrderNotFound(orderId).ToProblem();
+        }
+
+        var authResult = await AuthorizeManagerAsync(
+            request.ManagerStaffId, request.ManagerPin, identityDb, clock, cancellationToken).ConfigureAwait(false);
+        if (authResult.IsFailure)
+        {
+            return authResult.Error.ToProblem();
         }
 
         var result = order.VoidLine(lineId, request.Reason, clock.UtcNow);
@@ -554,12 +573,21 @@ public static class OrderEndpoints
         Guid orderId,
         SetDiscountRequest request,
         OrderingDbContext db,
+        IdentityDbContext identityDb,
+        IClock clock,
         CancellationToken cancellationToken)
     {
         var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
         if (order is null)
         {
             return OrderNotFound(orderId).ToProblem();
+        }
+
+        var authResult = await AuthorizeManagerAsync(
+            request.ManagerStaffId, request.ManagerPin, identityDb, clock, cancellationToken).ConfigureAwait(false);
+        if (authResult.IsFailure)
+        {
+            return authResult.Error.ToProblem();
         }
 
         var kindResult = ParseDiscountKind(request.Type);
@@ -576,6 +604,62 @@ public static class OrderEndpoints
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
         return Results.Ok(order.ToDto());
+    }
+
+    /// <summary>
+    /// Manager-authorisation gate for a privileged action (IDN-11) — the real
+    /// trigger ORD-10 (void) and ORD-11 (discount) both shipped ahead of.
+    /// Composes Identity (<see cref="IdentityDbContext"/>) into an Ordering
+    /// endpoint, sanctioned at the API layer per
+    /// <c>docs/architecture/module-boundaries.md</c> rule 5, the same shape
+    /// <c>PriceListEndpoints</c> already uses for Catalog+Identity.
+    /// </summary>
+    /// <remarks>
+    /// Checks the credential names an actual <see cref="StaffRole.Manager"/>
+    /// <em>before</em> ever touching <see cref="Staff.VerifyPin"/> — a
+    /// Staff-role id offered here is rejected outright, without consuming any
+    /// of that person's own lockout budget, since it was never a valid
+    /// authoriser to begin with. Once role is confirmed, PIN verification
+    /// reuses <see cref="Staff.VerifyPin"/> exactly as
+    /// <c>POST /staff/{id}/verify-pin</c> does — same lockout mechanics, and
+    /// the identity <c>DbContext</c> is saved regardless of the verify
+    /// outcome, since a wrong guess must still advance
+    /// <see cref="Staff.FailedPinAttempts"/>. This is a per-call credential,
+    /// not a session: nothing here is cached or reused across requests, the
+    /// same "known id, not blind PIN entry, no session concept yet" shape
+    /// IDN-08/09 already established.
+    /// </remarks>
+    private static async Task<Result> AuthorizeManagerAsync(
+        Guid managerStaffId,
+        string? managerPin,
+        IdentityDbContext identityDb,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var manager = await identityDb.Staff
+            .FirstOrDefaultAsync(s => s.Id == managerStaffId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (manager is null)
+        {
+            return Result.Failure(Error.NotFound(
+                "identity.staff_not_found", $"Staff member {managerStaffId} was not found."));
+        }
+
+        if (manager.Role != StaffRole.Manager)
+        {
+            return Result.Failure(Error.Forbidden(
+                "identity.staff_not_manager", $"{manager.Name} is not a manager and cannot authorise this action."));
+        }
+
+        var verifyResult = manager.VerifyPin(managerPin ?? string.Empty, clock.UtcNow);
+
+        // Persist regardless of outcome — a failed attempt still advances
+        // FailedPinAttempts (and possibly locks the manager out), the same
+        // "always save" rule VerifyStaffPinAsync (IdentityEndpoints) follows.
+        await identityDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return verifyResult;
     }
 
     /// <summary>

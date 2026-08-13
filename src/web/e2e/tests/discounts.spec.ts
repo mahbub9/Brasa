@@ -15,8 +15,10 @@ import {
 
 // ORD-11 — line and order-level discounts, percentage and fixed. No pos/admin
 // UI yet (ships ahead of the trigger, same shape as ORD-13/14/CAT-13/19) —
-// API-only coverage. No manager-authorisation gate exists yet either
-// (IDN-11 is the real gate, once staff accounts and roles exist).
+// API-only coverage. Every discount call here goes through the real
+// manager-authorisation gate (IDN-11) via the seeded demo manager
+// credentials (support/api.ts's getDemoManagerCredentials default) — the
+// gate itself is exercised separately in manager-authorization.spec.ts.
 
 test.describe('order and line discounts (ORD-11)', () => {
   test('a line discount reduces only that line, an order discount reduces the subtotal on top', async ({ request }) => {

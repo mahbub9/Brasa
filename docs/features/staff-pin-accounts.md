@@ -55,12 +55,11 @@ outright. Same "ships ahead of manager authorisation" shape every other
 admin mutation in this codebase already has; IDN-11 is the eventual real
 gate.
 
-**Not wired into any endpoint's own authorization decision.** ORD-10
-(void) and ORD-11 (discount) both still have "no manager-authorisation
-gate yet" as their own named, deferred gap. This feature ships the
-verification *mechanism*, ready for whichever future task (IDN-11) makes
-a privileged action actually require a manager's PIN — it does not,
-itself, gate anything yet.
+**Now wired into a real authorization decision.** ORD-10 (void) and
+ORD-11 (discount) both shipped ahead of this mechanism, naming it as
+their own deferred gap — [Manager authorisation](manager-authorization.md)
+(IDN-11) is that real gate, reusing `VerifyPin` exactly as this feature's
+own endpoint does.
 
 ## Behaviour
 

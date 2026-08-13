@@ -15,9 +15,11 @@ import {
 // ORD-10 — voiding a line after it's already been rung up, e.g. a dish that
 // came out wrong. The line is never deleted (audit trail: what was ordered,
 // and why it was cancelled, stays visible) — only its contribution to the
-// order's total drops to zero. No pos/admin UI yet, and no manager-
-// authorisation gate either (ships ahead of that trigger, same shape as
-// ORD-11's discounts) — API-only coverage.
+// order's total drops to zero. No pos/admin UI yet — API-only coverage.
+// Every void here goes through the real manager-authorisation gate (IDN-11)
+// via the seeded demo manager credentials (support/api.ts's
+// getDemoManagerCredentials default) — the gate itself is exercised
+// separately in manager-authorization.spec.ts.
 
 test.describe('void a line (ORD-10)', () => {
   test('voiding a line zeroes its contribution but keeps it visible for audit', async ({ request }) => {

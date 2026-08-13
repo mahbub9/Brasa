@@ -154,6 +154,7 @@ export default defineConfig({
           { text: 'Tax rules', link: '/features/tax-rules' },
           { text: 'Realtime floor updates', link: '/features/realtime-floor-updates' },
           { text: 'Staff PIN accounts', link: '/features/staff-pin-accounts' },
+          { text: 'Manager authorisation', link: '/features/manager-authorization' },
         ],
       },
     ],

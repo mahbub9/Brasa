@@ -494,9 +494,10 @@ public sealed class Order : Entity
     /// a dish that came out wrong or was never served. The line is never
     /// deleted (see <see cref="OrderLine.Void"/>): a receipt-adjacent audit
     /// trail of what was ordered and then cancelled, and why, matters more
-    /// than a clean list. No manager-authorisation gate exists yet — ships
-    /// ahead of that trigger, the same shape as ORD-11's discounts; IDN-11 is
-    /// the real gate once staff accounts and roles exist.
+    /// than a clean list. Manager authorisation (IDN-11) is enforced by the
+    /// caller — <c>OrderEndpoints.VoidLineAsync</c> — before this method is
+    /// ever reached, not here: this domain method has no notion of "who is
+    /// asking," only whether the void itself is well-formed.
     /// </summary>
     /// <param name="lineId">The line to void.</param>
     /// <param name="reason">
@@ -583,10 +584,10 @@ public sealed class Order : Entity
 
     /// <summary>
     /// Sets or clears a discount on one line (ORD-11) — a manager comping half
-    /// off a dish that arrived late, say. No manager-authorisation gate exists
-    /// yet: this ships ahead of that trigger the same way CAT-13's 86-ing and
-    /// CAT-19's repricing did, with IDN-11 tracked separately as the real gate
-    /// once staff accounts and roles exist.
+    /// off a dish that arrived late, say. Manager authorisation (IDN-11) is
+    /// enforced by the caller — <c>OrderEndpoints.SetLineDiscountAsync</c> —
+    /// before this method is ever reached, the same layering
+    /// <see cref="VoidLine"/> uses.
     /// </summary>
     /// <param name="lineId">The line to discount.</param>
     /// <param name="kind">
@@ -626,8 +627,8 @@ public sealed class Order : Entity
     /// <summary>
     /// Sets or clears a discount on the whole order (ORD-11), applied on top
     /// of any per-line discounts already set — a regular's 10% loyalty
-    /// discount on the whole table, say. Same "no authorisation gate yet"
-    /// shape as <see cref="SetLineDiscount"/>.
+    /// discount on the whole table, say. Same caller-enforced
+    /// manager-authorisation layering as <see cref="SetLineDiscount"/>.
     /// </summary>
     /// <param name="kind">
     /// The discount's shape, or null together with <paramref name="value"/> to

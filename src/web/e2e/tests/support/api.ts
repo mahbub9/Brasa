@@ -578,17 +578,19 @@ export async function setLineQuantity(
   return response.json();
 }
 
-/** Raw response so callers can assert on status/body for the failure cases too (ORD-11). `type`/`value` both null clears the discount. */
-export function setLineDiscountResponse(
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-11). `type`/`value` both null clears the discount. `manager` defaults to the seeded demo manager (IDN-11) — see `getDemoManagerCredentials`. */
+export async function setLineDiscountResponse(
   request: APIRequestContext,
   orderId: string,
   lineId: string,
   type: string | null,
   value: number | null,
+  manager?: ManagerCredentials,
 ) {
+  const credentials = manager ?? (await getDemoManagerCredentials(request));
   return request.put(`${apiBaseUrl}/orders/${orderId}/lines/${lineId}/discount`, {
     headers: { 'Idempotency-Key': idempotencyKey() },
-    data: { type, value },
+    data: { type, value, managerStaffId: credentials.staffId, managerPin: credentials.pin },
   });
 }
 
@@ -598,8 +600,9 @@ export async function setLineDiscount(
   lineId: string,
   type: string | null,
   value: number | null,
+  manager?: ManagerCredentials,
 ): Promise<OrderDto> {
-  const response = await setLineDiscountResponse(request, orderId, lineId, type, value);
+  const response = await setLineDiscountResponse(request, orderId, lineId, type, value, manager);
   if (!response.ok()) {
     throw new Error(
       `PUT /orders/${orderId}/lines/${lineId}/discount failed: ${response.status()} ${await response.text()}`,
@@ -608,32 +611,47 @@ export async function setLineDiscount(
   return response.json();
 }
 
-/** Raw response so callers can assert on status/body for the failure cases too (ORD-10). */
-export function voidLineResponse(request: APIRequestContext, orderId: string, lineId: string, reason: string | null) {
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-10). `manager` defaults to the seeded demo manager (IDN-11) — see `getDemoManagerCredentials`. */
+export async function voidLineResponse(
+  request: APIRequestContext,
+  orderId: string,
+  lineId: string,
+  reason: string | null,
+  manager?: ManagerCredentials,
+) {
+  const credentials = manager ?? (await getDemoManagerCredentials(request));
   return request.post(`${apiBaseUrl}/orders/${orderId}/lines/${lineId}/void`, {
     headers: { 'Idempotency-Key': idempotencyKey() },
-    data: { reason },
+    data: { reason, managerStaffId: credentials.staffId, managerPin: credentials.pin },
   });
 }
 
-export async function voidLine(request: APIRequestContext, orderId: string, lineId: string, reason: string): Promise<OrderDto> {
-  const response = await voidLineResponse(request, orderId, lineId, reason);
+export async function voidLine(
+  request: APIRequestContext,
+  orderId: string,
+  lineId: string,
+  reason: string,
+  manager?: ManagerCredentials,
+): Promise<OrderDto> {
+  const response = await voidLineResponse(request, orderId, lineId, reason, manager);
   if (!response.ok()) {
     throw new Error(`POST /orders/${orderId}/lines/${lineId}/void failed: ${response.status()} ${await response.text()}`);
   }
   return response.json();
 }
 
-/** Raw response so callers can assert on status/body for the failure cases too (ORD-11). `type`/`value` both null clears the discount. */
-export function setOrderDiscountResponse(
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-11). `type`/`value` both null clears the discount. `manager` defaults to the seeded demo manager (IDN-11) — see `getDemoManagerCredentials`. */
+export async function setOrderDiscountResponse(
   request: APIRequestContext,
   orderId: string,
   type: string | null,
   value: number | null,
+  manager?: ManagerCredentials,
 ) {
+  const credentials = manager ?? (await getDemoManagerCredentials(request));
   return request.put(`${apiBaseUrl}/orders/${orderId}/discount`, {
     headers: { 'Idempotency-Key': idempotencyKey() },
-    data: { type, value },
+    data: { type, value, managerStaffId: credentials.staffId, managerPin: credentials.pin },
   });
 }
 
@@ -642,8 +660,9 @@ export async function setOrderDiscount(
   orderId: string,
   type: string | null,
   value: number | null,
+  manager?: ManagerCredentials,
 ): Promise<OrderDto> {
-  const response = await setOrderDiscountResponse(request, orderId, type, value);
+  const response = await setOrderDiscountResponse(request, orderId, type, value, manager);
   if (!response.ok()) {
     throw new Error(`PUT /orders/${orderId}/discount failed: ${response.status()} ${await response.text()}`);
   }
@@ -982,6 +1001,79 @@ export async function setStaffPin(request: APIRequestContext, staffId: string, p
     throw new Error(`PUT /staff/${staffId}/pin failed: ${response.status()} ${await response.text()}`);
   }
   return response.json();
+}
+
+// Manager authorisation (IDN-11) — void and discount now require a manager's
+// own staffId + PIN, verified server-side via Staff.VerifyPin (same lockout
+// mechanics as POST /staff/{id}/verify-pin). Every helper above that mutates
+// a void/discount defaults to the seeded demo manager below unless a caller
+// passes its own ManagerCredentials, so every pre-existing call site keeps
+// compiling and testing what it always tested (discount/void validation, not
+// authorisation) with no changes needed. manager-authorization.spec.ts is
+// what actually exercises the gate itself, using getDemoStaffCredentials
+// (a real, non-manager staff member) and deliberately wrong/locked PINs.
+
+export interface ManagerCredentials {
+  staffId: string;
+  pin: string;
+}
+
+let cachedDemoSiteId: string | null = null;
+let cachedManagerCredentials: ManagerCredentials | null = null;
+
+async function resolveDemoSiteId(request: APIRequestContext): Promise<string> {
+  if (cachedDemoSiteId) {
+    return cachedDemoSiteId;
+  }
+
+  const organizations = await getOrganizations(request);
+  const organization = organizations.find((o) => o.name === 'Brasa Demo, Lda');
+  if (!organization) {
+    throw new Error('Seeded organization "Brasa Demo, Lda" not found — did DevIdentitySeeder change?');
+  }
+
+  const sites = await getSites(request, organization.id);
+  const site = sites.find((s) => s.name === 'Restaurante Central');
+  if (!site) {
+    throw new Error('Seeded site "Restaurante Central" not found — did DevIdentitySeeder change?');
+  }
+
+  cachedDemoSiteId = site.id;
+  return cachedDemoSiteId;
+}
+
+/** The seeded demo manager's credentials ("Ana Ferreira", PIN "1234" — DevIdentitySeeder). Cached per worker. */
+export async function getDemoManagerCredentials(request: APIRequestContext): Promise<ManagerCredentials> {
+  if (cachedManagerCredentials) {
+    return cachedManagerCredentials;
+  }
+
+  const siteId = await resolveDemoSiteId(request);
+  const staff = await getStaff(request, siteId);
+  const manager = staff.find((s) => s.name === 'Ana Ferreira' && s.role === 'Manager');
+  if (!manager) {
+    throw new Error('Seeded manager "Ana Ferreira" not found — did DevIdentitySeeder change?');
+  }
+
+  cachedManagerCredentials = { staffId: manager.id, pin: '1234' };
+  return cachedManagerCredentials;
+}
+
+/**
+ * The seeded demo non-manager's credentials ("Tiago Costa", PIN "5678" —
+ * DevIdentitySeeder). Not cached — only used by manager-authorization.spec.ts
+ * to prove the role gate itself rejects a real, correctly-PIN'd Staff-role
+ * credential.
+ */
+export async function getDemoStaffCredentials(request: APIRequestContext): Promise<ManagerCredentials> {
+  const siteId = await resolveDemoSiteId(request);
+  const staff = await getStaff(request, siteId);
+  const nonManager = staff.find((s) => s.name === 'Tiago Costa' && s.role === 'Staff');
+  if (!nonManager) {
+    throw new Error('Seeded staff "Tiago Costa" not found — did DevIdentitySeeder change?');
+  }
+
+  return { staffId: nonManager.id, pin: '5678' };
 }
 
 // Price lists (CAT-05) — a narrow first slice, create/read/add-entry only.
