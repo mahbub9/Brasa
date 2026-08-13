@@ -64,8 +64,12 @@ dotnet run   --project src/backend/Brasa.Api
   null-coalescing. Chain with `;` and `if ($?) { }`.
 - The solution file is **`Brasa.slnx`** (the .NET 10 XML format), not
   `.sln`.
-- **Docker is not installed** and WSL has no distribution. Integration tests
-  (Testcontainers) cannot run until that is resolved. Unit tests run fine. See
+- **Docker is installed and running** (`brasa-postgres`/`brasa-seq`
+  containers, `infra/docker-compose.yml`) — integration tests
+  (Testcontainers) run fine; `dotnet test Brasa.slnx` exercises them along
+  with everything else. This was stale for a while (an earlier note here
+  said Docker wasn't installed) — corrected once proven wrong by actually
+  running `Brasa.Api.IntegrationTests` successfully. See
   [docs/development/getting-started.md](docs/development/getting-started.md).
 
 ## Documentation is part of the work

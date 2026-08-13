@@ -1,0 +1,15 @@
+{
+  "name": "@brasa/sdk",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "TypeScript types generated from docs/openapi/v1.json (API-15) -- the single source of truth every hand-written *.dto duplicate in pos/admin/e2e should eventually be checked against, and someday replace. Not yet consumed anywhere: this ships the generator and the generated output, the same 'mechanism before the trigger' shape most of this codebase's other cross-cutting pieces have shipped in. No build step -- consumed by path alias exactly like @brasa/ui, never through node_modules.",
+  "scripts": {
+    "generate": "openapi-typescript ../../../docs/openapi/v1.json -o src/schema.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.13.0",
+    "typescript": "~6.0.2"
+  }
+}

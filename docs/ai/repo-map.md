@@ -162,11 +162,31 @@ shared ancestor `node_modules` — the alias alone resolves this package's
 init and each app's own translation resources differ enough that sharing
 them would trade real duplication for a worse abstraction.
 
+## `src/web/sdk` 🚧 API-15 — generated types, no consumer yet
+
+`npm run generate` runs `openapi-typescript` against the *committed*
+`docs/openapi/v1.json` (never a live API — same manual-regeneration
+discipline that file already has) to produce `src/schema.ts`. Building
+this surfaced that `v1.json` had drifted (this session's own IDN-11/FLR-06
+work hadn't regenerated it) and, more consequentially, that every response
+body in it has always been undescribed — see
+[docs/openapi/README.md](../openapi/README.md)'s own update. No `pos`/
+`admin` call site consumes this yet, and there's no typed fetch client
+wrapping it either — see the package's own README for exactly why both
+are deliberately unstarted.
+
+| File | State | Contents |
+|---|---|---|
+| `package.json` | ✅ | `openapi-typescript` as a `devDependency` (installed with `--legacy-peer-deps` — its peer range is still `typescript@^5.x`, this repo is on `~6.0.2`; a codegen-time-only tool, verified after the fact by typechecking its own output with the real TS 6 compiler, not by trusting the peer range) |
+| `src/schema.ts` | ✅ | Generated, committed (same "reviewable in a diff" reasoning `docs/openapi/v1.json` itself already has) — `paths`/`components["schemas"]` typed from every request body, path and query parameter; every response's `content` is `never`, the gap above |
+| `src/schema.guard.ts` | ✅ | A permanent type-level check, not a throwaway — literal objects built against `components['schemas']['VoidLineRequest']`/`AssignRoomSectionRequest`, incl. one deliberately-wrong field behind `@ts-expect-error` (so the guard itself fails loudly if it ever stops catching anything). Checked by `npm run typecheck` here, the same doc-drift trap class this codebase has hit repeatedly |
+
 ## `src/web/pos` ✅ I0 + I1's first slice
 
 React 19 + Vite 8 + TypeScript. No auth, no offline — proves the API in a
 browser. Hand-written API layer (`src/api/`) is a placeholder for `web/sdk`
-(WEB-03, generated from OpenAPI) once a second client app needs it.
+(WEB-03/API-15, generated from OpenAPI) — the generator exists now, but
+nothing here has switched over to it yet.
 
 | File | State | Contents |
 |---|---|---|

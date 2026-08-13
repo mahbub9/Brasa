@@ -5,6 +5,7 @@
     "pos",
     "admin",
     "e2e",
-    "ui"
+    "ui",
+    "sdk"
   ]
 }

@@ -1399,6 +1399,33 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > own codes; the admin UI assigns and clears a section, both confirmed to
 > actually take effect via a follow-up API call.
 
+> **Update (TypeScript SDK generation, API-15):** A new `@brasa/sdk`
+> workspace package runs `openapi-typescript` against the committed
+> `docs/openapi/v1.json`, generating `src/schema.ts` — every request
+> body, path and query parameter, typed and checked against real
+> endpoints by a permanent guard file (`src/schema.guard.ts`), not a
+> throwaway. Building it surfaced two real problems, not just delivered
+> the feature: first, `docs/openapi/v1.json` itself had drifted — this
+> session's own IDN-11 and FLR-06 work had changed several request
+> shapes without the documented manual regeneration step, exactly the
+> doc-drift bug class this codebase has been bitten by repeatedly (see
+> the trap list). Regenerated from the live API and re-verified. Second,
+> and more consequential: **every response body in that document has
+> always been undescribed**, before this session touched anything —
+> `Brasa.Api`'s endpoints all return a bare `Results.Ok(...)`/`IResult`,
+> and ASP.NET Core's OpenAPI reflection can only infer a *request* body's
+> shape that way, never a response's. Closing that needs `.Produces<T>()`
+> (or `TypedResults`) added across roughly 68 route mappings spanning
+> eight endpoint files — a bounded, mechanical, but broad change of its
+> own, deliberately not attempted as a side effect of this task. So this
+> ships typed requests only, no typed responses, and no consumer yet
+> either — no `pos`/`admin` call site switched over, and no typed fetch
+> client wraps these types, since this codebase's own `ApiError`/
+> `ProblemDetails` handling doesn't map onto a generic wrapper without
+> its own dedicated design pass. See
+> [src/web/sdk/README.md](https://github.com/mahbub9/Brasa/blob/main/src/web/sdk/README.md)
+> for the full accounting.
+
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
 

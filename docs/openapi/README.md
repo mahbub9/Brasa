@@ -22,18 +22,46 @@ in the same commit as the code that changed it:
 ```powershell
 dotnet run --project src/backend/Brasa.Api
 # in another terminal, once the API is up:
-Invoke-RestMethod http://localhost:5216/openapi/v1.json | ConvertTo-Json -Depth 100 | Set-Content docs/openapi/v1.json
+$doc = Invoke-RestMethod http://localhost:5216/openapi/v1.json
+$doc.PSObject.Properties.Remove('servers')
+$json = $doc | ConvertTo-Json -Depth 100
+[System.IO.File]::WriteAllText(
+  "$PWD/docs/openapi/v1.json", $json, (New-Object System.Text.UTF8Encoding $false))
 ```
 
-(The `servers` key in the fetched document should be removed before
-committing, per the note above.)
+Write with `[System.IO.File]::WriteAllText` and an explicit
+no-BOM `UTF8Encoding`, not `Set-Content -Encoding utf8` — Windows
+PowerShell 5.1 (this project's shell) writes a UTF-8 BOM for that
+encoding name, unlike every other JSON file already in this repo; PowerShell
+Core's `-Encoding utf8` doesn't, so the mistake is easy to make once and not
+notice (see the trap in `docs/ai/README.md`). `servers` is removed via
+`.PSObject.Properties.Remove` before serialising, per the note above —
+simpler than editing it out of the JSON string afterward.
 
 ## What this feeds later
 
 - **API-14** — a CI job that diffs a freshly generated document against this
   file and fails the build on an unreviewed breaking change.
 - **API-15** — generating the `web/sdk` TypeScript client from this document
-  instead of hand-writing `api/client.ts` in each web app.
+  instead of hand-writing `api/client.ts` in each web app. Started,
+  narrowly — see
+  [`src/web/sdk/README.md`](https://github.com/mahbub9/Brasa/blob/main/src/web/sdk/README.md)
+  for exactly how narrowly.
 
-Neither exists yet. This file is the first, additive piece: a reviewable
-snapshot of the contract, not an enforced one.
+API-14 doesn't exist yet. API-15's first slice landed the same session
+this note was added, and building it surfaced a real, previously-unnoticed
+gap worth recording here directly: **every response body in this document is
+undescribed.** `Brasa.Api`'s endpoints all return `Results.Ok(...)`
+through a plain `IResult`-returning method, and ASP.NET Core's OpenAPI
+reflection can only infer a request body's shape that way, never a
+response's — every `"200"` in this file has always been
+`{"description": "OK"}` with no `content`/schema at all, since the moment
+API-13 first committed it. Request bodies, path parameters and query
+parameters are correctly described; nothing a client receives back is.
+Closing that needs `.Produces<T>()` (or `TypedResults`) added across
+roughly 68 route mappings — a bounded, mechanical, but broad change of
+its own, not a side effect of any one endpoint's own feature work.
+
+This file is still the first, additive piece it always was: a reviewable
+snapshot of the contract, not an enforced one — and, as of now, an
+honestly half-described one.
