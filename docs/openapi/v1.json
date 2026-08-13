@@ -161,6 +161,83 @@
                                                                                         }
                                                                       }
                                                           },
+                  "/api/v1/menu/items/{itemId}/image":  {
+                                                            "post":  {
+                                                                         "tags":  [
+                                                                                      "CatalogEndpoints"
+                                                                                  ],
+                                                                         "summary":  "Uploads (or replaces) a menu item\u0027s photo (CAT-02). JPEG/PNG/WebP, 5MB max.",
+                                                                         "operationId":  "UploadMenuItemImage",
+                                                                         "parameters":  [
+                                                                                            {
+                                                                                                "name":  "itemId",
+                                                                                                "in":  "path",
+                                                                                                "required":  true,
+                                                                                                "schema":  {
+                                                                                                               "type":  "string",
+                                                                                                               "format":  "uuid"
+                                                                                                           }
+                                                                                            }
+                                                                                        ],
+                                                                         "requestBody":  {
+                                                                                             "content":  {
+                                                                                                             "multipart/form-data":  {
+                                                                                                                                         "schema":  {
+                                                                                                                                                        "type":  "object",
+                                                                                                                                                        "properties":  {
+                                                                                                                                                                           "file":  {
+                                                                                                                                                                                        "$ref":  "#/components/schemas/IFormFile"
+                                                                                                                                                                                    }
+                                                                                                                                                                       }
+                                                                                                                                                    }
+                                                                                                                                     }
+                                                                                                         },
+                                                                                             "required":  true
+                                                                                         },
+                                                                         "responses":  {
+                                                                                           "200":  {
+                                                                                                       "description":  "OK",
+                                                                                                       "content":  {
+                                                                                                                       "application/json":  {
+                                                                                                                                                "schema":  {
+                                                                                                                                                               "$ref":  "#/components/schemas/MenuItemDto"
+                                                                                                                                                           }
+                                                                                                                                            }
+                                                                                                                   }
+                                                                                                   }
+                                                                                       }
+                                                                     },
+                                                            "delete":  {
+                                                                           "tags":  [
+                                                                                        "CatalogEndpoints"
+                                                                                    ],
+                                                                           "summary":  "Removes a menu item\u0027s photo, if one is set (CAT-02).",
+                                                                           "operationId":  "RemoveMenuItemImage",
+                                                                           "parameters":  [
+                                                                                              {
+                                                                                                  "name":  "itemId",
+                                                                                                  "in":  "path",
+                                                                                                  "required":  true,
+                                                                                                  "schema":  {
+                                                                                                                 "type":  "string",
+                                                                                                                 "format":  "uuid"
+                                                                                                             }
+                                                                                              }
+                                                                                          ],
+                                                                           "responses":  {
+                                                                                             "200":  {
+                                                                                                         "description":  "OK",
+                                                                                                         "content":  {
+                                                                                                                         "application/json":  {
+                                                                                                                                                  "schema":  {
+                                                                                                                                                                 "$ref":  "#/components/schemas/MenuItemDto"
+                                                                                                                                                             }
+                                                                                                                                              }
+                                                                                                                     }
+                                                                                                     }
+                                                                                         }
+                                                                       }
+                                                        },
                   "/api/v1/menu/items/import":  {
                                                     "post":  {
                                                                  "tags":  [
@@ -192,6 +269,42 @@
                                                                                }
                                                              }
                                                 },
+                  "/api/v1/menu/items/import/excel":  {
+                                                          "post":  {
+                                                                       "tags":  [
+                                                                                    "CatalogEndpoints"
+                                                                                ],
+                                                                       "summary":  "Bulk-creates menu items from an Excel (.xlsx) file (CAT-17). Same columns and per-row behaviour as the CSV import.",
+                                                                       "operationId":  "ImportMenuItemsExcel",
+                                                                       "requestBody":  {
+                                                                                           "content":  {
+                                                                                                           "multipart/form-data":  {
+                                                                                                                                       "schema":  {
+                                                                                                                                                      "type":  "object",
+                                                                                                                                                      "properties":  {
+                                                                                                                                                                         "file":  {
+                                                                                                                                                                                      "$ref":  "#/components/schemas/IFormFile"
+                                                                                                                                                                                  }
+                                                                                                                                                                     }
+                                                                                                                                                  }
+                                                                                                                                   }
+                                                                                                       },
+                                                                                           "required":  true
+                                                                                       },
+                                                                       "responses":  {
+                                                                                         "200":  {
+                                                                                                     "description":  "OK",
+                                                                                                     "content":  {
+                                                                                                                     "application/json":  {
+                                                                                                                                              "schema":  {
+                                                                                                                                                             "$ref":  "#/components/schemas/ImportMenuItemsResponse"
+                                                                                                                                                         }
+                                                                                                                                          }
+                                                                                                                 }
+                                                                                                 }
+                                                                                     }
+                                                                   }
+                                                      },
                   "/api/v1/menu/items/{itemId}/availability":  {
                                                                    "put":  {
                                                                                "tags":  [
@@ -2200,6 +2313,48 @@
                                                                                                   }
                                                                                 }
                                                                    },
+                  "/api/v1/orders/{orderId}/fire":  {
+                                                        "post":  {
+                                                                     "tags":  [
+                                                                                  "OrderEndpoints"
+                                                                              ],
+                                                                     "summary":  "Sends unfired lines to the kitchen (ORD-07/08) — one course, or everything still pending.",
+                                                                     "operationId":  "FireOrderLines",
+                                                                     "parameters":  [
+                                                                                        {
+                                                                                            "name":  "orderId",
+                                                                                            "in":  "path",
+                                                                                            "required":  true,
+                                                                                            "schema":  {
+                                                                                                           "type":  "string",
+                                                                                                           "format":  "uuid"
+                                                                                                       }
+                                                                                        }
+                                                                                    ],
+                                                                     "requestBody":  {
+                                                                                         "content":  {
+                                                                                                         "application/json":  {
+                                                                                                                                  "schema":  {
+                                                                                                                                                 "$ref":  "#/components/schemas/FireOrderLinesRequest"
+                                                                                                                                             }
+                                                                                                                              }
+                                                                                                     },
+                                                                                         "required":  true
+                                                                                     },
+                                                                     "responses":  {
+                                                                                       "200":  {
+                                                                                                   "description":  "OK",
+                                                                                                   "content":  {
+                                                                                                                   "application/json":  {
+                                                                                                                                            "schema":  {
+                                                                                                                                                           "$ref":  "#/components/schemas/OrderDto"
+                                                                                                                                                       }
+                                                                                                                                        }
+                                                                                                               }
+                                                                                               }
+                                                                                   }
+                                                                 }
+                                                    },
                   "/api/v1/orders/{orderId}/discount":  {
                                                             "put":  {
                                                                         "tags":  [
@@ -3051,6 +3206,20 @@
                                                                                                      }
                                                                                 }
                                                              },
+                                       "FireOrderLinesRequest":  {
+                                                                     "required":  [
+                                                                                      "course"
+                                                                                  ],
+                                                                     "type":  "object",
+                                                                     "properties":  {
+                                                                                        "course":  {
+                                                                                                       "type":  [
+                                                                                                                    "null",
+                                                                                                                    "string"
+                                                                                                                ]
+                                                                                                   }
+                                                                                    }
+                                                                 },
                                        "FiscalDocumentDto":  {
                                                                  "required":  [
                                                                                   "documentNumber",
@@ -3087,6 +3256,10 @@
                                                                                                     }
                                                                                 }
                                                              },
+                                       "IFormFile":  {
+                                                         "type":  "string",
+                                                         "format":  "binary"
+                                                     },
                                        "ImportMenuItemsRequest":  {
                                                                       "required":  [
                                                                                        "csv"
@@ -3198,6 +3371,7 @@
                                                                             "id",
                                                                             "name",
                                                                             "description",
+                                                                            "imageUrl",
                                                                             "price",
                                                                             "takeawayPrice",
                                                                             "vatRatePercent",
@@ -3226,6 +3400,12 @@
                                                                                                                "string"
                                                                                                            ]
                                                                                               },
+                                                                              "imageUrl":  {
+                                                                                               "type":  [
+                                                                                                            "null",
+                                                                                                            "string"
+                                                                                                        ]
+                                                                                           },
                                                                               "price":  {
                                                                                             "$ref":  "#/components/schemas/MoneyDto"
                                                                                         },
@@ -3555,7 +3735,10 @@
                                                                              "lineTotal",
                                                                              "notes",
                                                                              "isVoided",
-                                                                             "voidReason"
+                                                                             "voidReason",
+                                                                             "course",
+                                                                             "isFired",
+                                                                             "firedAtUtc"
                                                                          ],
                                                             "type":  "object",
                                                             "properties":  {
@@ -3622,6 +3805,22 @@
                                                                                                                "null",
                                                                                                                "string"
                                                                                                            ]
+                                                                                              },
+                                                                               "course":  {
+                                                                                              "type":  [
+                                                                                                           "null",
+                                                                                                           "string"
+                                                                                                       ]
+                                                                                          },
+                                                                               "isFired":  {
+                                                                                               "type":  "boolean"
+                                                                                           },
+                                                                               "firedAtUtc":  {
+                                                                                                  "type":  [
+                                                                                                               "null",
+                                                                                                               "string"
+                                                                                                           ],
+                                                                                                  "format":  "date-time"
                                                                                               }
                                                                            }
                                                         },

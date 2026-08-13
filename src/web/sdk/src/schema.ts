@@ -155,6 +155,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/menu/items/{itemId}/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Uploads (or replaces) a menu item's photo (CAT-02). JPEG/PNG/WebP, 5MB max. */
+        post: operations["UploadMenuItemImage"];
+        /** Removes a menu item's photo, if one is set (CAT-02). */
+        delete: operations["RemoveMenuItemImage"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/menu/items/import": {
         parameters: {
             query?: never;
@@ -166,6 +184,23 @@ export interface paths {
         put?: never;
         /** Bulk-creates menu items from a CSV file (CAT-17). */
         post: operations["ImportMenuItems"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/menu/items/import/excel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Bulk-creates menu items from an Excel (.xlsx) file (CAT-17). Same columns and per-row behaviour as the CSV import. */
+        post: operations["ImportMenuItemsExcel"];
         delete?: never;
         options?: never;
         head?: never;
@@ -929,6 +964,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/{orderId}/fire": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sends unfired lines to the kitchen (ORD-07/08) — one course, or everything still pending. */
+        post: operations["FireOrderLines"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/orders/{orderId}/discount": {
         parameters: {
             query?: never;
@@ -1222,6 +1274,9 @@ export interface components {
             price: components["schemas"]["MoneyDto"];
             isOverridden: boolean;
         };
+        FireOrderLinesRequest: {
+            course: null | string;
+        };
         FiscalDocumentDto: {
             documentNumber: string;
             atcud: string;
@@ -1232,6 +1287,8 @@ export interface components {
             /** Format: date-time */
             issuedAtUtc: string;
         };
+        /** Format: binary */
+        IFormFile: string;
         ImportMenuItemsRequest: {
             csv: string;
         };
@@ -1264,6 +1321,7 @@ export interface components {
             id: string;
             name: string;
             description: null | string;
+            imageUrl: null | string;
             price: components["schemas"]["MoneyDto"];
             takeawayPrice: null | components["schemas"]["MoneyDto"];
             /** Format: double */
@@ -1357,6 +1415,10 @@ export interface components {
             notes: null | string;
             isVoided: boolean;
             voidReason: null | string;
+            course: null | string;
+            isFired: boolean;
+            /** Format: date-time */
+            firedAtUtc: null | string;
         };
         OrderLineModifierDto: {
             /** Format: uuid */
@@ -1733,6 +1795,56 @@ export interface operations {
             };
         };
     };
+    UploadMenuItemImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    file?: components["schemas"]["IFormFile"];
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
+            };
+        };
+    };
+    RemoveMenuItemImage: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                itemId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
+            };
+        };
+    };
     ImportMenuItems: {
         parameters: {
             query?: never;
@@ -1743,6 +1855,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["ImportMenuItemsRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportMenuItemsResponse"];
+                };
+            };
+        };
+    };
+    ImportMenuItemsExcel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "multipart/form-data": {
+                    file?: components["schemas"]["IFormFile"];
+                };
             };
         };
         responses: {
@@ -3035,6 +3173,32 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": components["schemas"]["VoidLineRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
+            };
+        };
+    };
+    FireOrderLines: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FireOrderLinesRequest"];
             };
         };
         responses: {
