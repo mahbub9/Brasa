@@ -29,6 +29,12 @@ transitive `SQLitePCLRaw` CVE was caught on day one. If a warning blocks you, fi
 it or suppress it **in `.editorconfig` with a written reason**; do not disable the
 policy.
 
+Before committing an endpoint change, also run
+`infra/scripts/verify.ps1` — it runs the above plus the same
+OpenAPI-drift check (API-14) and vulnerable-package scan CI runs, so a
+stale `docs/openapi/v1.json` or a fresh transitive CVE is caught here,
+not after a push. Add `-IncludeE2E` to run the full Playwright suite too.
+
 ## Verified environment
 
 The primary development machine (Windows 10 Home 19045) currently runs:

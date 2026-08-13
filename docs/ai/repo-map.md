@@ -29,7 +29,7 @@
 
 | File | Purpose |
 |---|---|
-| `workflows/ci.yml` | Build (zero-warning gate) + test + transitive vulnerability scan + `e2e` job (Playwright, `src/web/e2e` — written, **not yet exercised by an actual CI run**; installs `pos` **and** `admin` dependencies now that `admin` (WEB-09) is a second app `playwright.config.ts`'s own `webServer` list starts — a fresh checkout would otherwise fail at that step, found while it still had no CI run to catch it) + `openapi-drift` job (API-14 — starts the real API, regenerates `docs/openapi/v1.json` the documented way, fails on any diff; not semantic breaking-change detection, just drift detection, and honestly labelled as such. Also **not yet exercised by an actual CI run** — validated locally instead by deliberately breaking a copy of the committed file and confirming the diff catches it) |
+| `workflows/ci.yml` | Build (zero-warning gate) + test + transitive vulnerability scan + `e2e` job (Playwright, `src/web/e2e`; installs `pos` **and** `admin` dependencies since `admin`, WEB-09, is a second app `playwright.config.ts`'s own `webServer` list starts) + `openapi-drift` job (API-14 — starts the real API, regenerates `docs/openapi/v1.json` the documented way, fails on any diff; not semantic breaking-change detection, just drift detection, and honestly labelled as such). **Runs on every push now** — caught real `docs/openapi/v1.json` drift three times running (CAT-02, ORD-07/08/09, CAT-17, see the trap in README.md), fixed by regenerating and by adding `infra/scripts/verify.ps1` to run the same checks locally before a commit. The `e2e` job is red in CI as of this writing despite the full suite passing clean locally (176/176) — a CI-specific failure not yet diagnosed, an honest open gap, not a silent one |
 | `workflows/docs.yml` | Relative-link check across all markdown; warns when source changes without a `status.md` update |
 | `workflows/pages.yml` | Builds the VitePress site from `docs/` and deploys to GitHub Pages |
 | `pull_request_template.md` | Docs checklist, plus fiscal and money sections |
@@ -345,6 +345,7 @@ for the QA-01 decision record and what QA-04/06/07/08 are still blocked on.
 | `scripts/backup-database.ps1` | OPS-12 — `pg_dump` (custom format) via `docker exec`, `docker cp`'d out to `infra/backups/` (gitignored). Never a PowerShell text redirect — see the trap in [README.md](README.md) |
 | `scripts/restore-database.ps1` | OPS-12 — `pg_restore` into a target database; defaults to a scratch `_restore_drill`-suffixed name, never the real database, unless explicitly overridden |
 | `scripts/restore-drill.ps1` | OPS-12 — backup → restore into scratch → compare every table's row count across every schema → PASS/FAIL report → cleanup. The actual "tested" half of this task's own title. See [backup-and-restore.md](../development/backup-and-restore.md) |
+| `scripts/verify.ps1` | Mirrors `.github/workflows/ci.yml`'s build-and-test, `openapi-drift` (API-14) and vulnerable-package-scan jobs locally — meant to run before a commit, not only after a push. Added after CAT-02/ORD-07/08/09/CAT-17 all shipped real endpoint changes with `docs/openapi/v1.json` left stale, each one caught by CI only post-push (see the trap in [README.md](README.md)). `-IncludeE2E` also runs the full Playwright suite |
 
 ## `docs/`
 

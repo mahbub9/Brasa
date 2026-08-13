@@ -851,6 +851,23 @@ there is actually met.
   constructor actually needs registered — suppressed narrowly via
   `NoWarn="NU1510"` on that one `PackageReference`, with the reason
   written next to it, not a blanket suppression.
+- **A documented manual step you've followed correctly several times in a
+  row is still not a safety net — it only takes one skipped instance to
+  ship broken, and "several times in a row" is exactly what makes the
+  skip easy to miss.** `docs/openapi/README.md` has said "regenerate
+  `docs/openapi/v1.json` by hand after changing any endpoint, in the same
+  commit" since API-13. CAT-02, ORD-07/08/09 and CAT-17 all shipped their
+  own real endpoint changes without that regeneration step — three
+  commits in a row, each one locally build-and-test-and-E2E verified,
+  none of that verification touching the OpenAPI document at all, since
+  nothing local was checking it. CI's own `openapi-drift` job (API-14)
+  had existed the whole time and caught every one of them — but only
+  *after* the push, the same "runbook exists, gets followed until it
+  doesn't" pattern DOC-10 named for feature pages. Fixed two ways, not
+  one: regenerated the doc and closed the immediate gap, and added
+  `infra/scripts/verify.ps1` so the same check that catches this in CI
+  runs locally before a commit exists at all — a process fix, since a
+  documentation fix alone had already failed to hold three times running.
 
 ## 8. Environment
 

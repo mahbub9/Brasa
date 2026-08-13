@@ -14,10 +14,15 @@ doesn't actually promise.
 
 ## Regenerating
 
-There is no CI job enforcing this file is current yet — that's API-14
-("CI breaking-change detection against previous OpenAPI"), a separate,
-not-yet-built task. For now, regenerate by hand after changing any endpoint,
-in the same commit as the code that changed it:
+CI **does** enforce this file is current — the `openapi-drift` job
+(API-14, `.github/workflows/ci.yml`) starts the real API, regenerates the
+document the same way described below, and fails the build on any diff.
+It caught real drift three times running (CAT-02, ORD-07/08/09, CAT-17 —
+see the trap in `docs/ai/README.md`): the endpoint code shipped, the doc
+regeneration step didn't, every time. Regenerate by hand after changing
+any endpoint, in the same commit as the code that changed it — or run
+`infra/scripts/verify.ps1` before committing, which does this (and the
+rest of what CI checks) locally:
 
 ```powershell
 dotnet run --project src/backend/Brasa.Api
@@ -38,10 +43,19 @@ notice (see the trap in `docs/ai/README.md`). `servers` is removed via
 `.PSObject.Properties.Remove` before serialising, per the note above —
 simpler than editing it out of the JSON string afterward.
 
+After regenerating, also re-run `web/sdk`'s generator so the TypeScript
+types stay in sync (`npm run generate` in `src/web/sdk`, then
+`npm run typecheck` to confirm `schema.guard.ts` still holds) —
+`infra/scripts/verify.ps1` doesn't do this part yet, since `web/sdk` has
+no consumer and no CI job of its own checking it.
+
 ## What this feeds later
 
-- **API-14** — a CI job that diffs a freshly generated document against this
-  file and fails the build on an unreviewed breaking change.
+- **API-14** — built: the `openapi-drift` CI job diffs a freshly generated
+  document against this file and fails the build on any drift. Not true
+  breaking-change detection yet — it can't tell an additive change from a
+  removed field, it just refuses to let the committed document drift from
+  source at all.
 - **API-15** — generating the `web/sdk` TypeScript client from this document
   instead of hand-writing `api/client.ts` in each web app. The generator and
   every request/response type it needs both exist now; still no consumer —
@@ -49,7 +63,7 @@ simpler than editing it out of the JSON string afterward.
   [`src/web/sdk/README.md`](https://github.com/mahbub9/Brasa/blob/main/src/web/sdk/README.md)
   for exactly how narrowly.
 
-API-14 doesn't exist yet. API-15 shipped in two slices the same session:
+API-15 shipped in two slices the same session:
 the generator first, which surfaced a real, previously-unnoticed gap —
 every response body in this document was undescribed, since the moment
 API-13 first committed it — and closing that gap second. `Brasa.Api`'s

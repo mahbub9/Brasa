@@ -58,6 +58,17 @@ dotnet test  tests/Brasa.Shared.Tests      # fast, no Docker needed
 dotnet run   --project src/backend/Brasa.Api
 ```
 
+**Before committing any endpoint change, run
+`infra/scripts/verify.ps1`.** It mirrors CI (`.github/workflows/ci.yml`)
+locally — build, test, the OpenAPI-drift check (API-14), and the
+vulnerable-package scan — so a drifted `docs/openapi/v1.json` or a fresh
+transitive CVE is caught before a push, not after. Pass `-IncludeE2E` to
+also run the full Playwright suite. This exists because CAT-02,
+ORD-07/08/09 and CAT-17 each shipped its own endpoint without the
+documented `docs/openapi/v1.json` regeneration step, and CI's own
+`openapi-drift` job caught all three only after the push — see the trap
+in `docs/ai/README.md`.
+
 ## Environment notes
 
 - Windows 10 Home. Shell is **PowerShell 5.1** — no `&&`, no ternary, no
