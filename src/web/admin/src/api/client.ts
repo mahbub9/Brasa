@@ -4,11 +4,13 @@ import type {
   CreateRoomRequest,
   CreateStaffRequest,
   CreateTableRequest,
+  FeatureFlagDto,
   ImportMenuItemsResponse,
   MenuItemDto,
   OrganizationDto,
   ProblemDetails,
   RoomDto,
+  SetFeatureFlagRequest,
   SiteDto,
   StaffDto,
   StaffPinRequest,
@@ -175,4 +177,8 @@ export const api = {
   createStaff: (siteId: string, body: CreateStaffRequest) => post<StaffDto>(`/sites/${siteId}/staff`, body),
 
   setStaffPin: (staffId: string, body: StaffPinRequest) => put<StaffDto>(`/staff/${staffId}/pin`, body),
+
+  getFeatureFlags: () => request<FeatureFlagDto[]>('/feature-flags'),
+
+  setFeatureFlag: (key: string, body: SetFeatureFlagRequest) => put<FeatureFlagDto>(`/feature-flags/${key}`, body),
 };

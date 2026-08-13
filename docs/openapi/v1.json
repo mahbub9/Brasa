@@ -1440,6 +1440,109 @@
                                                                                 }
                                                               }
                                                   },
+                  "/api/v1/feature-flags/{key}":  {
+                                                      "put":  {
+                                                                  "tags":  [
+                                                                               "IdentityEndpoints"
+                                                                           ],
+                                                                  "summary":  "Creates or updates a feature flag for the tenant, optionally scoped to one platform (IDN-16).",
+                                                                  "operationId":  "SetFeatureFlag",
+                                                                  "parameters":  [
+                                                                                     {
+                                                                                         "name":  "key",
+                                                                                         "in":  "path",
+                                                                                         "required":  true,
+                                                                                         "schema":  {
+                                                                                                        "type":  "string"
+                                                                                                    }
+                                                                                     }
+                                                                                 ],
+                                                                  "requestBody":  {
+                                                                                      "content":  {
+                                                                                                      "application/json":  {
+                                                                                                                               "schema":  {
+                                                                                                                                              "$ref":  "#/components/schemas/SetFeatureFlagRequest"
+                                                                                                                                          }
+                                                                                                                           }
+                                                                                                  },
+                                                                                      "required":  true
+                                                                                  },
+                                                                  "responses":  {
+                                                                                    "200":  {
+                                                                                                "description":  "OK",
+                                                                                                "content":  {
+                                                                                                                "application/json":  {
+                                                                                                                                         "schema":  {
+                                                                                                                                                        "$ref":  "#/components/schemas/FeatureFlagDto"
+                                                                                                                                                    }
+                                                                                                                                     }
+                                                                                                            }
+                                                                                            }
+                                                                                }
+                                                              }
+                                                  },
+                  "/api/v1/feature-flags":  {
+                                                "get":  {
+                                                            "tags":  [
+                                                                         "IdentityEndpoints"
+                                                                     ],
+                                                            "summary":  "Lists every feature flag configured for the tenant.",
+                                                            "operationId":  "GetFeatureFlags",
+                                                            "responses":  {
+                                                                              "200":  {
+                                                                                          "description":  "OK",
+                                                                                          "content":  {
+                                                                                                          "application/json":  {
+                                                                                                                                   "schema":  {
+                                                                                                                                                  "type":  "array",
+                                                                                                                                                  "items":  {
+                                                                                                                                                                "$ref":  "#/components/schemas/FeatureFlagDto"
+                                                                                                                                                            }
+                                                                                                                                              }
+                                                                                                                               }
+                                                                                                      }
+                                                                                      }
+                                                                          }
+                                                        }
+                                            },
+                  "/api/v1/feature-flags/{key}/resolve":  {
+                                                              "get":  {
+                                                                          "tags":  [
+                                                                                       "IdentityEndpoints"
+                                                                                   ],
+                                                                          "summary":  "Resolves whether a flag is enabled for a platform: a platform-specific row wins, falling back to the \"all platforms\" row, defaulting to disabled if neither is configured.",
+                                                                          "operationId":  "ResolveFeatureFlag",
+                                                                          "parameters":  [
+                                                                                             {
+                                                                                                 "name":  "key",
+                                                                                                 "in":  "path",
+                                                                                                 "required":  true,
+                                                                                                 "schema":  {
+                                                                                                                "type":  "string"
+                                                                                                            }
+                                                                                             },
+                                                                                             {
+                                                                                                 "name":  "platform",
+                                                                                                 "in":  "query",
+                                                                                                 "schema":  {
+                                                                                                                "type":  "string"
+                                                                                                            }
+                                                                                             }
+                                                                                         ],
+                                                                          "responses":  {
+                                                                                            "200":  {
+                                                                                                        "description":  "OK",
+                                                                                                        "content":  {
+                                                                                                                        "application/json":  {
+                                                                                                                                                 "schema":  {
+                                                                                                                                                                "$ref":  "#/components/schemas/ResolvedFeatureFlagDto"
+                                                                                                                                                            }
+                                                                                                                                             }
+                                                                                                                    }
+                                                                                                    }
+                                                                                        }
+                                                                      }
+                                                          },
                   "/api/v1/price-lists":  {
                                               "post":  {
                                                            "tags":  [
@@ -3206,6 +3309,30 @@
                                                                                                      }
                                                                                 }
                                                              },
+                                       "FeatureFlagDto":  {
+                                                              "required":  [
+                                                                               "id",
+                                                                               "key",
+                                                                               "platform",
+                                                                               "isEnabled"
+                                                                           ],
+                                                              "type":  "object",
+                                                              "properties":  {
+                                                                                 "id":  {
+                                                                                            "type":  "string",
+                                                                                            "format":  "uuid"
+                                                                                        },
+                                                                                 "key":  {
+                                                                                             "type":  "string"
+                                                                                         },
+                                                                                 "platform":  {
+                                                                                                  "type":  "string"
+                                                                                              },
+                                                                                 "isEnabled":  {
+                                                                                                   "type":  "boolean"
+                                                                                               }
+                                                                             }
+                                                          },
                                        "FireOrderLinesRequest":  {
                                                                      "required":  [
                                                                                       "course"
@@ -4025,6 +4152,25 @@
                                                                                               }
                                                                                 }
                                                              },
+                                       "ResolvedFeatureFlagDto":  {
+                                                                      "required":  [
+                                                                                       "key",
+                                                                                       "platform",
+                                                                                       "isEnabled"
+                                                                                   ],
+                                                                      "type":  "object",
+                                                                      "properties":  {
+                                                                                         "key":  {
+                                                                                                     "type":  "string"
+                                                                                                 },
+                                                                                         "platform":  {
+                                                                                                          "type":  "string"
+                                                                                                      },
+                                                                                         "isEnabled":  {
+                                                                                                           "type":  "boolean"
+                                                                                                       }
+                                                                                     }
+                                                                  },
                                        "ResolvedTaxRuleDto":  {
                                                                   "required":  [
                                                                                    "vatRatePercent"
@@ -4152,6 +4298,24 @@
                                                                                                     }
                                                                                  }
                                                               },
+                                       "SetFeatureFlagRequest":  {
+                                                                     "required":  [
+                                                                                      "platform",
+                                                                                      "isEnabled"
+                                                                                  ],
+                                                                     "type":  "object",
+                                                                     "properties":  {
+                                                                                        "platform":  {
+                                                                                                         "type":  [
+                                                                                                                      "null",
+                                                                                                                      "string"
+                                                                                                                  ]
+                                                                                                     },
+                                                                                        "isEnabled":  {
+                                                                                                          "type":  "boolean"
+                                                                                                      }
+                                                                                    }
+                                                                 },
                                        "SetLineNotesRequest":  {
                                                                    "required":  [
                                                                                     "notes"

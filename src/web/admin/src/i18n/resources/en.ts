@@ -15,6 +15,7 @@ export const en = {
     menu: 'Menu',
     floor: 'Floor plan',
     staff: 'Staff',
+    flags: 'Feature flags',
   },
   overview: {
     categories: 'Menu categories',
@@ -110,6 +111,17 @@ export const en = {
     locked: 'Locked',
     resetPin: 'Reset PIN',
     newPinPlaceholder: 'New 4-6 digit PIN',
+  },
+  featureFlags: {
+    empty: 'No feature flags configured yet.',
+    addFlag: 'Add feature flag',
+    keyPlaceholder: 'Key, e.g. "kds"',
+    platformPlaceholder: 'Platform (blank = all)',
+    allPlatforms: 'All platforms',
+    enabled: 'Enabled',
+    disabled: 'Disabled',
+    enable: 'Enable',
+    disable: 'Disable',
   },
   common: {
     save: 'Save',

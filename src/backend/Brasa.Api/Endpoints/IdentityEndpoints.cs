@@ -13,7 +13,11 @@ namespace Brasa.Api.Endpoints;
 /// delete yet, and no pairing/auth (IDN-06/07 are separate, not-yet-built
 /// rows). Exists so <c>Site</c> has a stable, referenceable id — CAT-05
 /// (price lists per site) and FLR-06 (waiter section assignment) are the
-/// intended near-term consumers, neither built yet.
+/// intended near-term consumers, neither built yet. Also carries staff PIN
+/// accounts (IDN-08/09/11) and per-tenant feature flags (IDN-16) — all three
+/// live in this one Identity-composing file rather than one file per row,
+/// the same "endpoints file per module, not per backlog item" shape every
+/// other endpoint file in this codebase already uses.
 /// </summary>
 public static class IdentityEndpoints
 {
@@ -71,6 +75,21 @@ public static class IdentityEndpoints
             .WithName("SetStaffPin")
             .WithSummary("Sets a staff member's PIN, clearing any lockout — an admin reset, not a self-service change.")
             .Produces<StaffDto>();
+
+        group.MapPut("/feature-flags/{key}", SetFeatureFlagAsync)
+            .WithName("SetFeatureFlag")
+            .WithSummary("Creates or updates a feature flag for the tenant, optionally scoped to one platform (IDN-16).")
+            .Produces<FeatureFlagDto>();
+
+        group.MapGet("/feature-flags", GetFeatureFlagsAsync)
+            .WithName("GetFeatureFlags")
+            .WithSummary("Lists every feature flag configured for the tenant.")
+            .Produces<List<FeatureFlagDto>>();
+
+        group.MapGet("/feature-flags/{key}/resolve", ResolveFeatureFlagAsync)
+            .WithName("ResolveFeatureFlag")
+            .WithSummary("Resolves whether a flag is enabled for a platform: a platform-specific row wins, falling back to the \"all platforms\" row, defaulting to disabled if neither is configured.")
+            .Produces<ResolvedFeatureFlagDto>();
 
         return group;
     }
@@ -319,6 +338,82 @@ public static class IdentityEndpoints
 
     private static Error StaffNotFound(Guid staffId)
         => Error.NotFound("identity.staff_not_found", $"Staff member {staffId} was not found.");
+
+    private static async Task<IResult> SetFeatureFlagAsync(
+        string key,
+        SetFeatureFlagRequest request,
+        IdentityDbContext db,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Error.Validation("identity.invalid_feature_flag_key", "Feature flag key must not be empty.").ToProblem();
+        }
+
+        var normalizedKey = key.Trim().ToLowerInvariant();
+        var normalizedPlatform = string.IsNullOrWhiteSpace(request.Platform)
+            ? FeatureFlag.AllPlatforms
+            : request.Platform.Trim().ToLowerInvariant();
+
+        var flag = await db.FeatureFlags
+            .FirstOrDefaultAsync(f => f.Key == normalizedKey && f.Platform == normalizedPlatform, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (flag is null)
+        {
+            flag = new FeatureFlag(normalizedKey, normalizedPlatform, request.IsEnabled);
+            db.FeatureFlags.Add(flag);
+        }
+        else
+        {
+            flag.SetEnabled(request.IsEnabled);
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(flag.ToDto());
+    }
+
+    private static async Task<IResult> GetFeatureFlagsAsync(IdentityDbContext db, CancellationToken cancellationToken)
+    {
+        var flags = await db.FeatureFlags
+            .OrderBy(f => f.Key)
+            .ThenBy(f => f.Platform)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return Results.Ok(flags.Select(f => f.ToDto()).ToList());
+    }
+
+    private static async Task<IResult> ResolveFeatureFlagAsync(
+        string key,
+        string? platform,
+        IdentityDbContext db,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(key))
+        {
+            return Error.Validation("identity.invalid_feature_flag_key", "Feature flag key must not be empty.").ToProblem();
+        }
+
+        var normalizedKey = key.Trim().ToLowerInvariant();
+        var normalizedPlatform = string.IsNullOrWhiteSpace(platform)
+            ? FeatureFlag.AllPlatforms
+            : platform.Trim().ToLowerInvariant();
+
+        var candidates = await db.FeatureFlags
+            .Where(f => f.Key == normalizedKey && (f.Platform == normalizedPlatform || f.Platform == FeatureFlag.AllPlatforms))
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        // A platform-specific row wins over the tenant's "all platforms" one;
+        // an unconfigured flag defaults to off, not on — a flag nobody has
+        // ever touched should never silently enable whatever it gates.
+        var resolved = candidates.FirstOrDefault(f => f.Platform == normalizedPlatform)
+            ?? candidates.FirstOrDefault(f => f.Platform == FeatureFlag.AllPlatforms);
+
+        return Results.Ok(new ResolvedFeatureFlagDto(normalizedKey, normalizedPlatform, resolved?.IsEnabled ?? false));
+    }
 
     private static Result<PortugueseRegion> ParseRegion(string region)
     {

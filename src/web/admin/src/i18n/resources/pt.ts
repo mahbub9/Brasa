@@ -10,6 +10,7 @@ export const pt = {
     menu: 'Menu',
     floor: 'Plano de sala',
     staff: 'Equipa',
+    flags: 'Funcionalidades',
   },
   overview: {
     categories: 'Categorias de menu',
@@ -107,6 +108,17 @@ export const pt = {
     locked: 'Bloqueado',
     resetPin: 'Repor PIN',
     newPinPlaceholder: 'Novo PIN de 4 a 6 dígitos',
+  },
+  featureFlags: {
+    empty: 'Ainda não há funcionalidades configuradas.',
+    addFlag: 'Adicionar funcionalidade',
+    keyPlaceholder: 'Chave, ex.: "kds"',
+    platformPlaceholder: 'Plataforma (vazio = todas)',
+    allPlatforms: 'Todas as plataformas',
+    enabled: 'Ativa',
+    disabled: 'Inativa',
+    enable: 'Ativar',
+    disable: 'Desativar',
   },
   common: {
     save: 'Guardar',

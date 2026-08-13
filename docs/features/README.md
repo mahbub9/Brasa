@@ -45,3 +45,4 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | [Realtime floor updates](realtime-floor-updates.md) | API-16, API-17 | Web |
 | [Staff PIN accounts](staff-pin-accounts.md) | IDN-08, IDN-09, WEB-07 | Identity |
 | [Manager authorisation for voids and discounts](manager-authorization.md) | IDN-11 | Identity + Ordering |
+| [Feature flags](feature-flags.md) | IDN-16 | Identity |

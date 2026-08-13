@@ -56,6 +56,7 @@ as any change to an error code, the same rule as everything else in
 | `client.header_required` | Validation | 400 | `GET /client-requirements` was called with no (or a malformed) `X-Brasa-Client` header. |
 | `client.unknown_client_id` | NotFound | 404 | `GET /client-requirements`'s `X-Brasa-Client` header names a client id with no configured version policy. |
 | `fiscal.no_lines` | Validation | 400 | `IssueSimplifiedInvoiceAsync` was called with an empty line list. |
+| `identity.invalid_feature_flag_key` | Validation | 400 | `PUT /feature-flags/{key}`'s or `GET /feature-flags/{key}/resolve`'s (IDN-16) `key` route segment is missing, empty or whitespace. |
 | `identity.invalid_organization_name` | Validation | 400 | `POST /organizations`'s (IDN-01) `name` is missing, empty or whitespace. |
 | `identity.invalid_pin` | Validation | 400 | `POST /sites/{id}/staff`'s (IDN-09) or `PUT /staff/{id}/pin`'s `pin` isn't 4-6 digits. |
 | `identity.invalid_region` | Validation | 400 | `POST /organizations/{id}/sites`'s (IDN-01) `region` isn't a recognised `PortugueseRegion` name. |

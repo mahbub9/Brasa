@@ -648,6 +648,88 @@
   width: 10rem;
 }
 
+.feature-flag-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 34rem;
+}
+
+.feature-flag-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.feature-flag-group {
+  padding: 0.75rem 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.feature-flag-key {
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.feature-flag-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.feature-flag-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.feature-flag-platform {
+  font-family: monospace;
+  color: var(--muted);
+  min-width: 6rem;
+}
+
+.feature-flag-manager-add {
+  border: none;
+  background: none;
+  padding: 0;
+  color: var(--brasa);
+  font-size: 0.9rem;
+  font-weight: 600;
+  align-self: flex-start;
+}
+
+.feature-flag-manager-add-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.feature-flag-manager-add-form input[type='text'] {
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  width: 10rem;
+}
+
+.feature-flag-manager-add-enabled {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
 /* Crash fallback (OPS-14) — replaces the whole app, so it styles itself
    full-page rather than relying on .admin's wrapper. */
 

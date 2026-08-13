@@ -34,6 +34,9 @@ public sealed class IdentityDbContext(
     /// <summary>Staff members who can sign in with a PIN (IDN-08/09), scoped to a site.</summary>
     public DbSet<Staff> Staff => Set<Staff>();
 
+    /// <summary>Per-tenant, optionally per-platform on/off switches (IDN-16).</summary>
+    public DbSet<FeatureFlag> FeatureFlags => Set<FeatureFlag>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

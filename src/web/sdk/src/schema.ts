@@ -638,6 +638,57 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/feature-flags/{key}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Creates or updates a feature flag for the tenant, optionally scoped to one platform (IDN-16). */
+        put: operations["SetFeatureFlag"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/feature-flags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every feature flag configured for the tenant. */
+        get: operations["GetFeatureFlags"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/feature-flags/{key}/resolve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Resolves whether a flag is enabled for a platform: a platform-specific row wins, falling back to the "all platforms" row, defaulting to disabled if neither is configured. */
+        get: operations["ResolveFeatureFlag"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/price-lists": {
         parameters: {
             query?: never;
@@ -1274,6 +1325,13 @@ export interface components {
             price: components["schemas"]["MoneyDto"];
             isOverridden: boolean;
         };
+        FeatureFlagDto: {
+            /** Format: uuid */
+            id: string;
+            key: string;
+            platform: string;
+            isEnabled: boolean;
+        };
         FireOrderLinesRequest: {
             course: null | string;
         };
@@ -1477,6 +1535,11 @@ export interface components {
             menuItemId: string;
             price: components["schemas"]["MoneyDto"];
         };
+        ResolvedFeatureFlagDto: {
+            key: string;
+            platform: string;
+            isEnabled: boolean;
+        };
         ResolvedTaxRuleDto: {
             /** Format: double */
             vatRatePercent: number | string;
@@ -1506,6 +1569,10 @@ export interface components {
             /** Format: uuid */
             managerStaffId: string;
             managerPin: null | string;
+        };
+        SetFeatureFlagRequest: {
+            platform: null | string;
+            isEnabled: boolean;
         };
         SetLineNotesRequest: {
             notes: null | string;
@@ -2648,6 +2715,76 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StaffDto"];
+                };
+            };
+        };
+    };
+    SetFeatureFlag: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetFeatureFlagRequest"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlagDto"];
+                };
+            };
+        };
+    };
+    GetFeatureFlags: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FeatureFlagDto"][];
+                };
+            };
+        };
+    };
+    ResolveFeatureFlag: {
+        parameters: {
+            query?: {
+                platform?: string;
+            };
+            header?: never;
+            path: {
+                key: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolvedFeatureFlagDto"];
                 };
             };
         };

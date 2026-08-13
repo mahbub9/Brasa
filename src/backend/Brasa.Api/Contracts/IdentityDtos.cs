@@ -40,6 +40,24 @@ public sealed record CreateStaffRequest(string Name, string Role, string Pin);
 /// <summary>Request body to verify a staff member's PIN, or to set a new one.</summary>
 public sealed record StaffPinRequest(string Pin);
 
+/// <summary>
+/// A configured feature flag (IDN-16). <c>Platform</c> is never empty —
+/// <c>"all"</c> means every platform, not one specific client.
+/// </summary>
+public sealed record FeatureFlagDto(Guid Id, string Key, string Platform, bool IsEnabled);
+
+/// <summary>
+/// Request body to create or update a feature flag. <c>Platform</c> is
+/// optional — omitted or blank means "all platforms".
+/// </summary>
+public sealed record SetFeatureFlagRequest(string? Platform, bool IsEnabled);
+
+/// <summary>
+/// The outcome of resolving whether a flag is on for a given platform — the
+/// shape a real consumer (no such caller exists yet) would actually check.
+/// </summary>
+public sealed record ResolvedFeatureFlagDto(string Key, string Platform, bool IsEnabled);
+
 /// <summary>Maps Identity domain entities to wire DTOs.</summary>
 public static class IdentityDtoMappings
 {
@@ -55,4 +73,6 @@ public static class IdentityDtoMappings
         staff.Name,
         staff.Role.ToString(),
         staff.LockedUntilUtc is { } lockedUntil && nowUtc < lockedUntil);
+
+    public static FeatureFlagDto ToDto(this FeatureFlag flag) => new(flag.Id, flag.Key, flag.Platform, flag.IsEnabled);
 }

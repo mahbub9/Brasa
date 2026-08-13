@@ -182,6 +182,19 @@ export interface StaffPinRequest {
   pin: string;
 }
 
+/** A per-tenant, optionally per-platform on/off switch (IDN-16). `platform` is never empty — `"all"` means every platform. */
+export interface FeatureFlagDto {
+  id: string;
+  key: string;
+  platform: string;
+  isEnabled: boolean;
+}
+
+export interface SetFeatureFlagRequest {
+  platform?: string;
+  isEnabled: boolean;
+}
+
 /** RFC 9457 problem response shape used for every API failure. */
 export interface ProblemDetails {
   title?: string;
