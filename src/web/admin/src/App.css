@@ -427,6 +427,20 @@
   border-radius: 6px;
 }
 
+.floor-manager-room-section {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+}
+
+.floor-manager-room-section select {
+  padding: 0.2rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
 .floor-manager-room-delete-confirm {
   display: flex;
   align-items: center;

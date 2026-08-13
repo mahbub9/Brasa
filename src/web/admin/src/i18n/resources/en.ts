@@ -80,6 +80,8 @@ export const en = {
     cannotDeleteRoomNotEmpty: 'Remove every table from this room first.',
     floorLevel: 'Floor level',
     floorBadge: 'Floor {{level}}',
+    section: 'Section',
+    sectionUnassigned: 'Unassigned',
     shapeOption: {
       Round: 'Round',
       Square: 'Square',

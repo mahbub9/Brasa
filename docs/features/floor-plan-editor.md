@@ -1,7 +1,7 @@
-# Floor-plan editor: table and room CRUD, seating groups, multiple floors
+# Floor-plan editor: table and room CRUD, seating groups, multiple floors, section assignment
 
-> **Status:** 🚧 in progress — table/room CRUD (FLR-03), seating groups (FLR-05) and multi-floor support (FLR-07) are built; the drag-and-drop canvas FLR-03's own backlog title names is not
-> **Module:** Floor
+> **Status:** 🚧 in progress — table/room CRUD (FLR-03), seating groups (FLR-05), multi-floor support (FLR-07) and section assignment (FLR-06) are built; the drag-and-drop canvas FLR-03's own backlog title names is not
+> **Module:** Floor (+ Identity for FLR-06's staff lookup)
 > **Roadmap:** I1 (pulled forward)
 
 ## What it is
@@ -12,11 +12,13 @@ editor. It is not yet the drag-and-drop canvas a floor-plan editor
 usually means: position and shape are plain numeric/select form fields,
 not something a manager drags around on screen.
 
-Two later additions extend the same floor plan rather than standing on
+Three later additions extend the same floor plan rather than standing on
 their own: staff can push 2+ free tables together into one seating unit
-for a large party (FLR-05), and a room can be tagged with which
-physical storey it sits on so a multi-storey restaurant's floor plan
-can group by floor (FLR-07).
+for a large party (FLR-05), a room can be tagged with which physical
+storey it sits on so a multi-storey restaurant's floor plan can group by
+floor (FLR-07), and a room can have a waiter assigned to it as their
+section (FLR-06) — the "which area is this person working" a real
+*secção* already means.
 
 ## Why it works this way
 
@@ -88,6 +90,25 @@ bare, unbadged room would otherwise be a second, silent way to mean
 "ground floor," indistinguishable from "this screen doesn't support
 floors yet."
 
+**Section assignment (FLR-06) is a plain field too, and it keys off
+`Staff`, not `Site`.** `Room.AssignedStaffId` is a plain opaque `Guid?`
+reference to Identity's `Staff` — the same pattern `Order.TableId`
+already uses for a Floor `Table` — rather than a new entity, the exact
+same "no entity where a plain field says the same thing" reasoning
+`GroupId`/`FloorLevel` already established. It was expected to key off
+`Site` when IDN-01 first shipped (that row's own remarks named FLR-06 as
+a near-term consumer), but a room has no site relationship of its own to
+match against — the only check available is "does this id name a real
+`Staff` row at all," so that's the only one made. `RoomDto.AssignedStaffName`
+is resolved fresh from Identity on every `GET /floor` (one batched query
+across every room, not N+1) rather than snapshotted onto `Room` itself,
+because a section assignment is a live, current-state fact — "who is
+working this section right now" — not a historical record the way an
+order line's copied item name is; a renamed staff member should never
+show a stale name here. Any staff role can be assigned, Manager or plain
+Staff — unlike IDN-11's void/discount gate (shipped the same session),
+working a section is not a privileged action.
+
 ## Behaviour
 
 1. Admin adds a table: `POST /rooms/{roomId}/tables` with
@@ -105,6 +126,11 @@ floors yet."
     static. Once `GET /floor` shows rooms on more than one `FloorLevel`,
     the picker groups them under a floor heading; otherwise it renders
     exactly as before.
+11. Admin assigns a room's section: `PUT /rooms/{id}/section` with
+    `{ staffId }` — any real `Staff` row, any role. `staffId: null` clears it.
+12. `GET /floor` (and every room mutation's own response) now carries
+    `assignedStaffId`/`assignedStaffName`, resolved fresh from Identity —
+    never a stale, snapshotted name.
 
 ## Offline behaviour
 
@@ -130,19 +156,24 @@ Not applicable — cloud API endpoints, no offline path today.
 | Table group targets a table already in another group | Rejected — ungroup it first, this never moves a table between groups | `409 floor.table_already_grouped` |
 | `POST /orders`/`DELETE /tables/{id}` targets a grouped table | Rejected | `409 floor.table_grouped` |
 | Deleting an unknown table group | Rejected | `404 floor.table_group_not_found` |
+| Section assignment targets an unknown room | Rejected | `404 floor.room_not_found` |
+| Section assignment's `staffId` names no real staff member | Rejected | `404 identity.staff_not_found` |
 
 ## Data
 
-`Room` (`Name`, `DisplayOrder`, `FloorLevel` — FLR-07, default `0`) and
-`Table` (`RoomId`, `Label`, `Seats`, `PositionX`/`PositionY`, `Shape`,
-`State`, `GroupId` — FLR-05, a plain `Guid?` with no FK, the same
-opaque-reference convention `OrderLine.MenuItemId` uses) — both owned
-by `Floor`; position/shape existed before this feature, `FloorLevel`
-and `GroupId` are the only new columns, both nullable/defaulted so no
+`Room` (`Name`, `DisplayOrder`, `FloorLevel` — FLR-07, default `0`;
+`AssignedStaffId` — FLR-06, nullable `Guid`, no FK) and `Table`
+(`RoomId`, `Label`, `Seats`, `PositionX`/`PositionY`, `Shape`, `State`,
+`GroupId` — FLR-05, a plain `Guid?` with no FK, the same opaque-reference
+convention `OrderLine.MenuItemId` uses) — both owned by `Floor`;
+position/shape existed before this feature, `FloorLevel`, `GroupId` and
+`AssignedStaffId` are the only new columns, all nullable/defaulted so no
 existing row needed a data migration. `Table` has `xmin` optimistic
 concurrency (Postgres system column, no migration); `Room` does not —
 no known concurrent-edit race analogous to `Table.Occupy()` exists for
-a room's own fields.
+a room's own fields. `AssignedStaffId`'s corresponding name is never
+persisted anywhere — `RoomDto.AssignedStaffName` is computed at read
+time by `FloorEndpoints`, composing Identity's `Staff` table.
 
 ## API
 
@@ -156,6 +187,7 @@ a room's own fields.
 | `DELETE` | `/rooms/{roomId}` | Remove a room (must have no tables) |
 | `POST` | `/table-groups` | Push 2+ free tables into one seating group (FLR-05) |
 | `DELETE` | `/table-groups/{groupId}` | Dissolve a seating group, freeing every member table individually |
+| `PUT` | `/rooms/{roomId}/section` | Assign (or clear, `staffId: null`) a room's section waiter (FLR-06) |
 
 All take `Idempotency-Key` like every other mutation. Create/edit return
 the affected `TableDto`/`RoomDto`; delete returns `204 No Content`.
@@ -173,10 +205,13 @@ None. Purely a floor-plan/operations concern.
 
 ## Permissions
 
-None enforced yet — same "ships ahead of manager authorisation" shape
-as the menu editor's mutations (CAT-01/13/19). IDN-11 is the eventual
-real gate for admin-editing actions in general, once staff accounts and
-roles exist.
+None enforced on table/room CRUD or seating groups — same "ships ahead
+of manager authorisation" shape as the menu editor's mutations
+(CAT-01/13/19). Section assignment (FLR-06) is deliberately the same:
+any staff role can be assigned or reassign a section, since working an
+area isn't a privileged action the way voiding a line or applying a
+discount is (see [Manager authorisation](manager-authorization.md),
+IDN-11, which gates those two specifically — not floor-plan editing).
 
 ## Testing
 
@@ -204,6 +239,16 @@ floor level through the real UI round-trips to the API; `pos`'s table
 picker renders both floor headings with rooms grouped correctly under
 each.
 
+`floor-section-assignment.spec.ts` (FLR-06) — assigns a plain
+Staff-role member (proving the check isn't manager-only), resolving the
+name correctly both on the assignment response and a fresh
+`GET /floor`; clearing removes both `assignedStaffId`/`assignedStaffName`
+together; an unknown staff id and an unknown room both 404 with their
+own codes; the `admin` UI assigns and clears through the real section
+dropdown, each confirmed via a follow-up API call. Uses isolated rooms,
+never the seeded Salão/Esplanada, so parallel specs can't race on the
+same room.
+
 ## Open questions
 
 - The drag-and-drop canvas itself — this feature's own backlog title
@@ -228,3 +273,11 @@ each.
   `pos`'s picker (so a basement at `-1` would render before ground
   floor `0`) — untested against any real multi-storey restaurant's own
   preferred ordering, since none exists yet.
+- **FLR-06:** no `pos` UI reads a section assignment at all — a waiter's
+  own device has no notion of "these are my tables," so this ships as an
+  `admin`-only mechanism ahead of that eventual consumer.
+  Multi-assignment (two waiters sharing one large room) isn't
+  supported — one room, one assigned staff id, or none.
+  Nothing enforces that an order rung up in an assigned room actually
+  goes to the assigned waiter — this is a labelling/visibility tool
+  today, not an order-routing one.

@@ -103,7 +103,7 @@ export default function App() {
             <MenuManager categories={categories} onReload={loadCatalog} onErrorChange={setError} />
           )}
           {rooms && section === 'floor' && (
-            <FloorManager rooms={rooms} onReload={loadFloor} onErrorChange={setError} />
+            <FloorManager rooms={rooms} siteId={siteId} onReload={loadFloor} onErrorChange={setError} />
           )}
           {section === 'staff' && <StaffManager siteId={siteId} onErrorChange={setError} />}
         </main>

@@ -42,7 +42,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
 | **IDN** | Identity & access | 3 | 16 | I3 |
 | **CAT** | Catalog & menu | 16 | 19 | I0 (rest: I1) |
-| **FLR** | Floor plan & tables | 5 | 7 | I1 |
+| **FLR** | Floor plan & tables | 6 | 7 | I1 |
 | **ORD** | Ordering | 17 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
@@ -55,7 +55,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 9 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **104** | **292** | |
+| | **Total** | **105** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -314,6 +314,28 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > credential (no staff-picker exists in either client yet), so this ships
 > the gate itself, proven at the API level exactly the way ORD-10/11
 > themselves shipped ahead of *their* triggers.
+> Section assignment to waiters exists too now (FLR-06), unblocked the same
+> session by IDN-08/09's `Staff` — `PUT /rooms/{id}/section` assigns or
+> clears which waiter is working a room. A room was already the "which
+> area" granularity a real *secção* means, so this is one new nullable
+> field (`Room.AssignedStaffId`) rather than a new entity — the same "no
+> entity where a plain field says the same thing" call FLR-05's
+> `Table.GroupId` and FLR-07's `Room.FloorLevel` already made. Turned out
+> to key off `Staff` directly rather than `Site` as IDN-01's own row once
+> expected — a room has no site relationship of its own to match against,
+> so confirming the id names a real `Staff` row is the only check there is
+> to make. `RoomDto.AssignedStaffName` resolves fresh from Identity on
+> every `GET /floor`, one batched query across every room rather than
+> N+1, so a later-renamed staff member never shows stale here. Any staff
+> role works — unlike IDN-11's manager-only gate shipped the same session,
+> this isn't a privileged action. `admin`'s room editor gets a section
+> dropdown; `pos` shows nothing yet. **Verified live**:
+> `floor-section-assignment.spec.ts` — a plain Staff-role member (not a
+> manager) is assigned and resolves correctly both on the assignment
+> response and a fresh `GET /floor`, clearing removes both fields
+> together; an unknown staff id and an unknown room both 404 with their
+> own codes; the admin UI assigns and clears a section, both confirmed to
+> actually take effect via a follow-up API call.
 
 ---
 
@@ -380,7 +402,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| IDN-01 | Organization / Site / Terminal hierarchy | ✅ A narrow first slice — `Brasa.Modules.Identity`, previously an empty stub, now owns the `identity` schema: `Organization` (tenant-scoped, a business), `Site` (belongs to an organization, carries a real `PortugueseRegion` — Continental/Madeira/Azores — from day one, not a placeholder), `Terminal` (belongs to a site, a bare registry row). Create + list only via `POST`/`GET /organizations`, `POST`/`GET /organizations/{id}/sites`, `POST`/`GET /sites/{id}/terminals` — no update/delete yet, and no pairing/auth (IDN-06/07 are separate, not-yet-built rows), a deliberately minimal slice. `DevIdentitySeeder` seeds one full chain ("Brasa Demo, Lda" → "Restaurante Central" → "Caixa 1") the same way `DevFloorSeeder` seeds the floor plan. Exists to give `Site` a stable, referenceable id — the intended near-term consumers were CAT-05 (price lists per site, now built the same session) and FLR-06 (waiter section assignment, still unbuilt). **Verified live**: `identity-organization-site-terminal.spec.ts` — create/list at all three levels, the region round-trips, validation and 404 paths (`identity.invalid_organization_name`/`invalid_site_name`/`invalid_region`/`invalid_terminal_label`/`organization_not_found`/`site_not_found`), and the seeded demo chain resolves end to end |
+| IDN-01 | Organization / Site / Terminal hierarchy | ✅ A narrow first slice — `Brasa.Modules.Identity`, previously an empty stub, now owns the `identity` schema: `Organization` (tenant-scoped, a business), `Site` (belongs to an organization, carries a real `PortugueseRegion` — Continental/Madeira/Azores — from day one, not a placeholder), `Terminal` (belongs to a site, a bare registry row). Create + list only via `POST`/`GET /organizations`, `POST`/`GET /organizations/{id}/sites`, `POST`/`GET /sites/{id}/terminals` — no update/delete yet, and no pairing/auth (IDN-06/07 are separate, not-yet-built rows), a deliberately minimal slice. `DevIdentitySeeder` seeds one full chain ("Brasa Demo, Lda" → "Restaurante Central" → "Caixa 1") the same way `DevFloorSeeder` seeds the floor plan. Exists to give `Site` a stable, referenceable id — the intended near-term consumer was CAT-05 (price lists per site, now built the same session). FLR-06 (waiter section assignment, now also built) turned out to key off `Staff` (IDN-08/09) directly rather than `Site` — a room has no site relationship of its own, so there was nothing for FLR-06 to match a section's staff id against beyond confirming the id names a real `Staff` row at all. **Verified live**: `identity-organization-site-terminal.spec.ts` — create/list at all three levels, the region round-trips, validation and 404 paths (`identity.invalid_organization_name`/`invalid_site_name`/`invalid_region`/`invalid_terminal_label`/`organization_not_found`/`site_not_found`), and the seeded demo chain resolves end to end |
 | IDN-02 | User accounts, email verification, password reset | ⬜ |
 | IDN-03 | OAuth 2.1 / OIDC authorization-code flow with PKCE | ⬜ |
 | IDN-04 | Access token (JWT) issuance and validation | ⬜ |
@@ -430,7 +452,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | FLR-03 | Drag-and-drop floor plan editor | 🚧 Table and room CRUD both done, not the drag-and-drop canvas this row's own title names — `POST /rooms/{id}/tables`, `PUT /tables/{id}`, `DELETE /tables/{id}` (guarded to `Free` only), `POST /rooms`, `PUT /rooms/{id}`, `DELETE /rooms/{id}` (guarded to zero tables); `admin`'s "Plano de sala" has plain add/edit/delete forms for both (position/shape as number/select inputs, no visual canvas) — same "mechanism before the visual affordance" call WEB-10 made for the menu editor. **Verified live**: `floor-table-management.spec.ts` |
 | FLR-04 | Table states (free, occupied, bill requested, dirty) | ✅ all four wired end-to-end through `pos`, including `BillRequested` now: `POST /tables/{id}/request-bill` + a "Pedir conta" button, distinct from the pre-bill preview (ORD-18/19, "Ver conta") — that stays a read-only `GET`, this is the explicit floor-plan signal for staff. **Verified live** in a real browser: clicking it flags the table `BillRequested` on `GET /floor`; a free table 409s (`floor.table_not_occupied`), an unknown table 404s |
 | FLR-05 | Table merge / split for large parties | ✅ Scoped to a floor-plan seating group — pushing 2+ *free* tables together into one unit for a large party, not a full order-merge (that already exists, separately, as `ORD` table-transfer/merge-orders). `Table.GroupId` (a plain `Guid?`, no FK — the same opaque-reference convention `OrderLine.MenuItemId` already established) via `POST /table-groups` / `DELETE /table-groups/{id}`, both requiring every table to be `Free` first. Deliberately given real teeth rather than staying cosmetic: `Table.Occupy()` itself now refuses a grouped table (`floor.table_grouped`) — a grouped table shown as `Free` with nothing stopping it being seated individually would have actively contradicted the feature's own purpose. Cascading `Occupy`/`Clear`/`Release` across a group's siblings was deliberately *not* built (a materially larger change touching every already-shipped table-state endpoint) — grouping only blocks individual seating for now, a named gap. No client UI yet — no floor-plan multi-select exists in `admin`/`pos` today, same "mechanism before the trigger" call CAT-05/CAT-10/CAT-16 each made. **Verified live**: `table-groups.spec.ts` — grouping blocks `POST /orders` on every member table with `floor.table_grouped`, ungrouping restores ordinary seating; rejects fewer than 2 tables (`floor.table_group_too_small`), an unknown table (`floor.table_not_found`), a non-free table (`floor.table_not_free`), a table already in another group (`floor.table_already_grouped`), and 404s deleting an unknown group (`floor.table_group_not_found`) |
-| FLR-06 | Section assignment to waiters | ⬜ depends on IDN |
+| FLR-06 | Section assignment to waiters | ✅ Unblocked by IDN-01 (`Site`)/IDN-08-09 (`Staff`) — `PUT /rooms/{id}/section` assigns or clears (`staffId: null`) which waiter is working a room as their section. A room is already the "which area" granularity (Salão, Esplanada), so this is a new field, not a new entity — `Room.AssignedStaffId`, a plain opaque `Guid?` reference to Identity's `Staff`, the same pattern `Order.TableId` uses for a Floor `Table`. `FloorEndpoints` composes `IdentityDbContext` to confirm a non-null `staffId` is real before assigning (`404 identity.staff_not_found` otherwise); `RoomDto.AssignedStaffName` is resolved fresh from Identity on every `GET /floor` (batched into one query across every room, not N+1), never snapshotted, so a renamed staff member is never shown stale. Any staff role works, Manager or plain Staff — unlike IDN-11's manager-only gate, this isn't a privileged action. `admin`'s room editor gets a section `<select>` next to each room; `pos` shows nothing yet, the same "mechanism before the trigger" shape most of this session's other Identity-adjacent work has used. **Verified live**: `floor-section-assignment.spec.ts` — a plain Staff-role member (not a manager) is assigned and its name resolves correctly on both the assignment response and a fresh `GET /floor`, clearing removes both fields together; an unknown staff id and an unknown room both 404 with their own codes; the admin UI assigns and clears a section, both confirmed to actually take effect via a follow-up API call |
 | FLR-07 | Multi-floor support | ✅ `Room.FloorLevel: int` (default `0`, so every existing/seeded room needed no data migration) — `0` ground floor, positive above it, negative below (a basement or cave). Deliberately not a separate `Floor` entity: every field a floor needs (which rooms, which tables) is computed from the rooms that carry its level, the same "no entity where a plain field says the same thing" call FLR-05's `Table.GroupId` already made. `POST`/`PUT /rooms` both accept it (`PUT` requires it explicitly, `POST` defaults to `0`). Given real teeth as a **display** concern, not an access one — a floor badge/heading only ever earns its place once a tenant's own rooms actually span more than one level; seeded restaurants (single-storey) render exactly as before, byte-for-byte. `admin`'s room editor shows a "Floor N" badge on every room once ambiguity exists (labelling *every* room, not just the odd one out, once there is more than one — otherwise "no badge" would be a second, silent way to mean "ground floor"), plus a floor-level number input on add/edit; `pos`'s table picker groups rooms under a floor heading the same way. **Verified live**: `floor-multi-level.spec.ts` — floorLevel round-trips through create/`GET /floor`/update; omitting it on create defaults to `0`; `admin`'s floor badge appears on every room (incl. the seeded ground-floor ones) once a second floor is created; editing a room's floor level through the UI round-trips to the API; `pos`'s table picker shows both floor headings and the new room under its own |
 
 ## ORD — Ordering

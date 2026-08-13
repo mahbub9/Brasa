@@ -43,6 +43,25 @@ public sealed class Room : Entity
     public int FloorLevel { get; private set; }
 
     /// <summary>
+    /// The waiter currently assigned to this room as their section (FLR-06)
+    /// — <c>null</c> when unassigned. A plain, opaque reference to Identity's
+    /// <c>Staff</c>, the same pattern Ordering's own <c>Order.TableId</c>
+    /// already uses for a Floor <c>Table</c>: Floor never queries Identity
+    /// directly, and this id is never domain-validated here — the API layer
+    /// confirms it names a real staff member before ever calling
+    /// <see cref="AssignSection"/>.
+    /// </summary>
+    public Guid? AssignedStaffId { get; private set; }
+
+    /// <summary>
+    /// Assigns or clears (<paramref name="staffId"/> <c>null</c>) which
+    /// waiter is working this room as their section. No domain invariant to
+    /// check — unlike <see cref="Table.JoinGroup"/>, a room has no state of
+    /// its own that assignment could conflict with, so this can never fail.
+    /// </summary>
+    public void AssignSection(Guid? staffId) => AssignedStaffId = staffId;
+
+    /// <summary>
     /// Renames, reorders or moves this room to a different floor (FLR-03's
     /// room-CRUD follow-up; FLR-07 for the floor level). Whether it has
     /// tables, or what state they're in, is irrelevant here — unlike

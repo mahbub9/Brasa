@@ -1,5 +1,6 @@
 import type {
   AdminMenuCategoryDto,
+  AssignRoomSectionRequest,
   CreateRoomRequest,
   CreateStaffRequest,
   CreateTableRequest,
@@ -127,6 +128,8 @@ export const api = {
   updateRoom: (roomId: string, body: UpdateRoomRequest) => put<RoomDto>(`/rooms/${roomId}`, body),
 
   deleteRoom: (roomId: string) => del<void>(`/rooms/${roomId}`),
+
+  assignRoomSection: (roomId: string, body: AssignRoomSectionRequest) => put<RoomDto>(`/rooms/${roomId}/section`, body),
 
   getOrganizations: () => request<OrganizationDto[]>('/organizations'),
 

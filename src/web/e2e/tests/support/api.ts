@@ -392,6 +392,22 @@ export function deleteRoomResponse(request: APIRequestContext, roomId: string) {
   });
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (FLR-06). `staffId` null clears the assignment. */
+export function assignRoomSectionResponse(request: APIRequestContext, roomId: string, staffId: string | null) {
+  return request.put(`${apiBaseUrl}/rooms/${roomId}/section`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { staffId },
+  });
+}
+
+export async function assignRoomSection(request: APIRequestContext, roomId: string, staffId: string | null): Promise<RoomDto> {
+  const response = await assignRoomSectionResponse(request, roomId, staffId);
+  if (!response.ok()) {
+    throw new Error(`PUT /rooms/${roomId}/section failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (FLR-05). */
 export function createTableGroupResponse(request: APIRequestContext, tableIds: string[]) {
   return request.post(`${apiBaseUrl}/table-groups`, {

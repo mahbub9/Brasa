@@ -106,6 +106,9 @@ export interface RoomDto {
   displayOrder: number;
   /** Which physical storey this room sits on (FLR-07) -- 0 ground floor, positive above it, negative below. */
   floorLevel: number;
+  /** The waiter assigned to this room as their section (FLR-06), or null if unassigned. Both null together. */
+  assignedStaffId: string | null;
+  assignedStaffName: string | null;
   tables: TableDto[];
 }
 
@@ -135,6 +138,11 @@ export interface UpdateRoomRequest {
   name: string;
   displayOrder: number;
   floorLevel: number;
+}
+
+/** Assigns (or clears, with null) a room's section waiter (FLR-06). */
+export interface AssignRoomSectionRequest {
+  staffId: string | null;
 }
 
 /** The top of the Organization -> Site -> Terminal hierarchy (IDN-01). */

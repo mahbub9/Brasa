@@ -2,13 +2,20 @@ using Brasa.Api.Contracts;
 using Brasa.Api.Hubs;
 using Brasa.Modules.Floor.Domain;
 using Brasa.Modules.Floor.Persistence;
+using Brasa.Modules.Identity.Persistence;
 using Brasa.Shared.Primitives;
 using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 
 namespace Brasa.Api.Endpoints;
 
-/// <summary>Floor plan endpoints — the rooms and tables the POS renders as a table picker.</summary>
+/// <summary>
+/// Floor plan endpoints — the rooms and tables the POS renders as a table
+/// picker. Composes Identity in too (FLR-06's section assignment), the same
+/// Catalog+Identity/Ordering+Identity composition shape
+/// <c>PriceListEndpoints</c>/<c>OrderEndpoints</c> already use — see
+/// <c>docs/architecture/module-boundaries.md</c> rule 5.
+/// </summary>
 public static class FloorEndpoints
 {
     /// <summary>Maps the floor endpoints onto a versioned route group.</summary>
@@ -52,6 +59,10 @@ public static class FloorEndpoints
             .WithName("DeleteRoom")
             .WithSummary("Removes a room. Requires it to have no tables (FLR-03's room-CRUD follow-up).");
 
+        group.MapPut("/rooms/{roomId:guid}/section", AssignRoomSectionAsync)
+            .WithName("AssignRoomSection")
+            .WithSummary("Assigns or clears which waiter is working a room as their section (FLR-06).");
+
         group.MapPost("/table-groups", CreateTableGroupAsync)
             .WithName("CreateTableGroup")
             .WithSummary("Pushes 2+ free tables together into one seating group for a large party (FLR-05).");
@@ -63,7 +74,8 @@ public static class FloorEndpoints
         return group;
     }
 
-    private static async Task<IResult> GetFloorAsync(FloorDbContext db, CancellationToken cancellationToken)
+    private static async Task<IResult> GetFloorAsync(
+        FloorDbContext db, IdentityDbContext identityDb, CancellationToken cancellationToken)
     {
         var rooms = await db.Rooms
             .OrderBy(r => r.DisplayOrder)
@@ -76,8 +88,11 @@ public static class FloorEndpoints
 
         var tablesByRoom = tables.ToLookup(t => t.RoomId);
 
+        var staffNamesById = await ResolveStaffNamesAsync(
+            rooms.Select(r => r.AssignedStaffId), identityDb, cancellationToken).ConfigureAwait(false);
+
         var dto = rooms
-            .Select(r => new RoomDto(r.Id, r.Name, r.DisplayOrder, r.FloorLevel, [.. tablesByRoom[r.Id].Select(t => t.ToDto())]))
+            .Select(r => r.ToDto([.. tablesByRoom[r.Id].Select(t => t.ToDto())], staffNamesById))
             .ToList();
 
         return Results.Ok(dto);
@@ -290,7 +305,9 @@ public static class FloorEndpoints
         db.Rooms.Add(room);
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        return Results.Ok(new RoomDto(room.Id, room.Name, room.DisplayOrder, room.FloorLevel, []));
+        // A brand-new room has no section assignment yet — nothing to
+        // resolve from Identity.
+        return Results.Ok(room.ToDto([], EmptyStaffNames));
     }
 
     /// <summary>Renames, reorders or moves a room to a different floor. Independent of its tables — see <see cref="Room.Update"/>.</summary>
@@ -298,6 +315,7 @@ public static class FloorEndpoints
         Guid roomId,
         UpdateRoomRequest request,
         FloorDbContext db,
+        IdentityDbContext identityDb,
         CancellationToken cancellationToken)
     {
         var room = await db.Rooms.FirstOrDefaultAsync(r => r.Id == roomId, cancellationToken).ConfigureAwait(false);
@@ -315,7 +333,55 @@ public static class FloorEndpoints
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
         var tables = await db.Tables.Where(t => t.RoomId == room.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
-        return Results.Ok(new RoomDto(room.Id, room.Name, room.DisplayOrder, room.FloorLevel, [.. tables.Select(t => t.ToDto())]));
+        var staffNamesById = await ResolveStaffNamesAsync(
+            [room.AssignedStaffId], identityDb, cancellationToken).ConfigureAwait(false);
+        return Results.Ok(room.ToDto([.. tables.Select(t => t.ToDto())], staffNamesById));
+    }
+
+    /// <summary>
+    /// Assigns or clears which waiter is working a room as their section
+    /// (FLR-06) — any real <c>Staff</c> row, <c>Manager</c> or plain
+    /// <c>Staff</c>, unlike IDN-11's manager-only gate. Composes
+    /// <see cref="IdentityDbContext"/> to confirm a non-null
+    /// <c>staffId</c> names a real staff member before ever calling
+    /// <see cref="Room.AssignSection"/>.
+    /// </summary>
+    private static async Task<IResult> AssignRoomSectionAsync(
+        Guid roomId,
+        AssignRoomSectionRequest request,
+        FloorDbContext db,
+        IdentityDbContext identityDb,
+        CancellationToken cancellationToken)
+    {
+        var room = await db.Rooms.FirstOrDefaultAsync(r => r.Id == roomId, cancellationToken).ConfigureAwait(false);
+        if (room is null)
+        {
+            return Error.NotFound("floor.room_not_found", $"Room {roomId} was not found.").ToProblem();
+        }
+
+        string? staffName = null;
+        if (request.StaffId is { } staffId)
+        {
+            var staff = await identityDb.Staff
+                .FirstOrDefaultAsync(s => s.Id == staffId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (staff is null)
+            {
+                return Error.NotFound("identity.staff_not_found", $"Staff member {staffId} was not found.").ToProblem();
+            }
+
+            staffName = staff.Name;
+        }
+
+        room.AssignSection(request.StaffId);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var tables = await db.Tables.Where(t => t.RoomId == room.Id).ToListAsync(cancellationToken).ConfigureAwait(false);
+        var staffNamesById = staffName is null || request.StaffId is not { } assignedId
+            ? EmptyStaffNames
+            : new Dictionary<Guid, string> { [assignedId] = staffName };
+        return Results.Ok(room.ToDto([.. tables.Select(t => t.ToDto())], staffNamesById));
     }
 
     /// <summary>
@@ -434,5 +500,27 @@ public static class FloorEndpoints
             ? Result.Success(parsed)
             : Result.Failure<TableShape>(
                 Error.Validation("floor.invalid_shape", $"\"{shape}\" is not a recognised table shape."));
+    }
+
+    private static readonly IReadOnlyDictionary<Guid, string> EmptyStaffNames = new Dictionary<Guid, string>();
+
+    /// <summary>
+    /// Batch-resolves staff names for <see cref="RoomDto.AssignedStaffName"/>
+    /// (FLR-06) — one query for every distinct assigned staff id across
+    /// however many rooms are being mapped, rather than one query per room.
+    /// </summary>
+    private static async Task<IReadOnlyDictionary<Guid, string>> ResolveStaffNamesAsync(
+        IEnumerable<Guid?> staffIds, IdentityDbContext identityDb, CancellationToken cancellationToken)
+    {
+        var distinctIds = staffIds.Where(id => id is not null).Select(id => id!.Value).Distinct().ToList();
+        if (distinctIds.Count == 0)
+        {
+            return EmptyStaffNames;
+        }
+
+        return await identityDb.Staff
+            .Where(s => distinctIds.Contains(s.Id))
+            .ToDictionaryAsync(s => s.Id, s => s.Name, cancellationToken)
+            .ConfigureAwait(false);
     }
 }

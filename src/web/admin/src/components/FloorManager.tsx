@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
-import type { RoomDto, TableDto, TableShape } from '../api/types';
+import type { RoomDto, StaffDto, TableDto, TableShape } from '../api/types';
 
 interface FloorManagerProps {
   rooms: RoomDto[];
+  /** The site to pull the section-assignment staff list from. `null` until App.tsx resolves one. */
+  siteId: string | null;
   onReload: () => void;
   onErrorChange: (message: string | null) => void;
 }
@@ -15,10 +17,28 @@ const SHAPES: TableShape[] = ['Round', 'Square', 'Rectangle'];
  * FLR-03's first slice — table and room CRUD, not the drag-and-drop canvas
  * its own backlog title names. Position and shape are plain number/select
  * inputs here, the same "mechanism before the visual affordance" call
- * WEB-10 made for the menu editor.
+ * WEB-10 made for the menu editor. FLR-06's section assignment lives here
+ * too — a room is the same "which area is this waiter working" granularity
+ * a real *secção* already means.
  */
-export function FloorManager({ rooms, onReload, onErrorChange }: FloorManagerProps) {
+export function FloorManager({ rooms, siteId, onReload, onErrorChange }: FloorManagerProps) {
   const { t } = useTranslation();
+  const [staff, setStaff] = useState<StaffDto[]>([]);
+
+  const loadStaff = useCallback(() => {
+    if (!siteId) {
+      return;
+    }
+
+    api
+      .getStaff(siteId)
+      .then(setStaff)
+      .catch((err: unknown) => onErrorChange(err instanceof ApiError ? err.message : t('error.generic')));
+  }, [siteId, onErrorChange, t]);
+
+  useEffect(() => {
+    loadStaff();
+  }, [loadStaff]);
 
   // A "Floor N" badge only earns its place once a tenant's own rooms
   // actually span more than one level (FLR-07) -- most restaurants are
@@ -33,6 +53,7 @@ export function FloorManager({ rooms, onReload, onErrorChange }: FloorManagerPro
       {rooms.map((room) => (
         <section key={room.id} className="floor-manager-room" data-testid={`room-${room.name}`}>
           <FloorManagerRoomHeading room={room} showFloors={showFloors} onReload={onReload} onErrorChange={onErrorChange} />
+          <FloorManagerSection room={room} staff={staff} onReload={onReload} onErrorChange={onErrorChange} />
 
           {room.tables.length === 0 ? (
             <p className="empty-state">{t('floor.noTables')}</p>
@@ -49,6 +70,49 @@ export function FloorManager({ rooms, onReload, onErrorChange }: FloorManagerPro
       ))}
 
       <AddRoomForm nextDisplayOrder={rooms.length} onReload={onReload} onErrorChange={onErrorChange} />
+    </div>
+  );
+}
+
+interface FloorManagerSectionProps {
+  room: RoomDto;
+  staff: StaffDto[];
+  onReload: () => void;
+  onErrorChange: (message: string | null) => void;
+}
+
+/** FLR-06 — assigns or clears which waiter is working this room as their section. Any staff role, not manager-only. */
+function FloorManagerSection({ room, staff, onReload, onErrorChange }: FloorManagerSectionProps) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+
+  function change(staffId: string) {
+    setBusy(true);
+    onErrorChange(null);
+    api
+      .assignRoomSection(room.id, { staffId: staffId === '' ? null : staffId })
+      .then(() => onReload())
+      .catch((err: unknown) => onErrorChange(err instanceof ApiError ? err.message : t('error.generic')))
+      .finally(() => setBusy(false));
+  }
+
+  return (
+    <div className="floor-manager-room-section">
+      <label htmlFor={`room-section-${room.name}`}>{t('floor.section')}</label>
+      <select
+        id={`room-section-${room.name}`}
+        data-testid={`room-section-${room.name}`}
+        value={room.assignedStaffId ?? ''}
+        disabled={busy || staff.length === 0}
+        onChange={(e) => change(e.target.value)}
+      >
+        <option value="">{t('floor.sectionUnassigned')}</option>
+        {staff.map((member) => (
+          <option key={member.id} value={member.id}>
+            {member.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }

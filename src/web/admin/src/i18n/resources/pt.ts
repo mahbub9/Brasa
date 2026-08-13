@@ -77,6 +77,8 @@ export const pt = {
     cannotDeleteRoomNotEmpty: 'Remova primeiro todas as mesas desta sala.',
     floorLevel: 'Piso',
     floorBadge: 'Piso {{level}}',
+    section: 'Secção',
+    sectionUnassigned: 'Não atribuída',
     shapeOption: {
       Round: 'Redonda',
       Square: 'Quadrada',
