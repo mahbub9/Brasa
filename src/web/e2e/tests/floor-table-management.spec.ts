@@ -18,10 +18,11 @@ import {
 
 const adminBaseUrl = process.env.BRASA_ADMIN_BASE_URL ?? 'http://localhost:5174';
 
-// FLR-03's first slice — table and room CRUD, not yet the drag-and-drop
-// canvas this backlog row's own title names. Position/shape were seeded
-// onto Table since I1 for exactly this (see that type's own remarks);
-// admin submits plain numeric position fields today, no visual editor.
+// FLR-03's CRUD half — table and room create/edit/delete via plain
+// numeric position/shape fields. The drag-and-drop canvas this backlog
+// row's own title also names is a separate spec, floor-drag-drop.spec.ts —
+// a mouse-only convenience layer over the exact same PUT /tables/{id}
+// these tests already exercise, not a different capability.
 
 test.describe('table CRUD (FLR-03)', () => {
   test('creates, edits and deletes a table via the API', async ({ request }) => {

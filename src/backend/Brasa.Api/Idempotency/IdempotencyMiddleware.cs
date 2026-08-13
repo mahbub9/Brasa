@@ -71,7 +71,16 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, IMemoryCache cac
             context.Response.Headers["Idempotent-Replay"] = "true";
             context.Response.StatusCode = cached.StatusCode;
             context.Response.ContentType = cached.ContentType;
-            await context.Response.Body.WriteAsync(cached.Body).ConfigureAwait(false);
+
+            // A 204 (or any other empty-bodied replay) must never reach WriteAsync
+            // at all -- Kestrel treats even a zero-length write as "started a body"
+            // and throws InvalidOperationException for a status that forbids one,
+            // which crashes the whole connection, not just this request.
+            if (cached.Body.Length > 0)
+            {
+                await context.Response.Body.WriteAsync(cached.Body).ConfigureAwait(false);
+            }
+
             return;
         }
 
@@ -98,7 +107,12 @@ public sealed class IdempotencyMiddleware(RequestDelegate next, IMemoryCache cac
                 CacheDuration);
         }
 
-        await originalBody.WriteAsync(bytes).ConfigureAwait(false);
+        // Same reasoning as the replay path above: skip the write entirely for an
+        // empty body (204 and friends) rather than let Kestrel reject it.
+        if (bytes.Length > 0)
+        {
+            await originalBody.WriteAsync(bytes).ConfigureAwait(false);
+        }
     }
 
     private static bool IsMutatingApiRequest(HttpContext context)

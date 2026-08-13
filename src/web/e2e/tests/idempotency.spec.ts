@@ -1,5 +1,14 @@
 import { expect, test } from '@playwright/test';
-import { addLine, closeOrderAndClearTable, findFreeTable, findMenuItem, getFloor, getMenu, searchOrders } from './support/api';
+import {
+  addLine,
+  closeOrderAndClearTable,
+  createRoom,
+  findFreeTable,
+  findMenuItem,
+  getFloor,
+  getMenu,
+  searchOrders,
+} from './support/api';
 import type { CloseOrderResponse, OrderDto } from './support/types';
 
 // QA-11 / API-05 — every mutation takes an Idempotency-Key (hard rule 7,
@@ -120,5 +129,34 @@ test.describe('idempotency replay', () => {
     });
     expect(response.status()).toBe(400);
     expect((await response.json()).code).toBe('request.idempotency_key_required');
+  });
+
+  // Regression for a real bug: IdempotencyMiddleware used to call
+  // WriteAsync unconditionally on both the cache-and-forward path and the
+  // replay path, including for an empty (204) body. Kestrel rejects any
+  // body write at all on a response that forbids one, which threw inside
+  // the middleware and crashed the whole connection -- not just this
+  // request, every in-flight request on the API process. A DELETE (the
+  // only 204-returning verb here) replayed with the same key exercises
+  // both the original and the cached path; the API must still answer a
+  // plain request afterward, not have taken the process down with it.
+  test('a replayed DELETE (204) does not crash the API', async ({ request }) => {
+    const room = await createRoom(request, { name: `Idempotency 204 Test ${Date.now()}`, displayOrder: 99 });
+    const deleteKey = crypto.randomUUID();
+
+    const first = await request.delete(`${apiBaseUrl}/rooms/${room.id}`, {
+      headers: { 'Idempotency-Key': deleteKey },
+    });
+    expect(first.status()).toBe(204);
+    expect(first.headers()['idempotent-replay']).toBeUndefined();
+
+    const replay = await request.delete(`${apiBaseUrl}/rooms/${room.id}`, {
+      headers: { 'Idempotency-Key': deleteKey },
+    });
+    expect(replay.status()).toBe(204);
+    expect(replay.headers()['idempotent-replay']).toBe('true');
+
+    const stillUp = await getFloor(request);
+    expect(Array.isArray(stillUp)).toBe(true);
   });
 });

@@ -1,6 +1,6 @@
 # Floor-plan editor: table and room CRUD, seating groups, multiple floors, section assignment
 
-> **Status:** 🚧 in progress — table/room CRUD (FLR-03), seating groups (FLR-05), multi-floor support (FLR-07) and section assignment (FLR-06) are built; the drag-and-drop canvas FLR-03's own backlog title names is not
+> **Status:** ✅ table/room CRUD, the drag-and-drop canvas, seating groups (FLR-05), multi-floor support (FLR-07) and section assignment (FLR-06) are all built (FLR-03)
 > **Module:** Floor (+ Identity for FLR-06's staff lookup)
 > **Roadmap:** I1 (pulled forward)
 
@@ -8,9 +8,13 @@
 
 `admin` can add, edit and remove tables within a room, and add, rename
 and remove rooms themselves — the data-mutation half of a floor-plan
-editor. It is not yet the drag-and-drop canvas a floor-plan editor
-usually means: position and shape are plain numeric/select form fields,
-not something a manager drags around on screen.
+editor — plus a visual canvas (`FloorCanvas`) where a manager drags a
+table to a new position directly, rather than typing numbers into a
+form. The canvas is a mouse-only convenience layer over the exact same
+`PUT /tables/{id}` the plain form already used; every capability it
+exposes remains fully available through the form, which is why the
+canvas itself is `aria-hidden` rather than made keyboard/screen-reader
+accessible in its own right — nothing becomes unreachable by hiding it.
 
 Three later additions extend the same floor plan rather than standing on
 their own: staff can push 2+ free tables together into one seating unit
@@ -32,11 +36,19 @@ needs *some* way to set them) — the canvas itself is a separate,
 larger, still-open piece of work.
 
 **The same "mechanism before the visual affordance" call as the menu
-editor.** WEB-10 shipped category/item toggles and an inline price
-editor with no drag-and-drop menu layout; this ships table/room
-add/edit/delete with no drag-and-drop floor layout. Same reasoning both
-times: the mutation is the part that unblocks a real restaurant from
-using the system, the visual polish is a separable, later improvement.
+editor — the canvas is what came after.** WEB-10 shipped category/item
+toggles and an inline price editor with no drag-and-drop menu layout;
+this shipped table/room add/edit/delete with no drag-and-drop floor
+layout first, and the canvas second, once the mutation endpoint it
+needed already existed and was already tested. `FloorCanvas` uses
+pointer events (`onPointerDown`/`onPointerMove`/`onPointerUp` with
+pointer capture), not native HTML5 drag-and-drop, which is known to
+behave inconsistently in headless/automated browsers — a real
+consideration here since this whole codebase is verified by Playwright.
+A drag snaps to the same integer grid `PositionX`/`PositionY` already
+used (rounding to the nearest cell); a drag of less than half a cell
+snaps back to the original position with no API call at all, so a
+misclick or a tiny jitter never fires a spurious update.
 
 **Table deletion is hard, not soft — the opposite of `MenuItem` (CAT-18).**
 A closed order's `TableLabel` is already snapshotted at the moment the
@@ -114,6 +126,10 @@ working a section is not a privileged action.
 1. Admin adds a table: `POST /rooms/{roomId}/tables` with
    `{ label, seats, positionX, positionY, shape }`. Starts `Free`.
 2. Admin edits a table: `PUT /tables/{id}` — same shape, any `TableState`.
+2a. Admin drags a table on the canvas: releasing the pointer rounds the
+    drag delta to the nearest grid cell and calls the same `PUT /tables/{id}`
+    with the recomputed `positionX`/`positionY` — a drag under half a cell
+    rounds back to the start and fires no request at all.
 3. Admin removes a table: `DELETE /tables/{id}` — only while `Free`.
 4. Admin adds a room: `POST /rooms` with `{ name, displayOrder, floorLevel }` (`floorLevel` defaults to `0`).
 5. Admin renames/reorders/moves a room to a different floor: `PUT /rooms/{id}`.
@@ -224,6 +240,14 @@ Room CRUD: the same shape for rooms — create/rename/delete via the API
 and the `admin` UI, an empty name rejected on create/rename, an unknown
 room 404s, deleting a non-empty room 409s.
 
+`floor-drag-drop.spec.ts` — the canvas half: a real `page.mouse`
+drag past half a cell in both axes persists a grid-snapped position via
+`GET /floor`, confirmed with `expect.poll` rather than a fixed wait; a
+drag of less than half a cell leaves the position unchanged and fires no
+update. Uses an isolated room+table created and torn down within the
+test, never a seeded one, so a dragged table can never race another spec
+that depends on its position or state.
+
 `table-groups.spec.ts` (FLR-05) — grouping 2 free tables makes
 `POST /orders` 409 on either one; deleting the group restores ordinary
 seating, proven with a real order open+close afterward, not just a
@@ -251,9 +275,6 @@ same room.
 
 ## Open questions
 
-- The drag-and-drop canvas itself — this feature's own backlog title
-  (FLR-03) names it directly; position/shape are editable today only as
-  plain form fields, not by dragging a table on screen.
 - No bulk operations (e.g. duplicate a table, reorder several rooms at
   once) — not needed yet at the scale a single restaurant's floor plan
   operates at.

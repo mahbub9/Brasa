@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import type { PointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
 import type { RoomDto, StaffDto, TableDto, TableShape } from '../api/types';
@@ -14,12 +15,16 @@ interface FloorManagerProps {
 const SHAPES: TableShape[] = ['Round', 'Square', 'Rectangle'];
 
 /**
- * FLR-03's first slice — table and room CRUD, not the drag-and-drop canvas
- * its own backlog title names. Position and shape are plain number/select
- * inputs here, the same "mechanism before the visual affordance" call
- * WEB-10 made for the menu editor. FLR-06's section assignment lives here
- * too — a room is the same "which area is this waiter working" granularity
- * a real *secção* already means.
+ * FLR-03 — table and room CRUD (position/shape as plain number/select
+ * inputs, the same "mechanism before the visual affordance" call WEB-10
+ * made for the menu editor) plus the drag-and-drop canvas (`FloorCanvas`,
+ * below) its own backlog title names. The canvas is a mouse-only
+ * convenience layer over the same `PUT /tables/{id}` the number inputs
+ * already call — every canvas capability (seeing and setting a table's
+ * position) stays fully available via the accessible form fields, so
+ * `aria-hidden` on the canvas itself isn't a functionality loss. FLR-06's
+ * section assignment lives here too — a room is the same "which area is
+ * this waiter working" granularity a real *secção* already means.
  */
 export function FloorManager({ rooms, siteId, onReload, onErrorChange }: FloorManagerProps) {
   const { t } = useTranslation();
@@ -55,6 +60,8 @@ export function FloorManager({ rooms, siteId, onReload, onErrorChange }: FloorMa
           <FloorManagerRoomHeading room={room} showFloors={showFloors} onReload={onReload} onErrorChange={onErrorChange} />
           <FloorManagerSection room={room} staff={staff} onReload={onReload} onErrorChange={onErrorChange} />
 
+          {room.tables.length > 0 && <FloorCanvas room={room} onReload={onReload} onErrorChange={onErrorChange} />}
+
           {room.tables.length === 0 ? (
             <p className="empty-state">{t('floor.noTables')}</p>
           ) : (
@@ -70,6 +77,133 @@ export function FloorManager({ rooms, siteId, onReload, onErrorChange }: FloorMa
       ))}
 
       <AddRoomForm nextDisplayOrder={rooms.length} onReload={onReload} onErrorChange={onErrorChange} />
+    </div>
+  );
+}
+
+interface FloorCanvasProps {
+  room: RoomDto;
+  onReload: () => void;
+  onErrorChange: (message: string | null) => void;
+}
+
+interface DragState {
+  tableId: string;
+  startPositionX: number;
+  startPositionY: number;
+  startClientX: number;
+  startClientY: number;
+  dx: number;
+  dy: number;
+}
+
+const CANVAS_CELL = 70;
+const CANVAS_MARGIN = 40;
+const CANVAS_TABLE_SIZE = 56;
+
+/**
+ * The drag-and-drop half of FLR-03 — a grid-snapped canvas rendering each
+ * table at its own `positionX`/`positionY`, draggable via pointer events
+ * (not native HTML5 drag-and-drop, which behaves inconsistently in
+ * headless/automated browsers — plain pointerdown/move/up with capture is
+ * both simpler and more reliably testable). Dropping a table calls the
+ * exact same `PUT /tables/{id}` the number-input form below already used;
+ * this is a second way to set the same two fields, not a new capability.
+ * `aria-hidden` on the whole canvas — see the module doc comment above for
+ * why that's not a functionality loss.
+ */
+function FloorCanvas({ room, onReload, onErrorChange }: FloorCanvasProps) {
+  const { t } = useTranslation();
+  const [busy, setBusy] = useState(false);
+  const [drag, setDrag] = useState<DragState | null>(null);
+
+  function handlePointerDown(e: PointerEvent<HTMLDivElement>, table: TableDto) {
+    if (busy) {
+      return;
+    }
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDrag({
+      tableId: table.id,
+      startPositionX: table.positionX,
+      startPositionY: table.positionY,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+      dx: 0,
+      dy: 0,
+    });
+  }
+
+  function handlePointerMove(e: PointerEvent<HTMLDivElement>) {
+    if (!drag) {
+      return;
+    }
+    setDrag({ ...drag, dx: e.clientX - drag.startClientX, dy: e.clientY - drag.startClientY });
+  }
+
+  function handlePointerUp(e: PointerEvent<HTMLDivElement>, table: TableDto) {
+    if (!drag || drag.tableId !== table.id) {
+      return;
+    }
+    e.currentTarget.releasePointerCapture(e.pointerId);
+
+    const newX = Math.max(0, Math.round(drag.startPositionX + drag.dx / CANVAS_CELL));
+    const newY = Math.max(0, Math.round(drag.startPositionY + drag.dy / CANVAS_CELL));
+    setDrag(null);
+
+    if (newX === table.positionX && newY === table.positionY) {
+      return;
+    }
+
+    setBusy(true);
+    onErrorChange(null);
+    api
+      .updateTable(table.id, {
+        label: table.label,
+        seats: table.seats,
+        positionX: newX,
+        positionY: newY,
+        shape: table.shape,
+      })
+      .then(() => onReload())
+      .catch((err: unknown) => onErrorChange(err instanceof ApiError ? err.message : t('error.generic')))
+      .finally(() => setBusy(false));
+  }
+
+  const maxX = Math.max(0, ...room.tables.map((table) => table.positionX));
+  const maxY = Math.max(0, ...room.tables.map((table) => table.positionY));
+  const width = (maxX + 1) * CANVAS_CELL + CANVAS_MARGIN + CANVAS_TABLE_SIZE;
+  const height = (maxY + 1) * CANVAS_CELL + CANVAS_MARGIN + CANVAS_TABLE_SIZE;
+
+  return (
+    <div className="floor-canvas-scroll">
+      <div
+        className="floor-canvas"
+        data-testid={`floor-canvas-${room.name}`}
+        aria-hidden="true"
+        style={{ width, height }}
+      >
+        {room.tables.map((table) => {
+          const isDragging = drag?.tableId === table.id;
+          const x = table.positionX * CANVAS_CELL + CANVAS_MARGIN / 2 + (isDragging ? drag.dx : 0);
+          const y = table.positionY * CANVAS_CELL + CANVAS_MARGIN / 2 + (isDragging ? drag.dy : 0);
+          return (
+            <div
+              key={table.id}
+              className={
+                `floor-canvas-table floor-canvas-table-${table.shape.toLowerCase()} ` +
+                `floor-canvas-table-state-${table.state}${isDragging ? ' floor-canvas-table-dragging' : ''}`
+              }
+              data-testid={`canvas-table-${table.label}`}
+              style={{ transform: `translate(${x}px, ${y}px)` }}
+              onPointerDown={(e) => handlePointerDown(e, table)}
+              onPointerMove={handlePointerMove}
+              onPointerUp={(e) => handlePointerUp(e, table)}
+            >
+              {table.label}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }

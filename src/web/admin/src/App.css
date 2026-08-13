@@ -338,6 +338,77 @@
   border-radius: 10px;
 }
 
+.floor-canvas-scroll {
+  overflow-x: auto;
+  margin: 0.75rem 0;
+}
+
+.floor-canvas {
+  position: relative;
+  background-image:
+    linear-gradient(var(--border) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border) 1px, transparent 1px);
+  background-size: 70px 70px;
+  background-color: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.floor-canvas-table {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 2px solid var(--border);
+  font-size: 0.75rem;
+  font-weight: 700;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.floor-canvas-table-round {
+  border-radius: 50%;
+}
+
+.floor-canvas-table-square {
+  border-radius: 6px;
+}
+
+.floor-canvas-table-rectangle {
+  width: 84px;
+  border-radius: 6px;
+}
+
+.floor-canvas-table-dragging {
+  cursor: grabbing;
+  z-index: 10;
+  box-shadow: 0 4px 12px rgba(36, 28, 21, 0.25);
+}
+
+/* Same accessible palette pos's own floor-table states already use (QA-14). */
+.floor-canvas-table-state-Free {
+  border-color: #2f9e44;
+}
+
+.floor-canvas-table-state-Occupied {
+  border-color: var(--danger);
+}
+
+.floor-canvas-table-state-BillRequested {
+  border-color: #c4460a;
+}
+
+.floor-canvas-table-state-Dirty {
+  border-color: #868e96;
+  border-style: dashed;
+}
+
 .floor-manager-tables {
   list-style: none;
   margin: 0 0 0.75rem;
