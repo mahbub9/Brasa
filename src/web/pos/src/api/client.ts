@@ -5,11 +5,15 @@ import type {
   OpenOrderRequest,
   OpenTakeawayOrderRequest,
   OrderDto,
+  OrganizationDto,
   PreBillDto,
   ProblemDetails,
   RoomDto,
   SetLineNotesRequest,
   SetLineQuantityRequest,
+  SiteDto,
+  StaffDto,
+  StaffPinRequest,
   TableDto,
   TransferOrderRequest,
 } from './types';
@@ -108,4 +112,17 @@ export const api = {
   getPreBill: (orderId: string) => request<PreBillDto>(`/orders/${orderId}/pre-bill`),
 
   closeOrder: (orderId: string) => post<CloseOrderResponse>(`/orders/${orderId}/close`),
+
+  // IDN-01/08/09 (WEB-07) -- staff sign-in. No site-selector exists in pos
+  // any more than it does in admin, so this resolves the same "first
+  // organization's first site" shortcut every other single-site screen in
+  // this codebase already takes.
+  getOrganizations: () => request<OrganizationDto[]>('/organizations'),
+
+  getSites: (organizationId: string) => request<SiteDto[]>(`/organizations/${organizationId}/sites`),
+
+  getStaff: (siteId: string) => request<StaffDto[]>(`/sites/${siteId}/staff`),
+
+  verifyStaffPin: (staffId: string, body: StaffPinRequest) =>
+    post<StaffDto>(`/staff/${staffId}/verify-pin`, body),
 };

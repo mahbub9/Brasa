@@ -1,17 +1,20 @@
 # Staff PIN accounts
 
-> **Status:** 🚧 in progress — PIN hashing, lockout and rotation are built and verified live; "sign in on a paired terminal" (this row's own IDN-08 title) is not, since no terminal pairing exists yet
-> **Module:** Identity
+> **Status:** 🚧 in progress — PIN hashing, lockout, rotation and a real `pos` sign-in screen (WEB-07) are all built and verified live; "on a paired terminal" (this row's own IDN-08 title) is not, since no terminal pairing exists yet
+> **Module:** Identity (+ `pos`'s own WEB-07 sign-in screen)
 > **Roadmap:** I3 (pulled forward)
 
 ## What it is
 
 A staff member — waiter, kitchen, manager — has a name, a role (Staff or
 Manager), and a 4–6 digit PIN. `admin` can add staff, see who's currently
-locked out, and reset a PIN. The verification mechanism itself (`POST
+locked out, and reset a PIN. `pos` can now sign a staff member in — tap a
+name, enter a PIN — showing who's currently signed in and letting them
+sign out again. The verification mechanism itself (`POST
 /staff/{id}/verify-pin`) is real and live, with a genuine lockout policy
-after repeated wrong guesses — but nothing in either web client actually
-calls it to sign anyone in yet.
+after repeated wrong guesses, and now has two real callers: `pos`'s own
+sign-in screen (WEB-07) and [manager authorisation](manager-authorization.md)
+(IDN-11)'s void/discount gate.
 
 ## Why it works this way
 
@@ -61,6 +64,21 @@ their own deferred gap — [Manager authorisation](manager-authorization.md)
 (IDN-11) is that real gate, reusing `VerifyPin` exactly as this feature's
 own endpoint does.
 
+**`pos`'s sign-in (WEB-07) is deliberately non-blocking.** Real POS
+software usually requires signing in before the terminal does anything at
+all — but building that gate here would mean touching every existing E2E
+spec that drives `pos` directly from a fresh `page.goto('/')` (dozens of
+them, across this codebase's entire ordering flow), a much larger, riskier
+change than "a real, working sign-in exists." So `pos` shows a "Sign in"
+button in its header; tapping it opens the same staff-picker-then-PIN flow
+`admin`'s screen implies, and a successful verify shows the signed-in
+name with a sign-out control — but nothing else in `pos` currently checks
+whether anyone is signed in. This is the same "mechanism before the
+trigger" shape IDN-08/09 itself shipped in: the eventual trigger (gating
+the app, or pre-filling a manager credential for IDN-11's own prompts once
+`pos` grows a void/discount UI) is still unbuilt, tracked as open questions
+below, not guessed at here.
+
 ## Behaviour
 
 1. An admin creates a staff member: `POST /sites/{siteId}/staff` with
@@ -77,6 +95,13 @@ own endpoint does.
    any lockout at the same time.
 5. `admin`'s "Equipa" screen wraps steps 1, 3 and 4 in a real UI: add a
    staff member, see the list with role/lock badges, reset a PIN inline.
+6. `pos`'s header shows a "Sign in" button (WEB-07): tap it, tap a staff
+   member's name (a locked-out one is shown but disabled), enter a PIN,
+   submit — wraps step 2. On success the header shows "Hi, {name}" and a
+   sign-out button; a wrong PIN or a lockout shows an inline message and
+   leaves the picker open to retry. Resolves the same "first
+   organization's first site" site as `admin` does — see its own
+   remarks.
 
 ## Offline behaviour
 
@@ -149,6 +174,19 @@ own codes. `admin`'s staff screen adds a staff member and resets their
 PIN through the real UI, both proven to actually take effect via a
 follow-up API call afterward, not just "the UI showed no error."
 
+`staff-login.spec.ts` (WEB-07) — `pos`'s own sign-in: a wrong PIN shows
+an inline error and leaves the picker open; the correct PIN afterward
+still succeeds; the header then shows the signed-in name, and signing out
+returns to the "Sign in" button; cancelling the modal leaves the
+unsigned-in state untouched; a staff member locked out via 5 wrong
+API-level attempts appears in the picker but its button is disabled, so
+there's no way to even attempt a PIN against a locked account through the
+UI. Uses a staff member created directly on the real seeded demo site
+(never an isolated org/site, since `pos` only ever resolves that one
+site's staff) — locking one out for the disabled-button test uses a
+freshly-created staff member there, never the shared "Ana Ferreira"/
+"Tiago Costa" other specs depend on staying usable.
+
 ## Open questions
 
 - Terminal-scoped sign-in (IDN-07 pairing) doesn't exist — this row's own
@@ -163,4 +201,13 @@ follow-up API call afterward, not just "the UI showed no error."
   don't exist — `StaffRole` is enough to prove the mechanism, not a
   finished authorization system.
 - No admin UI exists to pick a site — this screen (and every other
-  screen in `admin`) assumes the first organization's first site.
+  screen in `admin`/`pos`) assumes the first organization's first site.
+- **WEB-07:** `pos`'s sign-in doesn't persist across a reload (plain React
+  state, cleared on refresh) — no session/token concept exists yet
+  (IDN-03…05), so there's nothing durable to persist it into that would
+  be more honest than a cookie this codebase has no auth story for.
+- **WEB-07:** signing in doesn't gate anything else in `pos` yet, and
+  nothing pre-fills a signed-in manager's credential into a future
+  IDN-11 prompt — `pos` has no void/discount UI at all today for that
+  prompt to exist in. Both are real, deliberately deferred next steps,
+  not oversights.

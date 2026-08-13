@@ -26,8 +26,102 @@
   color: #fff;
 }
 
-.language-toggle {
+.staff-login-open,
+.staff-login-badge {
   margin-left: auto;
+}
+
+.staff-login-open {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  background: none;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.staff-login-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.staff-login-badge button {
+  padding: 0.3rem 0.6rem;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  background: none;
+  color: #fff;
+  font-size: 0.75rem;
+}
+
+.staff-login-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(36, 28, 21, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.staff-login-modal {
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 1.5rem;
+  min-width: 20rem;
+  max-width: 90vw;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.staff-login-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.staff-login-list button {
+  width: 100%;
+  padding: 0.6rem 1rem;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: none;
+  font-size: 1rem;
+}
+
+.staff-login-list button:disabled {
+  opacity: 0.5;
+}
+
+.staff-login-pin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.staff-login-pin-form input {
+  padding: 0.6rem;
+  font-size: 1.1rem;
+  letter-spacing: 0.2em;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.staff-login-error {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.language-toggle {
   display: flex;
   gap: 0.25rem;
 }

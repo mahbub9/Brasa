@@ -104,6 +104,17 @@ export const pt = {
     mockNotice: 'Fornecedor fiscal fictício — este documento não tem valor legal.',
     newTable: 'Abrir outra mesa',
   },
+  staff: {
+    signIn: 'Iniciar sessão',
+    signOut: 'Terminar sessão',
+    signedInAs: 'Olá, {{name}}',
+    cancel: 'Cancelar',
+    back: 'Voltar',
+    empty: 'Nenhum funcionário configurado para este local.',
+    pinPlaceholder: 'PIN',
+    locked: 'Esta conta está bloqueada. Tente novamente mais tarde.',
+    pinIncorrect: 'PIN incorreto.',
+  },
   error: {
     dismiss: 'Fechar',
     generic: 'Ocorreu um erro.',

@@ -171,3 +171,30 @@ export interface ProblemDetails {
   detail?: string;
   code?: string;
 }
+
+/** Top of the Organization -> Site -> Terminal hierarchy (IDN-01). */
+export interface OrganizationDto {
+  id: string;
+  name: string;
+}
+
+/** A physical restaurant location. Region is a PortugueseRegion name (IDN-01). */
+export interface SiteDto {
+  id: string;
+  organizationId: string;
+  name: string;
+  region: string;
+}
+
+/** A staff member who can sign in with a PIN (IDN-08/09). Never carries the PIN or its hash. */
+export interface StaffDto {
+  id: string;
+  siteId: string;
+  name: string;
+  role: 'Staff' | 'Manager';
+  isLocked: boolean;
+}
+
+export interface StaffPinRequest {
+  pin: string;
+}

@@ -11,6 +11,7 @@ import type {
   OrderDto,
   PreBillDto,
   RoomDto,
+  StaffDto,
 } from './api/types';
 import { CouvertBar } from './components/CouvertBar';
 import { ErrorBanner } from './components/ErrorBanner';
@@ -20,6 +21,7 @@ import { ModifierPicker } from './components/ModifierPicker';
 import { OrderSummary } from './components/OrderSummary';
 import { PreBill } from './components/PreBill';
 import { Receipt } from './components/Receipt';
+import { StaffLogin } from './components/StaffLogin';
 import { TablePicker } from './components/TablePicker';
 import { TransferTablePicker } from './components/TransferTablePicker';
 import './App.css';
@@ -43,6 +45,9 @@ export default function App() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pickerItem, setPickerItem] = useState<MenuItemDto | null>(null);
+  const [siteId, setSiteId] = useState<string | null>(null);
+  const [staffList, setStaffList] = useState<StaffDto[] | null>(null);
+  const [currentStaff, setCurrentStaff] = useState<StaffDto | null>(null);
 
   useEffect(() => {
     api.getMenu().then(setMenu).catch((err) => setError(describeError(err)));
@@ -52,10 +57,30 @@ export default function App() {
     // up here without a manual refresh or a poll -- the floor picker was
     // the whole reason this codebase's first realtime channel exists.
     const floorHub = connectFloorHub(loadFloor);
+
+    // WEB-07 -- same "first organization's first site" shortcut `admin`
+    // already takes; no site-selector exists in either client. Signing in
+    // doesn't gate anything here, so a failure to resolve a site just
+    // means no login is offered, not a broken app.
+    api
+      .getOrganizations()
+      .then((organizations) => {
+        const first = organizations[0];
+        if (!first) return null;
+        return api.getSites(first.id);
+      })
+      .then((sites) => setSiteId(sites?.[0]?.id ?? null))
+      .catch(() => setSiteId(null));
+
     return () => {
       void floorHub.stop();
     };
   }, []);
+
+  useEffect(() => {
+    if (!siteId) return;
+    api.getStaff(siteId).then(setStaffList).catch(() => setStaffList(null));
+  }, [siteId]);
 
   function loadFloor() {
     api.getFloor().then(setFloor).catch((err) => setError(describeError(err)));
@@ -266,6 +291,13 @@ export default function App() {
       <header className="app-header">
         <span className="app-brand">Brasa</span>
         <span className="app-tagline">{t('app.tagline')}</span>
+        <StaffLogin
+          siteId={siteId}
+          staff={staffList}
+          currentStaff={currentStaff}
+          onSignedIn={setCurrentStaff}
+          onSignOut={() => setCurrentStaff(null)}
+        />
         <LanguageToggle />
       </header>
 

@@ -99,6 +99,17 @@ export const en = {
     mockNotice: 'Mock fiscal provider — this document has no legal value.',
     newTable: 'Open another table',
   },
+  staff: {
+    signIn: 'Sign in',
+    signOut: 'Sign out',
+    signedInAs: 'Hi, {{name}}',
+    cancel: 'Cancel',
+    back: 'Back',
+    empty: 'No staff configured for this site.',
+    pinPlaceholder: 'PIN',
+    locked: 'This account is locked. Try again later.',
+    pinIncorrect: 'Incorrect PIN.',
+  },
   error: {
     dismiss: 'Dismiss',
     generic: 'Something went wrong.',

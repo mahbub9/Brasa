@@ -48,14 +48,14 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
 | **FIS** | Fiscal engine | 3 | 24 | I0 (rest: I7) |
-| **WEB** | Web clients | 5 | 13 | I0 (rest: I1–I8) |
+| **WEB** | Web clients | 6 | 13 | I0 (rest: I1–I8) |
 | **PAY** | Payments & cash sessions | 0 | 14 | I6 |
 | **RPT** | Reporting | 0 | 12 | I8 |
 | **QR** | QR self-ordering | 0 | 9 | Post-I8 |
 | **QA** | Automated testing | 9 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **105** | **292** | |
+| | **Total** | **106** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -359,6 +359,29 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > against it all session. Full suite green (64 backend, 160 E2E) — no
 > new runtime behaviour, so no new E2E coverage; verification was
 > regenerate-and-typecheck, the same shape API-13 itself was verified by.
+> `pos` can sign a staff member in now too (WEB-07), unblocked the same
+> session by IDN-08/09's `Staff` — a "Sign in" button in the header opens
+> a staff-picker-then-PIN modal, the same `POST /staff/{id}/verify-pin`
+> mechanism IDN-11's own gate reuses, so this is that mechanism's second
+> real caller. Deliberately non-blocking: signing in gates nothing else
+> in `pos` — building a real login gate would touch every existing E2E
+> spec that drives `pos` directly from a fresh `page.goto('/')`, a
+> materially larger and riskier change than "a real, working sign-in
+> exists," the same "mechanism before the trigger" shape IDN-08/09
+> itself shipped in. A locked-out staff member shows in the picker but
+> can't even be tapped into a PIN attempt; a wrong PIN shows an inline
+> error and leaves the picker on the same screen to retry; success shows
+> "Hi, {name}" and a sign-out control. No persistence across a reload —
+> plain React state, since no session/token concept exists yet
+> (IDN-03…05) to persist into more durably. **Verified live**:
+> `staff-login.spec.ts` — wrong-then-correct PIN, sign-out, cancelling
+> the modal, and a freshly-locked staff member (never the shared seeded
+> "Ana Ferreira"/"Tiago Costa," so other specs relying on them stay
+> unaffected) showing disabled. Full suite green (64 backend, 163 E2E,
+> two confirmed pre-existing QA-02 table-pool flakes — a different
+> unrelated spec each run, clean in isolation both times) — the existing
+> 160 all still pass unchanged, confirming the non-blocking design
+> really doesn't disturb anything that never signs in.
 
 ---
 
@@ -609,7 +632,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | WEB-04 | `pos` — Dexie local store and offline-first data layer | ⬜ I2, depends on SYN |
 | WEB-05 | `pos` — floor plan / table selection screen | ✅ `TablePicker` — static grid per room, colour-coded by state, tap Free to open / tap Dirty to clear. Not the drag-and-drop layout (FLR-03) |
 | WEB-06 | `pos` — menu browsing with modifiers and courses | 🚧 Modifiers done — `ModifierPicker.tsx` (CAT-03/04), required single-select and optional multi-select groups both proven live in `modifiers.spec.ts`. Courses not built — deliberately deferred with ORD-07/08/09 (kitchen firing), which is what "courses" in a POS menu screen actually means; there is no KDS yet for a fired course to go to |
-| WEB-07 | `pos` — staff PIN login screen | ⬜ depends on IDN |
+| WEB-07 | `pos` — staff PIN login screen | ✅ Unblocked by IDN-08/09 (`Staff`) and, indirectly, IDN-11 — proof the same `POST /staff/{id}/verify-pin` mechanism has a second real caller now. Header gets a "Sign in" button opening a staff-picker-then-PIN modal (`StaffLogin.tsx`) — a locked-out staff member appears but is disabled, so there's no way to even attempt a PIN against one through the UI; a wrong PIN shows an inline error and leaves the picker on the PIN screen for retry; success shows "Hi, {name}" plus a sign-out control. Deliberately non-blocking — signing in gates nothing else in `pos`, since building a real login *gate* would touch every existing E2E spec that drives `pos` directly from a fresh `page.goto('/')`, a materially larger and riskier change than "a real, working sign-in exists" — the same "mechanism before the trigger" shape IDN-08/09 itself shipped in. Resolves the site the same "first organization's first site" way `admin` already does. No persistence across a reload (plain React state) — no session/token concept exists yet (IDN-03…05) to persist it into. **Verified live**: `staff-login.spec.ts` — a wrong PIN then a correct one, sign-out returning to the sign-in button, cancelling the modal leaving the unsigned-in state untouched, and a staff member locked out via 5 API-level attempts showing disabled in the picker. Full existing E2E suite re-run clean, confirming the non-blocking design doesn't disturb any spec that drives `pos` without ever signing in |
 | WEB-08 | `kds` shell — station view, bump, prep timers | ⬜ I4 |
 | WEB-09 | `admin` shell — back-office SPA scaffold | ✅ `src/web/admin` — Vite + React + TS, same tooling as `pos`. "Visão geral"/"Overview" shows real counts from `GET /menu/all`/`GET /floor`, proving the shell is actually wired to the API rather than a static mock. Floor plan/Staff nav entries stay labelled "Brevemente"/"Coming soon" (not silently missing) until WEB-11 and FLR-03 build their editors; Menu went live under WEB-10. Full pt/en i18n toggle (WEB-13's own ADR 0011 pattern, same `brasa.lang` cookie as `pos` so the preference carries across both apps) — genuine English words throughout, not just a token toggle, since not every staff member reading the English UI is a Portuguese speaker. No auth yet (depends on IDN). **Verified live**: `admin-shell.spec.ts`, `admin-language-toggle.spec.ts` |
 | WEB-10 | `admin` — menu and floor-plan editors | 🚧 Menu editor done; floor-plan editor (FLR-03) is a separate, larger task and not built. `GET /menu/all` (new — `GET /menu` is guest-facing and filters to visible categories/available items, so it can never be the data source for a screen that needs to *show* a hidden category to turn it back on) backs a screen that toggles category visibility, 86's/reprices/deletes an item, and bulk-imports more via the existing CSV pipeline (CAT-17). No "create category" or "create item" form — neither endpoint exists yet, so CSV import is the only way to add one, same real gap at the API layer, not a UI shortcut. Every mutation refetches rather than reconciling state by hand. **Verified live**: `admin-menu-management.spec.ts` |
