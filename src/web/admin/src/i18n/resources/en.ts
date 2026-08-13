@@ -15,7 +15,6 @@ export const en = {
     menu: 'Menu',
     floor: 'Floor plan',
     staff: 'Staff',
-    comingSoon: 'Coming soon',
   },
   overview: {
     categories: 'Menu categories',
@@ -92,6 +91,21 @@ export const en = {
       BillRequested: 'Bill requested',
       Dirty: 'Needs clearing',
     },
+  },
+  staff: {
+    empty: 'No staff members yet.',
+    addStaff: 'Add staff member',
+    namePlaceholder: 'Name, e.g. "Ana Ferreira"',
+    role: 'Role',
+    roleOption: {
+      Staff: 'Staff',
+      Manager: 'Manager',
+    },
+    pin: 'PIN',
+    pinPlaceholder: '4-6 digit PIN',
+    locked: 'Locked',
+    resetPin: 'Reset PIN',
+    newPinPlaceholder: 'New 4-6 digit PIN',
   },
   common: {
     save: 'Save',

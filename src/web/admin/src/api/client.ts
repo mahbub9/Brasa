@@ -1,11 +1,16 @@
 import type {
   AdminMenuCategoryDto,
   CreateRoomRequest,
+  CreateStaffRequest,
   CreateTableRequest,
   ImportMenuItemsResponse,
   MenuItemDto,
+  OrganizationDto,
   ProblemDetails,
   RoomDto,
+  SiteDto,
+  StaffDto,
+  StaffPinRequest,
   TableDto,
   UpdateMenuCategoryVisibilityRequest,
   UpdateMenuItemAvailabilityRequest,
@@ -122,4 +127,14 @@ export const api = {
   updateRoom: (roomId: string, body: UpdateRoomRequest) => put<RoomDto>(`/rooms/${roomId}`, body),
 
   deleteRoom: (roomId: string) => del<void>(`/rooms/${roomId}`),
+
+  getOrganizations: () => request<OrganizationDto[]>('/organizations'),
+
+  getSites: (organizationId: string) => request<SiteDto[]>(`/organizations/${organizationId}/sites`),
+
+  getStaff: (siteId: string) => request<StaffDto[]>(`/sites/${siteId}/staff`),
+
+  createStaff: (siteId: string, body: CreateStaffRequest) => post<StaffDto>(`/sites/${siteId}/staff`, body),
+
+  setStaffPin: (staffId: string, body: StaffPinRequest) => put<StaffDto>(`/staff/${staffId}/pin`, body),
 };

@@ -1,9 +1,9 @@
 import { expect, test } from '@playwright/test';
 
-// WEB-09 — the admin back-office shell. "Visão geral", "Menu" (WEB-10) and,
-// since FLR-03's first slice, "Plano de sala" are live; Staff stays a
-// labelled placeholder until its own editor lands. This spec proves the
-// shell is actually wired to the API (real counts from GET /menu and
+// WEB-09 — the admin back-office shell. "Visão geral", "Menu" (WEB-10),
+// "Plano de sala" (FLR-03) and, since IDN-08/09, "Equipa" (staff) are all
+// live now — no placeholder nav entries left. This spec proves the shell
+// is actually wired to the API (real counts from GET /menu and
 // GET /floor), not a static mock — the same bar applied to pos's own
 // screens.
 
@@ -27,12 +27,17 @@ test.describe('admin back-office shell', () => {
     await expect(page.getByTestId('overview-tables')).not.toHaveText('0');
   });
 
-  test('unbuilt sections are labelled, not silently missing', async ({ page }) => {
+  test('every nav section is live, none show a placeholder label', async ({ page }) => {
     await page.goto(adminBaseUrl);
 
-    await expect(page.getByTestId('nav-staff')).toContainText('Brevemente');
-    await expect(page.getByTestId('nav-overview')).not.toContainText('Brevemente');
-    await expect(page.getByTestId('nav-menu')).not.toContainText('Brevemente');
-    await expect(page.getByTestId('nav-floor')).not.toContainText('Brevemente');
+    for (const key of ['overview', 'menu', 'floor', 'staff']) {
+      await expect(page.getByTestId(`nav-${key}`)).not.toContainText('Brevemente');
+    }
+
+    // The staff nav actually navigates somewhere real, not a static label —
+    // seeded staff (IDN-08/09) is never empty, the same "real numbers, not
+    // placeholders" bar the overview cards above already hold to.
+    await page.getByTestId('nav-staff').click();
+    await expect(page.getByTestId(/^staff-/).first()).toBeVisible();
   });
 });

@@ -10,7 +10,6 @@ export const pt = {
     menu: 'Menu',
     floor: 'Plano de sala',
     staff: 'Equipa',
-    comingSoon: 'Brevemente',
   },
   overview: {
     categories: 'Categorias de menu',
@@ -89,6 +88,21 @@ export const pt = {
       BillRequested: 'Conta pedida',
       Dirty: 'Por limpar',
     },
+  },
+  staff: {
+    empty: 'Ainda não há funcionários.',
+    addStaff: 'Adicionar funcionário',
+    namePlaceholder: 'Nome, ex.: "Ana Ferreira"',
+    role: 'Função',
+    roleOption: {
+      Staff: 'Funcionário',
+      Manager: 'Gerente',
+    },
+    pin: 'PIN',
+    pinPlaceholder: 'PIN de 4 a 6 dígitos',
+    locked: 'Bloqueado',
+    resetPin: 'Repor PIN',
+    newPinPlaceholder: 'Novo PIN de 4 a 6 dígitos',
   },
   common: {
     save: 'Guardar',

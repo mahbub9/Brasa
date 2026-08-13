@@ -46,6 +46,22 @@ public static class IdentityEndpoints
             .WithName("GetTerminals")
             .WithSummary("Lists every terminal registered at a site.");
 
+        group.MapPost("/sites/{siteId:guid}/staff", CreateStaffAsync)
+            .WithName("CreateStaff")
+            .WithSummary("Creates a staff member with an initial PIN at a site (IDN-08/09).");
+
+        group.MapGet("/sites/{siteId:guid}/staff", GetStaffAsync)
+            .WithName("GetStaff")
+            .WithSummary("Lists every staff member at a site.");
+
+        group.MapPost("/staff/{staffId:guid}/verify-pin", VerifyStaffPinAsync)
+            .WithName("VerifyStaffPin")
+            .WithSummary("Verifies a staff member's PIN. Locks the account out after 5 consecutive incorrect PINs.");
+
+        group.MapPut("/staff/{staffId:guid}/pin", SetStaffPinAsync)
+            .WithName("SetStaffPin")
+            .WithSummary("Sets a staff member's PIN, clearing any lockout — an admin reset, not a self-service change.");
+
         return group;
     }
 
@@ -179,11 +195,134 @@ public static class IdentityEndpoints
         return Results.Ok(terminals.Select(t => t.ToDto()).ToList());
     }
 
+    private static async Task<IResult> CreateStaffAsync(
+        Guid siteId,
+        CreateStaffRequest request,
+        IdentityDbContext db,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var siteExists = await db.Sites.AnyAsync(s => s.Id == siteId, cancellationToken).ConfigureAwait(false);
+        if (!siteExists)
+        {
+            return Error.NotFound("identity.site_not_found", $"Site {siteId} was not found.").ToProblem();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return Error.Validation("identity.invalid_staff_name", "Staff name must not be empty.").ToProblem();
+        }
+
+        var roleResult = ParseRole(request.Role);
+        if (roleResult.IsFailure)
+        {
+            return roleResult.Error.ToProblem();
+        }
+
+        if (!Staff.IsValidPinFormat(request.Pin))
+        {
+            return Error.Validation("identity.invalid_pin", "PIN must be 4-6 digits.").ToProblem();
+        }
+
+        var staff = new Staff(siteId, request.Name.Trim(), roleResult.Value, request.Pin);
+        db.Staff.Add(staff);
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(staff.ToDto(clock.UtcNow));
+    }
+
+    private static async Task<IResult> GetStaffAsync(
+        Guid siteId,
+        IdentityDbContext db,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var siteExists = await db.Sites.AnyAsync(s => s.Id == siteId, cancellationToken).ConfigureAwait(false);
+        if (!siteExists)
+        {
+            return Error.NotFound("identity.site_not_found", $"Site {siteId} was not found.").ToProblem();
+        }
+
+        var staff = await db.Staff
+            .Where(s => s.SiteId == siteId)
+            .OrderBy(s => s.CreatedAtUtc)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        return Results.Ok(staff.Select(s => s.ToDto(clock.UtcNow)).ToList());
+    }
+
+    private static async Task<IResult> VerifyStaffPinAsync(
+        Guid staffId,
+        StaffPinRequest request,
+        IdentityDbContext db,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var staff = await FindStaffAsync(db, staffId, cancellationToken).ConfigureAwait(false);
+        if (staff is null)
+        {
+            return StaffNotFound(staffId).ToProblem();
+        }
+
+        var verifyResult = staff.VerifyPin(request.Pin, clock.UtcNow);
+        // Persist regardless of outcome — a failed attempt still advances
+        // FailedPinAttempts (and possibly triggers a lockout), which must
+        // survive past this request exactly like a successful attempt's
+        // reset must.
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        if (verifyResult.IsFailure)
+        {
+            return verifyResult.Error.ToProblem();
+        }
+
+        return Results.Ok(staff.ToDto(clock.UtcNow));
+    }
+
+    private static async Task<IResult> SetStaffPinAsync(
+        Guid staffId,
+        StaffPinRequest request,
+        IdentityDbContext db,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var staff = await FindStaffAsync(db, staffId, cancellationToken).ConfigureAwait(false);
+        if (staff is null)
+        {
+            return StaffNotFound(staffId).ToProblem();
+        }
+
+        var setPinResult = staff.SetPin(request.Pin);
+        if (setPinResult.IsFailure)
+        {
+            return setPinResult.Error.ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Ok(staff.ToDto(clock.UtcNow));
+    }
+
+    private static Task<Staff?> FindStaffAsync(IdentityDbContext db, Guid staffId, CancellationToken cancellationToken)
+        => db.Staff.FirstOrDefaultAsync(s => s.Id == staffId, cancellationToken);
+
+    private static Error StaffNotFound(Guid staffId)
+        => Error.NotFound("identity.staff_not_found", $"Staff member {staffId} was not found.");
+
     private static Result<PortugueseRegion> ParseRegion(string region)
     {
         return Enum.TryParse<PortugueseRegion>(region, ignoreCase: true, out var parsed)
             ? Result.Success(parsed)
             : Result.Failure<PortugueseRegion>(
                 Error.Validation("identity.invalid_region", $"\"{region}\" is not a recognised Portuguese region."));
+    }
+
+    private static Result<StaffRole> ParseRole(string role)
+    {
+        return Enum.TryParse<StaffRole>(role, ignoreCase: true, out var parsed)
+            ? Result.Success(parsed)
+            : Result.Failure<StaffRole>(
+                Error.Validation("identity.invalid_staff_role", $"\"{role}\" is not a recognised staff role."));
     }
 }

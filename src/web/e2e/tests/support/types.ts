@@ -93,6 +93,15 @@ export interface TerminalDto {
   label: string;
 }
 
+/** A staff member who can sign in with a PIN (IDN-08/09). Never carries the PIN or its hash. */
+export interface StaffDto {
+  id: string;
+  siteId: string;
+  name: string;
+  role: 'Staff' | 'Manager';
+  isLocked: boolean;
+}
+
 /** A per-site price list (CAT-05), with every entry it currently holds. */
 export interface PriceListDto {
   id: string;

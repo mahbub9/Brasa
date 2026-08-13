@@ -7,8 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace Brasa.Modules.Identity.Persistence;
 
 /// <summary>
-/// Owns the <c>identity</c> schema: organizations, sites and terminals
-/// (IDN-01). Users, roles, staff PINs and terminal pairing — the rest of
+/// Owns the <c>identity</c> schema: organizations, sites, terminals (IDN-01)
+/// and staff PIN accounts (IDN-08/09). Roles-and-permissions beyond a bare
+/// Staff/Manager tag, OAuth/JWT sessions and terminal pairing — the rest of
 /// this module's own epic — are separate, not-yet-built rows.
 /// </summary>
 public sealed class IdentityDbContext(
@@ -29,6 +30,9 @@ public sealed class IdentityDbContext(
 
     /// <summary>Physical POS devices registered at a site.</summary>
     public DbSet<Terminal> Terminals => Set<Terminal>();
+
+    /// <summary>Staff members who can sign in with a PIN (IDN-08/09), scoped to a site.</summary>
+    public DbSet<Staff> Staff => Set<Staff>();
 
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)

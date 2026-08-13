@@ -15,6 +15,7 @@ import type {
   RoomDto,
   SiteDto,
   SplitByItemResponse,
+  StaffDto,
   TableDto,
   TaxRuleDto,
   TerminalDto,
@@ -912,6 +913,73 @@ export async function getTerminals(request: APIRequestContext, siteId: string): 
   const response = await getTerminalsResponse(request, siteId);
   if (!response.ok()) {
     throw new Error(`GET /sites/${siteId}/terminals failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+// Staff PIN accounts (IDN-08/09) — create/list/verify-pin/set-pin only, no
+// delete yet, the same narrow-slice shape IDN-01 itself established. Not
+// wired into any endpoint's own authorization decision (ORD-10/ORD-11 both
+// still have "no manager-authorisation gate yet" as their own named gap).
+
+export interface CreateStaffFields {
+  name: string;
+  role: 'Staff' | 'Manager';
+  pin: string;
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (IDN-08/09). */
+export function createStaffResponse(request: APIRequestContext, siteId: string, fields: CreateStaffFields) {
+  return request.post(`${apiBaseUrl}/sites/${siteId}/staff`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: fields,
+  });
+}
+
+export async function createStaff(request: APIRequestContext, siteId: string, fields: CreateStaffFields): Promise<StaffDto> {
+  const response = await createStaffResponse(request, siteId, fields);
+  if (!response.ok()) {
+    throw new Error(`POST /sites/${siteId}/staff failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export async function getStaff(request: APIRequestContext, siteId: string): Promise<StaffDto[]> {
+  const response = await request.get(`${apiBaseUrl}/sites/${siteId}/staff`);
+  if (!response.ok()) {
+    throw new Error(`GET /sites/${siteId}/staff failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (IDN-08/09). */
+export function verifyStaffPinResponse(request: APIRequestContext, staffId: string, pin: string) {
+  return request.post(`${apiBaseUrl}/staff/${staffId}/verify-pin`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { pin },
+  });
+}
+
+export async function verifyStaffPin(request: APIRequestContext, staffId: string, pin: string): Promise<StaffDto> {
+  const response = await verifyStaffPinResponse(request, staffId, pin);
+  if (!response.ok()) {
+    throw new Error(`POST /staff/${staffId}/verify-pin failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (IDN-08/09). */
+export function setStaffPinResponse(request: APIRequestContext, staffId: string, pin: string) {
+  return request.put(`${apiBaseUrl}/staff/${staffId}/pin`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { pin },
+  });
+}
+
+export async function setStaffPin(request: APIRequestContext, staffId: string, pin: string): Promise<StaffDto> {
+  const response = await setStaffPinResponse(request, staffId, pin);
+  if (!response.ok()) {
+    throw new Error(`PUT /staff/${staffId}/pin failed: ${response.status()} ${await response.text()}`);
   }
   return response.json();
 }

@@ -53,11 +53,17 @@ as any change to an error code, the same rule as everything else in
 | `client.unknown_client_id` | NotFound | 404 | `GET /client-requirements`'s `X-Brasa-Client` header names a client id with no configured version policy. |
 | `fiscal.no_lines` | Validation | 400 | `IssueSimplifiedInvoiceAsync` was called with an empty line list. |
 | `identity.invalid_organization_name` | Validation | 400 | `POST /organizations`'s (IDN-01) `name` is missing, empty or whitespace. |
+| `identity.invalid_pin` | Validation | 400 | `POST /sites/{id}/staff`'s (IDN-09) or `PUT /staff/{id}/pin`'s `pin` isn't 4-6 digits. |
 | `identity.invalid_region` | Validation | 400 | `POST /organizations/{id}/sites`'s (IDN-01) `region` isn't a recognised `PortugueseRegion` name. |
 | `identity.invalid_site_name` | Validation | 400 | `POST /organizations/{id}/sites`'s (IDN-01) `name` is missing, empty or whitespace. |
+| `identity.invalid_staff_name` | Validation | 400 | `POST /sites/{id}/staff`'s (IDN-08/09) `name` is missing, empty or whitespace. |
+| `identity.invalid_staff_role` | Validation | 400 | `POST /sites/{id}/staff`'s (IDN-08/09) `role` isn't a recognised `StaffRole` name. |
 | `identity.invalid_terminal_label` | Validation | 400 | `POST /sites/{id}/terminals`'s (IDN-01) `label` is missing, empty or whitespace. |
 | `identity.organization_not_found` | NotFound | 404 | The organization id in the request doesn't exist. |
+| `identity.pin_incorrect` | Validation | 400 | `POST /staff/{id}/verify-pin`'s (IDN-08/09) `pin` doesn't match — advances `FailedPinAttempts`, possibly triggering `identity.staff_locked` on a future attempt. |
 | `identity.site_not_found` | NotFound | 404 | The site id in the request doesn't exist. |
+| `identity.staff_locked` | Conflict | 409 | `POST /staff/{id}/verify-pin`'s (IDN-09) staff member is locked out after 5 consecutive incorrect PINs — retry after the lockout window (15 minutes) elapses, or `PUT /staff/{id}/pin` to reset it immediately. |
+| `identity.staff_not_found` | NotFound | 404 | The staff id in the request doesn't exist (IDN-08/09). |
 | `floor.invalid_label` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `label` is missing, empty or whitespace. |
 | `floor.invalid_room_name` | Validation | 400 | `POST /rooms` or `PUT /rooms/{id}`'s (FLR-03) `name` is missing, empty or whitespace. |
 | `floor.invalid_seats` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `seats` is less than 1. |

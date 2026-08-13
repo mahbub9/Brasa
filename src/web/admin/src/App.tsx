@@ -5,29 +5,32 @@ import { api, ApiError } from './api/client';
 import type { AdminMenuCategoryDto, RoomDto } from './api/types';
 import { FloorManager } from './components/FloorManager';
 import { MenuManager } from './components/MenuManager';
+import { StaffManager } from './components/StaffManager';
 import i18n from './i18n/i18n';
 import './App.css';
 
-const LIVE_SECTIONS = ['overview', 'menu', 'floor'] as const;
+// Every nav entry is live now — "staff" was the last placeholder. Kept as
+// its own list (not inlined into the JSX below) since a future section
+// will likely need the "labelled but not live yet" branch again.
 const NAV_KEYS = ['overview', 'menu', 'floor', 'staff'] as const;
-type Section = (typeof LIVE_SECTIONS)[number];
-
-function isLiveSection(key: string): key is Section {
-  return (LIVE_SECTIONS as readonly string[]).includes(key);
-}
+type Section = (typeof NAV_KEYS)[number];
 
 /**
- * The back-office shell (WEB-09), now with three real editors: WEB-10's
- * menu slice and FLR-03's first slice — table CRUD (add/edit/delete),
- * not yet the drag-and-drop canvas that task's own title names. "Staff"
- * stays a labelled placeholder until its own task lands — see
- * docs/product/backlog.md (WEB-11).
+ * The back-office shell (WEB-09), now with four real editors: WEB-10's menu
+ * slice, FLR-03's first slice — table CRUD (add/edit/delete), not yet the
+ * drag-and-drop canvas that task's own title names — and a staff screen
+ * (IDN-08/09, WEB-11's own staff half). No site-selector exists anywhere in
+ * either client yet, so "staff" assumes the first organization's first
+ * site — the same single-site shortcut every other screen here already
+ * takes, just made explicit for this one since `GET /sites/{id}/staff`
+ * actually needs a site id to call at all.
  */
 export default function App() {
   const { t } = useTranslation();
   const [section, setSection] = useState<Section>('overview');
   const [categories, setCategories] = useState<AdminMenuCategoryDto[] | null>(null);
   const [rooms, setRooms] = useState<RoomDto[] | null>(null);
+  const [siteId, setSiteId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadCatalog = useCallback(() => {
@@ -45,6 +48,20 @@ export default function App() {
   useEffect(() => {
     loadCatalog();
     loadFloor();
+
+    api
+      .getOrganizations()
+      .then((organizations) => {
+        const first = organizations[0];
+        if (!first) {
+          return null;
+        }
+        return api.getSites(first.id);
+      })
+      .then((sites) => setSiteId(sites?.[0]?.id ?? null))
+      .catch((err: unknown) => {
+        setError(err instanceof ApiError ? err.message : i18n.t('error.generic'));
+      });
   }, [loadCatalog, loadFloor]);
 
   return (
@@ -57,24 +74,17 @@ export default function App() {
 
       <div className="admin-layout">
         <nav className="admin-nav" aria-label={t('nav.overview')}>
-          {NAV_KEYS.map((key) =>
-            isLiveSection(key) ? (
-              <button
-                key={key}
-                type="button"
-                className={key === section ? 'admin-nav-item active' : 'admin-nav-item'}
-                data-testid={`nav-${key}`}
-                onClick={() => setSection(key)}
-              >
-                {t(`nav.${key}`)}
-              </button>
-            ) : (
-              <span key={key} className="admin-nav-item disabled" data-testid={`nav-${key}`}>
-                {t(`nav.${key}`)}
-                <span className="admin-nav-soon">{t('nav.comingSoon')}</span>
-              </span>
-            ),
-          )}
+          {NAV_KEYS.map((key) => (
+            <button
+              key={key}
+              type="button"
+              className={key === section ? 'admin-nav-item active' : 'admin-nav-item'}
+              data-testid={`nav-${key}`}
+              onClick={() => setSection(key)}
+            >
+              {t(`nav.${key}`)}
+            </button>
+          ))}
         </nav>
 
         <main className="admin-main">
@@ -95,6 +105,7 @@ export default function App() {
           {rooms && section === 'floor' && (
             <FloorManager rooms={rooms} onReload={loadFloor} onErrorChange={setError} />
           )}
+          {section === 'staff' && <StaffManager siteId={siteId} onErrorChange={setError} />}
         </main>
       </div>
     </div>

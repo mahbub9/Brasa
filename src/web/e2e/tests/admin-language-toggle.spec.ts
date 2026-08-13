@@ -35,7 +35,7 @@ test.describe('admin language toggle', () => {
     await expect(page.getByTestId('nav-floor')).toContainText('Floor plan');
     await expect(page.getByTestId('nav-floor')).not.toContainText('Coming soon');
     await expect(page.getByTestId('nav-staff')).toContainText('Staff');
-    await expect(page.getByTestId('nav-staff')).toContainText('Coming soon');
+    await expect(page.getByTestId('nav-staff')).not.toContainText('Coming soon');
     await expect(page.getByTestId('overview-cards')).toContainText('Menu categories');
     await expect(page.getByTestId('overview-cards')).toContainText('Rooms');
     await expect(page.getByTestId('overview-cards')).toContainText('Tables');

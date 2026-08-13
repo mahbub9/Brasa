@@ -137,6 +137,41 @@ export interface UpdateRoomRequest {
   floorLevel: number;
 }
 
+/** The top of the Organization -> Site -> Terminal hierarchy (IDN-01). */
+export interface OrganizationDto {
+  id: string;
+  name: string;
+}
+
+/** A physical restaurant location. */
+export interface SiteDto {
+  id: string;
+  organizationId: string;
+  name: string;
+  region: string;
+}
+
+export type StaffRole = 'Staff' | 'Manager';
+
+/** A staff member who can sign in with a PIN (IDN-08/09). Never carries the PIN itself. */
+export interface StaffDto {
+  id: string;
+  siteId: string;
+  name: string;
+  role: StaffRole;
+  isLocked: boolean;
+}
+
+export interface CreateStaffRequest {
+  name: string;
+  role: StaffRole;
+  pin: string;
+}
+
+export interface StaffPinRequest {
+  pin: string;
+}
+
 /** RFC 9457 problem response shape used for every API failure. */
 export interface ProblemDetails {
   title?: string;

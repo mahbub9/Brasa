@@ -40,7 +40,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **DOC** | Documentation system | 9 | 10 | I0 → ongoing |
 | **API** | API platform & mobile readiness | 15 | 18 | I0 (rest: I3) |
 | **DAT** | Persistence, tenancy, RLS | 10 | 11 | I0 |
-| **IDN** | Identity & access | 1 | 16 | I3 |
+| **IDN** | Identity & access | 2 | 16 | I3 |
 | **CAT** | Catalog & menu | 16 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 5 | 7 | I1 |
 | **ORD** | Ordering | 16 | 22 | I0 (rest: I2) |
@@ -55,7 +55,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 9 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **101** | **292** | |
+| | **Total** | **102** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -364,8 +364,8 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | IDN-05 | Refresh token — opaque, rotating, device-bound, replay detection | ⬜ |
 | IDN-06 | Device registry — register, list, revoke individually | ⬜ |
 | IDN-07 | Terminal pairing via short-lived device code | ⬜ |
-| IDN-08 | Staff PIN sign-in on a paired terminal | ⬜ |
-| IDN-09 | PIN hashing, lockout, and rotation policy | ⬜ |
+| IDN-08 | Staff PIN sign-in on a paired terminal | 🚧 The PIN-verification half only — "on a paired terminal" is not: no terminal pairing exists (IDN-07), so `POST /staff/{id}/verify-pin` checks a PIN against a *known* staff id, not "identify me by PIN alone with no picker." That broader UX was deliberately not chosen — without knowing who's attempting, a failed PIN can't be attributed to the right person's lockout counter. See IDN-09 and the feature page for the full mechanism |
+| IDN-09 | PIN hashing, lockout, and rotation policy | ✅ `Staff` (Identity module, site-scoped like `Terminal`) — PBKDF2-HMAC-SHA256 (`Rfc2898DeriveBytes`, no new dependency, 210k iterations per OWASP's 2023 minimum), locks out after 5 consecutive incorrect PINs for 15 minutes (even a *correct* PIN is refused while locked), and `PUT /staff/{id}/pin` rotates a PIN and clears any lockout — an admin reset, not self-service, same "ships ahead of manager authorisation" shape every other admin mutation in this codebase has today. Not wired into any endpoint's own authorization decision — ORD-10 (void)/ORD-11 (discount) both still have "no manager-authorisation gate yet" as their own named, deferred gap (IDN-11). **Verified live**: `staff.spec.ts` — a correct PIN verifies; an incorrect one is rejected (`identity.pin_incorrect`); 5 consecutive failures lock the account so even the *correct* PIN is then refused (`identity.staff_locked`); resetting the PIN clears the lockout and the new PIN works immediately; an empty name, a malformed PIN (too short/long/non-digit), an unrecognised role and unknown site/staff ids are all rejected with their own codes; `admin`'s new staff screen adds a staff member and resets their PIN through the real UI, both proven to actually take effect via a follow-up API call, not just "the UI showed no error" |
 | IDN-10 | Roles & permissions model | ⬜ |
 | IDN-11 | Manager-authorisation flow for privileged actions (voids, discounts) | ⬜ |
 | IDN-12 | Consumer identity realm for the public surface | ⬜ |
@@ -545,7 +545,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | WEB-08 | `kds` shell — station view, bump, prep timers | ⬜ I4 |
 | WEB-09 | `admin` shell — back-office SPA scaffold | ✅ `src/web/admin` — Vite + React + TS, same tooling as `pos`. "Visão geral"/"Overview" shows real counts from `GET /menu/all`/`GET /floor`, proving the shell is actually wired to the API rather than a static mock. Floor plan/Staff nav entries stay labelled "Brevemente"/"Coming soon" (not silently missing) until WEB-11 and FLR-03 build their editors; Menu went live under WEB-10. Full pt/en i18n toggle (WEB-13's own ADR 0011 pattern, same `brasa.lang` cookie as `pos` so the preference carries across both apps) — genuine English words throughout, not just a token toggle, since not every staff member reading the English UI is a Portuguese speaker. No auth yet (depends on IDN). **Verified live**: `admin-shell.spec.ts`, `admin-language-toggle.spec.ts` |
 | WEB-10 | `admin` — menu and floor-plan editors | 🚧 Menu editor done; floor-plan editor (FLR-03) is a separate, larger task and not built. `GET /menu/all` (new — `GET /menu` is guest-facing and filters to visible categories/available items, so it can never be the data source for a screen that needs to *show* a hidden category to turn it back on) backs a screen that toggles category visibility, 86's/reprices/deletes an item, and bulk-imports more via the existing CSV pipeline (CAT-17). No "create category" or "create item" form — neither endpoint exists yet, so CSV import is the only way to add one, same real gap at the API layer, not a UI shortcut. Every mutation refetches rather than reconciling state by hand. **Verified live**: `admin-menu-management.spec.ts` |
-| WEB-11 | `admin` — staff, roles and reporting screens | ⬜ |
+| WEB-11 | `admin` — staff, roles and reporting screens | 🚧 The staff half only — list staff, add a staff member with an initial PIN, reset a PIN; no roles-and-permissions editor (IDN-10 is the real, larger model beyond the bare Staff/Manager tag this uses) and no reporting screens (RPT epic, unbuilt). No site-selector exists anywhere in either client yet, so this assumes the first organization's first site, the same single-site shortcut every other admin screen already takes |
 | WEB-12 | `order` shell — QR self-ordering PWA | ⬜ Post-I8 |
 | WEB-13 | i18n — pt default / en toggle, cookie-persisted, mobile storage seam | ✅ i18next, `src/i18n/`. See [ADR 0011](../architecture/decisions/0011-i18n.md). Extended after real-world feedback (Brasa's actual floor/kitchen staff are not all Portuguese speakers): seeded table labels ("Mesa 1") now render as "Table 1" in English via `src/lib/tableLabel.ts`, and a blank takeaway ticket defaults to "Takeaway" instead of leaking the API's own Portuguese default ("Levantamento") — both are generic operational words, not identity-bearing content like a dish name, so they don't fall under the menu-item exception. Closed the last known gap named in the ADR: server `ProblemDetails.title` was always raw English regardless of the toggle — `describeError()` (`App.tsx`) now looks up `error.code.<code>` in `resources/{pt,en}.ts` first (the ~20 codes `pos`'s own API calls can trigger), falling back to the raw message + code only for anything not yet covered. `admin`'s equivalent dictionary doesn't exist yet. **Verified live**: `language-toggle.spec.ts`, `error-localization.spec.ts` |
 

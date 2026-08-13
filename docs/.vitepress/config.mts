@@ -153,6 +153,7 @@ export default defineConfig({
           { text: 'Floor-plan editor', link: '/features/floor-plan-editor' },
           { text: 'Tax rules', link: '/features/tax-rules' },
           { text: 'Realtime floor updates', link: '/features/realtime-floor-updates' },
+          { text: 'Staff PIN accounts', link: '/features/staff-pin-accounts' },
         ],
       },
     ],
