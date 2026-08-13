@@ -519,6 +519,39 @@ main {
   font-size: 0.85rem;
 }
 
+.fire-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.fire-controls button {
+  padding: 0.35rem 0.6rem;
+  border: 1px solid var(--brasa);
+  border-radius: 6px;
+  background: none;
+  color: var(--brasa);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.fire-controls button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.order-line-fired-badge {
+  margin-left: 0.4rem;
+  padding: 0.05rem 0.4rem;
+  border-radius: 999px;
+  background: var(--brasa);
+  color: var(--panel);
+  font-size: 0.7rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
 .order-lines {
   list-style: none;
   margin: 0;

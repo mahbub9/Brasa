@@ -43,7 +43,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **IDN** | Identity & access | 3 | 16 | I3 |
 | **CAT** | Catalog & menu | 17 | 19 | I0 (rest: I1) |
 | **FLR** | Floor plan & tables | 6 | 7 | I1 |
-| **ORD** | Ordering | 17 | 22 | I0 (rest: I2) |
+| **ORD** | Ordering | 20 | 22 | I0 (rest: I2) |
 | **SYN** | Offline sync engine | 0 | 13 | I5 |
 | **AGT** | Site Agent | 0 | 15 | I4–I5 |
 | **KIT** | Kitchen printing & KDS | 0 | 14 | I4 |
@@ -55,7 +55,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | **QA** | Automated testing | 9 | 14 | I0–I1 → ongoing |
 | **MOB** | Mobile apps | 0 | 12 | Post-launch |
 | **DIF** | Differentiators | 0 | 21 | Post-MVP — see [differentiation.md](differentiation.md) |
-| | **Total** | **107** | **292** | |
+| | **Total** | **110** | **292** | |
 
 > Phase labels now follow the increments in [roadmap.md](roadmap.md) (I0…I8),
 > not the original Month-based sequencing — see
@@ -544,9 +544,9 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | ORD-04 | Line snapshots — name, price, VAT rate at time of sale | ✅ |
 | ORD-05 | Apply modifiers to a line | ✅ shipped alongside CAT-03/04 — `AddLine`'s `selectedModifierIds` resolved and validated at the API layer (`ResolveModifiers`), folded into `OrderLine.ModifiersTotal`/`LineTotal` |
 | ORD-06 | Free-text kitchen notes | ✅ `PUT /orders/{id}/lines/{lineId}/notes` — per-line, set after the line is rung up; staff/kitchen visibility only, never a Fiscal concern |
-| ORD-07 | Courses and course firing | ⬜ |
-| ORD-08 | Send to kitchen (partial and full) | ⬜ |
-| ORD-09 | Order line status tracking | ⬜ |
+| ORD-07 | Courses and course firing | ✅ `OrderLine.Course` snapshots CAT-14's `MenuItem.Course` at add-time (the same `ItemName`/price/VAT convention, not a live join) — `Course.cs`'s own doc comment named this task as its future consumer before it existed. `POST /orders/{id}/fire` fires a named course or (course `null`) everything still pending. No manager authorisation — firing touches no money, unlike void/discounts |
+| ORD-08 | Send to kitchen (partial and full) | ✅ `Order.FireLines(course, firedAtUtc)` — a specific course is the "partial" send, `course: null` is the "full" send, both the same endpoint. Idempotent: an already-fired line is silently skipped, not re-fired or rejected. No real kitchen exists yet (KIT-01…09/AGT unbuilt) — this only flips `OrderLine.IsFired`/`FiredAtUtc`, the seam a future ticket-printing consumer reads from |
+| ORD-09 | Order line status tracking | ✅ Scoped to the one status meaningful before a real kitchen exists — `OrderLine.IsFired`/`FiredAtUtc`. Richer states (`Preparing`/`Ready`/`Served`) need a KDS to transition them and are deferred to I4 alongside KIT-10…13 |
 | ORD-10 | Void a line, with reason and manager authorisation | ✅ `POST /orders/{id}/lines/{lineId}/void` — both halves of this row's own title now: manager authorisation (IDN-11) gates every void, requiring a real Manager-role staff id and their correct PIN in the same request. `reason` is required, rejected outright if missing/blank. The line is never deleted — `ItemName`/`UnitPrice`/`Quantity` stay exactly as rung up, an audit trail of what was ordered and then cancelled; only `LineTotal` drops to zero. `BuildFiscalLines` (shared with ORD-11) omits a voided line entirely, so it never reaches the issued fiscal document, while the pre-bill still lists it (with `isVoided: true`) for staff visibility. Found and correctly handled a real edge case along the way: voiding every line on an order leaves `Order.Close()`'s own guard satisfied (it only counts lines, not non-voided ones) but `IFiscalProvider.IssueSimplifiedInvoiceAsync`'s pre-existing `fiscal.no_lines` guard then rejects it — the order correctly stays `Open` in the database, since `CloseOrderAsync` doesn't persist the `Close()` transition until the fiscal document is actually issued. `SplitByItem` (ORD-16)'s by-item preview now correctly gives a voided line's units a zero share too (fixed same day, alongside the equivalent line-discount gap). **Verified live**: void zeroes the line and drops the order total by exactly that amount, a missing/blank reason and a double-void are both rejected, the pre-bill/fiscal-document reconciliation invariant holds with a voided line in the mix, and closing a fully-voided order correctly 400s without corrupting order state |
 | ORD-11 | Discounts — line, order, percentage and fixed | ✅ `PUT /orders/{id}/lines/{lineId}/discount` and `PUT /orders/{id}/discount` — both fields null clears an existing discount; a percentage must be in (0, 100], a fixed amount must be positive and not exceed the total it's applied to (rejected, never silently clamped). Composes: an order-level discount applies on top of the already line-discounted subtotal. Gated by real manager authorisation now (IDN-11) — every call requires a Manager-role staff id and their correct PIN. `SplitByItem`'s preview reflects a line-level discount correctly (fixed same day); an order-level discount is still not prorated into it — `SplitEvenly`/`SplitByCover` do, automatically, via `Total`. **Verified live**: line + order discount composing correctly, clearing, every rejection path (bad type, out-of-range percentage, oversized fixed, one-of-the-pair, unknown line, closed order), and — the fiscally load-bearing check — `document.GrossTotal` still equals `order.Total` to the cent through `CloseOrderAsync` with a discount applied, and the pre-bill's VAT breakdown still sums to the same total (`discounts.spec.ts`) |
 | ORD-12 | Transfer table | ✅ `POST /orders/{id}/transfer` — moves an open order to a different `Free` table. Order status checked before either table is touched; the old table's `Release()` and the new table's `Occupy()` then commit atomically together in one `FloorDbContext.SaveChangesAsync` |

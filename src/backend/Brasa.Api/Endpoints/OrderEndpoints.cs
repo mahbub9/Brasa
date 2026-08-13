@@ -83,6 +83,11 @@ public static class OrderEndpoints
             .WithSummary("Voids a line, with a required reason (ORD-10).")
             .Produces<OrderDto>();
 
+        group.MapPost("/orders/{orderId:guid}/fire", FireOrderLinesAsync)
+            .WithName("FireOrderLines")
+            .WithSummary("Sends unfired lines to the kitchen (ORD-07/08) — one course, or everything still pending.")
+            .Produces<OrderDto>();
+
         group.MapPut("/orders/{orderId:guid}/discount", SetOrderDiscountAsync)
             .WithName("SetOrderDiscount")
             .WithSummary("Sets or clears a percentage/fixed discount on the whole order (ORD-11).")
@@ -372,7 +377,8 @@ public static class OrderEndpoints
         var basePrice = menuItem.EffectivePrice(clock.UtcNow);
         var unitPrice = order.IsTakeaway ? menuItem.TakeawayPrice ?? basePrice : basePrice;
         var addResult = order.AddLine(
-            menuItem.Id, menuItem.Name, unitPrice, menuItem.VatRate.Fraction, request.Quantity, modifiersResult.Value);
+            menuItem.Id, menuItem.Name, unitPrice, menuItem.VatRate.Fraction, request.Quantity,
+            modifiersResult.Value, menuItem.Course?.ToString());
         if (addResult.IsFailure)
         {
             return addResult.Error.ToProblem();
@@ -461,7 +467,9 @@ public static class OrderEndpoints
 
         for (var i = 0; i < items.Count; i++)
         {
-            var addResult = order.AddLine(items[i].Id, items[i].Name, allocatedPrices[i], items[i].VatRate.Fraction, quantity: 1);
+            var addResult = order.AddLine(
+                items[i].Id, items[i].Name, allocatedPrices[i], items[i].VatRate.Fraction, quantity: 1,
+                course: items[i].Course?.ToString());
             if (addResult.IsFailure)
             {
                 return addResult.Error.ToProblem();
@@ -579,6 +587,43 @@ public static class OrderEndpoints
         }
 
         var result = order.VoidLine(lineId, request.Reason, clock.UtcNow);
+        if (result.IsFailure)
+        {
+            return result.Error.ToProblem();
+        }
+
+        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        return Results.Ok(order.ToDto());
+    }
+
+    /// <summary>
+    /// Sends unfired lines to the kitchen (ORD-07/08). <c>request.Course</c>
+    /// is validated against Catalog's own <see cref="Course"/> enum names
+    /// before reaching <see cref="Order.FireLines"/> — a typo would
+    /// otherwise silently fire zero lines with no signal anything was
+    /// wrong. No manager authorisation, unlike <see cref="VoidLineAsync"/>/
+    /// <see cref="SetOrderDiscountAsync"/> — firing touches no money.
+    /// </summary>
+    private static async Task<IResult> FireOrderLinesAsync(
+        Guid orderId,
+        FireOrderLinesRequest request,
+        OrderingDbContext db,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var order = await FindOrderAsync(db, orderId, cancellationToken).ConfigureAwait(false);
+        if (order is null)
+        {
+            return OrderNotFound(orderId).ToProblem();
+        }
+
+        if (request.Course is not null && !Enum.TryParse<Course>(request.Course, ignoreCase: true, out _))
+        {
+            return Error.Validation(
+                "order.invalid_course", $"\"{request.Course}\" is not a recognised course.").ToProblem();
+        }
+
+        var result = order.FireLines(request.Course, clock.UtcNow);
         if (result.IsFailure)
         {
             return result.Error.ToProblem();

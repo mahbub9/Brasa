@@ -23,6 +23,9 @@ internal sealed class OrderLineConfiguration : IEntityTypeConfiguration<OrderLin
         builder.Property(l => l.IsVoided).IsRequired();
         builder.Property(l => l.VoidReason).HasMaxLength(300);
         builder.Property(l => l.VoidedAtUtc);
+        builder.Property(l => l.Course).HasMaxLength(20);
+        builder.Property(l => l.IsFired).IsRequired();
+        builder.Property(l => l.FiredAtUtc);
 
         builder.MapMoney(l => l.UnitPrice, "unit_price");
 

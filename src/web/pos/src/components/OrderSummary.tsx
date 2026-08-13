@@ -12,6 +12,7 @@ interface OrderSummaryProps {
   onPreviewSplit: () => void;
   onSetLineNotes: (lineId: string, notes: string | null) => void;
   onSetLineQuantity: (lineId: string, quantity: number) => void;
+  onFireLines: (course: string | null) => void;
   onPreBill: () => void;
   onRequestBill: () => void;
   onTransferTable: () => void;
@@ -27,6 +28,7 @@ export function OrderSummary({
   onPreviewSplit,
   onSetLineNotes,
   onSetLineQuantity,
+  onFireLines,
   onPreBill,
   onRequestBill,
   onTransferTable,
@@ -34,6 +36,15 @@ export function OrderSummary({
   busy,
 }: OrderSummaryProps) {
   const { t } = useTranslation();
+
+  const unfiredCourses = [
+    ...new Set(
+      order.lines
+        .filter((line) => !line.isFired && line.course)
+        .map((line) => line.course as string),
+    ),
+  ];
+  const hasUnfiredLines = order.lines.some((line) => !line.isFired);
 
   return (
     <aside className="order-summary">
@@ -44,6 +55,25 @@ export function OrderSummary({
         </button>
       </div>
       {!order.isTakeaway && <p className="covers">{t('order.covers', { count: order.coverCount })}</p>}
+
+      {hasUnfiredLines && (
+        <div className="fire-controls" data-testid="fire-controls">
+          {unfiredCourses.map((course) => (
+            <button
+              key={course}
+              type="button"
+              data-testid={`fire-course-${course}`}
+              disabled={busy}
+              onClick={() => onFireLines(course)}
+            >
+              {t('order.fireCourse', { course: t(`order.course.${course}`) })}
+            </button>
+          ))}
+          <button type="button" data-testid="fire-all-button" disabled={busy} onClick={() => onFireLines(null)}>
+            {t('order.fireAll')}
+          </button>
+        </div>
+      )}
 
       {order.lines.length === 0 ? (
         <p className="empty-state">{t('order.empty')}</p>
@@ -75,7 +105,14 @@ export function OrderSummary({
                     +
                   </button>
                 </span>
-                <span className="order-line-name">{line.itemName}</span>
+                <span className="order-line-name">
+                  {line.itemName}
+                  {line.isFired && (
+                    <span className="order-line-fired-badge" data-testid={`line-fired-${line.id}`}>
+                      {t('order.fired')}
+                    </span>
+                  )}
+                </span>
                 <span className="order-line-total">{formatMoney(line.lineTotal)}</span>
               </div>
               {line.modifiers.length > 0 && (

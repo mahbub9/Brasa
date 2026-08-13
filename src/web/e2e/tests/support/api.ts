@@ -699,6 +699,22 @@ export async function voidLine(
   return response.json();
 }
 
+/** Raw response so callers can assert on status/body for the failure cases too (ORD-07/08). Null course fires every unfired line. */
+export function fireLinesResponse(request: APIRequestContext, orderId: string, course: string | null) {
+  return request.post(`${apiBaseUrl}/orders/${orderId}/fire`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { course },
+  });
+}
+
+export async function fireLines(request: APIRequestContext, orderId: string, course: string | null): Promise<OrderDto> {
+  const response = await fireLinesResponse(request, orderId, course);
+  if (!response.ok()) {
+    throw new Error(`POST /orders/${orderId}/fire failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (ORD-11). `type`/`value` both null clears the discount. `manager` defaults to the seeded demo manager (IDN-11) — see `getDemoManagerCredentials`. */
 export async function setOrderDiscountResponse(
   request: APIRequestContext,

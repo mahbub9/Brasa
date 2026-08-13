@@ -87,6 +87,7 @@ as any change to an error code, the same rule as everything else in
 | `order.empty` | Validation | 400 | `Close()` or `EnsureCanGeneratePreBill()` was called on an order with zero lines. |
 | `order.invalid_cover_count` | Validation | 400 | `POST /orders`'s `coverCount` is less than 1. |
 | `order.invalid_cursor` | Validation | 400 | `GET /orders`'s `cursor` query parameter isn't a token `X-Next-Cursor` (API-09) produced. |
+| `order.invalid_course` | Validation | 400 | `POST /orders/{id}/fire`'s (ORD-07/08) `course` isn't a recognised `Course` name (`Starter`/`Main`/`Dessert`/`Drink`). |
 | `order.invalid_discount` | Validation | 400 | `PUT /orders/{id}/discount` or `PUT /orders/{id}/lines/{lineId}/discount` (ORD-11): `type` isn't a recognised discount type; only one of `type`/`value` was given; a percentage is outside (0, 100]; or a fixed amount isn't positive or exceeds the total it would be applied to. |
 | `order.invalid_merge_target` | Validation | 400 | `POST /orders/{id}/merge`'s `secondaryOrderId` is the same as the primary order. |
 | `order.invalid_quantity` | Validation | 400 | An order line's `quantity` is less than 1, whether ringing one up or changing an existing line's via `SetLineQuantity()` (ORD-03). |
@@ -99,7 +100,7 @@ as any change to an error code, the same rule as everything else in
 | `order.line_voided` | Conflict | 409 | `SetLineQuantity()`'s (ORD-03) target line has already been voided — a voided line's `Quantity` stays frozen as the audit record of what was actually rung up (see `order.line_already_voided`, `VoidLine`'s own way of rejecting the reverse case). |
 | `order.not_empty` | Validation | 400 | `MarkMerged()` was called on an order that still has lines. |
 | `order.not_found` | NotFound | 404 | The order id in the request doesn't exist. |
-| `order.not_open` | Conflict | 409 | `AddLine()`, `EnsureCanGeneratePreBill()`, `SetLineNotes()`, `SetLineQuantity()`, `SetLineDiscount()`, `SetDiscount()`, `VoidLine()`, `TransferToTable()`, `DetachLine()`, `ReceiveLine()` or `MarkMerged()` was called on an order that isn't `Open`. |
+| `order.not_open` | Conflict | 409 | `AddLine()`, `EnsureCanGeneratePreBill()`, `SetLineNotes()`, `SetLineQuantity()`, `SetLineDiscount()`, `SetDiscount()`, `VoidLine()`, `FireLines()` (ORD-07/08), `TransferToTable()`, `DetachLine()`, `ReceiveLine()` or `MarkMerged()` was called on an order that isn't `Open`. |
 | `order.notes_too_long` | Validation | 400 | `SetLineNotes()`'s `notes` is over 300 characters. |
 | `order.void_reason_required` | Validation | 400 | `POST /orders/{id}/lines/{lineId}/void`'s (ORD-10) `reason` is missing, empty or whitespace. |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |

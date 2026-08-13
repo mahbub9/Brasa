@@ -35,7 +35,8 @@ public sealed class OrderLine : Entity
         Money unitPrice,
         decimal vatRateFraction,
         int quantity,
-        IReadOnlyList<SelectedModifier> modifiers)
+        IReadOnlyList<SelectedModifier> modifiers,
+        string? course)
     {
         OrderId = orderId;
         MenuItemId = menuItemId;
@@ -43,6 +44,7 @@ public sealed class OrderLine : Entity
         UnitPrice = unitPrice;
         VatRateFraction = vatRateFraction;
         Quantity = quantity;
+        Course = course;
 
         foreach (var modifier in modifiers)
         {
@@ -85,6 +87,17 @@ public sealed class OrderLine : Entity
 
     /// <summary>How many were ordered.</summary>
     public int Quantity { get; private set; }
+
+    /// <summary>
+    /// Which course the item was served at, at the time of sale (ORD-07) —
+    /// a plain string copied from the catalog item's own <c>Course</c> (CAT-14)
+    /// when the line was rung up, the same snapshot convention as
+    /// <see cref="ItemName"/>. Null when the item had no course assigned.
+    /// Ordering never references Catalog's <c>Course</c> enum directly (module
+    /// boundaries) — the API layer resolves and validates it before calling
+    /// <see cref="Order.AddLine"/>.
+    /// </summary>
+    public string? Course { get; private set; }
 
     /// <summary>Changes <see cref="Quantity"/> (ORD-03). Only <see cref="Order.SetLineQuantity"/> calls this.</summary>
     internal void SetQuantity(int quantity)
@@ -196,5 +209,23 @@ public sealed class OrderLine : Entity
         IsVoided = true;
         VoidReason = reason;
         VoidedAtUtc = voidedAtUtc;
+    }
+
+    /// <summary>
+    /// True once this line has been sent to the kitchen (ORD-07/08). No real
+    /// kitchen exists to route to yet (KIT-01…09/AGT are unbuilt) — this is
+    /// the seam a future ticket-printing consumer will read from, the same
+    /// "mechanism before the trigger" shape CAT-13/14/15/19 already used.
+    /// </summary>
+    public bool IsFired { get; private set; }
+
+    /// <summary>When the line was fired, in UTC. Null while not yet fired.</summary>
+    public DateTimeOffset? FiredAtUtc { get; private set; }
+
+    /// <summary>Marks this line fired. Only <see cref="Order.FireLines"/> calls this.</summary>
+    internal void Fire(DateTimeOffset firedAtUtc)
+    {
+        IsFired = true;
+        FiredAtUtc = firedAtUtc;
     }
 }

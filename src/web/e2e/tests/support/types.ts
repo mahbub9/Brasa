@@ -161,6 +161,11 @@ export interface OrderLineDto {
   notes: string | null;
   isVoided: boolean;
   voidReason: string | null;
+  /** Which course the item was served at, snapshotted at add-time (ORD-07). Null if the item had none. */
+  course: string | null;
+  /** Whether this line has been sent to the kitchen (ORD-07/08). */
+  isFired: boolean;
+  firedAtUtc: string | null;
 }
 
 export interface OrderDto {

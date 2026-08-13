@@ -1,6 +1,7 @@
 import type {
   AddLineRequest,
   CloseOrderResponse,
+  FireOrderLinesRequest,
   MenuCategoryDto,
   OpenOrderRequest,
   OpenTakeawayOrderRequest,
@@ -113,6 +114,9 @@ export const api = {
 
   transferOrder: (orderId: string, body: TransferOrderRequest) =>
     post<OrderDto>(`/orders/${orderId}/transfer`, body),
+
+  fireLines: (orderId: string, body: FireOrderLinesRequest) =>
+    post<OrderDto>(`/orders/${orderId}/fire`, body),
 
   previewSplit: (orderId: string, parts: number) =>
     request<{ amount: number; currency: string }[]>(`/orders/${orderId}/split?parts=${parts}`),

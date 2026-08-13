@@ -79,6 +79,15 @@ export const pt = {
     notesSave: 'Guardar',
     notesCancel: 'Cancelar',
     transferTable: 'Transferir mesa',
+    fireCourse: 'Enviar {{course}}',
+    fireAll: 'Enviar tudo',
+    fired: 'Enviado',
+    course: {
+      Starter: 'Entradas',
+      Main: 'Pratos principais',
+      Dessert: 'Sobremesas',
+      Drink: 'Bebidas',
+    },
   },
   transfer: {
     title: 'Transferir para',
@@ -146,6 +155,7 @@ export const pt = {
         invalid_split: 'Não foi possível dividir a conta com estes valores.',
         empty: 'Adicione pelo menos um item antes de continuar.',
         already_closed: 'Este pedido já foi fechado.',
+        invalid_course: 'Esse prato não é reconhecido.',
       },
       catalog: {
         item_not_found: 'Item de menu não encontrado.',

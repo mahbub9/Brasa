@@ -202,6 +202,19 @@ export default function App() {
     }
   }
 
+  async function handleFireLines(course: string | null) {
+    if (!order) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setOrder(await api.fireLines(order.id, { course }));
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handlePreBill() {
     if (!order) return;
     setBusy(true);
@@ -327,6 +340,7 @@ export default function App() {
               onPreviewSplit={handlePreviewSplit}
               onSetLineNotes={handleSetLineNotes}
               onSetLineQuantity={handleSetLineQuantity}
+              onFireLines={handleFireLines}
               onPreBill={handlePreBill}
               onRequestBill={handleRequestBill}
               onTransferTable={handleOpenTransferPicker}

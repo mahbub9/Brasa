@@ -74,6 +74,15 @@ export const en = {
     notesSave: 'Save',
     notesCancel: 'Cancel',
     transferTable: 'Transfer table',
+    fireCourse: 'Fire {{course}}',
+    fireAll: 'Fire all',
+    fired: 'Sent',
+    course: {
+      Starter: 'Starters',
+      Main: 'Mains',
+      Dessert: 'Desserts',
+      Drink: 'Drinks',
+    },
   },
   transfer: {
     title: 'Transfer to',
@@ -136,6 +145,7 @@ export const en = {
         invalid_split: "The bill couldn't be split with these values.",
         empty: 'Add at least one item before continuing.',
         already_closed: 'This order has already been closed.',
+        invalid_course: 'That course is not recognised.',
       },
       catalog: {
         item_not_found: 'Menu item not found.',

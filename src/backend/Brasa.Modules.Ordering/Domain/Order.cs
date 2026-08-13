@@ -183,13 +183,19 @@ public sealed class Order : Entity
     /// id itself — see <see cref="SelectedModifier"/>). Empty when the item
     /// has no modifier groups.
     /// </param>
+    /// <param name="course">
+    /// The catalog item's own <c>Course</c> (CAT-14) at the time of sale, to
+    /// snapshot onto the line the same way <paramref name="itemName"/> is —
+    /// see <see cref="OrderLine.Course"/>. Null when the item has none.
+    /// </param>
     public Result<OrderLine> AddLine(
         Guid menuItemId,
         string itemName,
         Money unitPrice,
         decimal vatRateFraction,
         int quantity,
-        IReadOnlyList<SelectedModifier>? modifiers = null)
+        IReadOnlyList<SelectedModifier>? modifiers = null,
+        string? course = null)
     {
         if (Status != OrderStatus.Open)
         {
@@ -203,7 +209,7 @@ public sealed class Order : Entity
                 Error.Validation("order.invalid_quantity", "Quantity must be at least 1."));
         }
 
-        var line = new OrderLine(Id, menuItemId, itemName, unitPrice, vatRateFraction, quantity, modifiers ?? []);
+        var line = new OrderLine(Id, menuItemId, itemName, unitPrice, vatRateFraction, quantity, modifiers ?? [], course);
         _lines.Add(line);
         return Result.Success(line);
     }
@@ -536,6 +542,49 @@ public sealed class Order : Entity
 
         line.Void(reason.Trim(), voidedAtUtc);
         return Result.Success();
+    }
+
+    /// <summary>
+    /// Sends unfired lines to the kitchen (ORD-07/08) — a whole course at
+    /// once ("fire the starters"), or everything still pending regardless of
+    /// course when <paramref name="course"/> is null (the "full" send).
+    /// Skips a voided line (nothing to fire) and a line already fired
+    /// (idempotent — firing twice is a no-op for that line, not an error).
+    /// <paramref name="course"/> is matched against <see cref="OrderLine.Course"/>,
+    /// the value each line snapshotted from the catalog at add-time, not a
+    /// live lookup — a course reassigned on the menu after the line was rung
+    /// up doesn't retroactively change what it fires with. No real kitchen
+    /// exists yet to route a fired line to (KIT-01…09/AGT are unbuilt) — this
+    /// only flips <see cref="OrderLine.IsFired"/>/<see cref="OrderLine.FiredAtUtc"/>,
+    /// the seam a future ticket-printing consumer will read from.
+    /// </summary>
+    /// <param name="course">
+    /// A course name to fire only lines snapshotted with it (case-insensitive),
+    /// or null to fire every unfired, non-voided line regardless of course.
+    /// </param>
+    /// <param name="firedAtUtc">
+    /// The current instant, from <see cref="Shared.Time.IClock"/> — never
+    /// <c>DateTimeOffset.UtcNow</c> directly.
+    /// </param>
+    public Result<IReadOnlyList<OrderLine>> FireLines(string? course, DateTimeOffset firedAtUtc)
+    {
+        if (Status != OrderStatus.Open)
+        {
+            return Result.Failure<IReadOnlyList<OrderLine>>(
+                Error.Conflict("order.not_open", "Cannot fire lines on an order that is not open."));
+        }
+
+        var toFire = _lines
+            .Where(l => !l.IsVoided && !l.IsFired)
+            .Where(l => course is null || string.Equals(l.Course, course, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        foreach (var line in toFire)
+        {
+            line.Fire(firedAtUtc);
+        }
+
+        return Result.Success<IReadOnlyList<OrderLine>>(toFire);
     }
 
     /// <summary>

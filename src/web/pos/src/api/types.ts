@@ -113,6 +113,16 @@ export interface OrderLineDto {
   modifiers: OrderLineModifierDto[];
   lineTotal: MoneyDto;
   notes: string | null;
+  /** Which course the item was served at, snapshotted at add-time (ORD-07). Null if the item had none. */
+  course: string | null;
+  /** Whether this line has been sent to the kitchen (ORD-07/08). */
+  isFired: boolean;
+  firedAtUtc: string | null;
+}
+
+/** Request body to send unfired lines to the kitchen (ORD-07/08). Null course fires everything still pending. */
+export interface FireOrderLinesRequest {
+  course: string | null;
 }
 
 export interface OrderDto {

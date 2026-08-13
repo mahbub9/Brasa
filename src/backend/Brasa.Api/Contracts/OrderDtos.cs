@@ -56,6 +56,15 @@ public sealed record SetDiscountRequest(string? Type, decimal? Value, Guid Manag
 /// </summary>
 public sealed record VoidLineRequest(string? Reason, Guid ManagerStaffId, string? ManagerPin);
 
+/// <summary>
+/// Request body to send unfired lines to the kitchen (ORD-07/08).
+/// <c>Course</c> fires only lines snapshotted with that course name (e.g.
+/// "Starter"); null fires every unfired, non-voided line regardless of
+/// course — the "full" send. No manager authorisation needed, unlike void
+/// (ORD-10) and discounts (ORD-11) — firing changes nothing financial.
+/// </summary>
+public sealed record FireOrderLinesRequest(string? Course);
+
 /// <summary>Request body to move a single line onto a different open order (ORD-13).</summary>
 public sealed record TransferLineRequest(Guid DestinationOrderId);
 
@@ -105,7 +114,11 @@ public sealed record OrderLineModifierDto(Guid Id, string Name, MoneyDto PriceDe
 /// case, so a client can render it without a null check. <c>IsVoided</c>
 /// (ORD-10) is true once the line has been cancelled after ringing up —
 /// the line itself is never removed, only its contribution to
-/// <c>LineTotal</c> (already zero when voided, discount or not).
+/// <c>LineTotal</c> (already zero when voided, discount or not). <c>Course</c>
+/// (ORD-07) is copied from the catalog item at the time of sale, same
+/// convention as <c>ItemName</c> — null when the item had none. <c>IsFired</c>/
+/// <c>FiredAtUtc</c> (ORD-07/08) are true/set once the line has been sent to
+/// the kitchen via <c>POST /orders/{id}/fire</c>.
 /// </summary>
 public sealed record OrderLineDto(
     Guid Id,
@@ -120,7 +133,10 @@ public sealed record OrderLineDto(
     MoneyDto LineTotal,
     string? Notes,
     bool IsVoided,
-    string? VoidReason);
+    string? VoidReason,
+    string? Course,
+    bool IsFired,
+    DateTimeOffset? FiredAtUtc);
 
 /// <summary>
 /// An order, as returned to clients. <c>DiscountType</c>/<c>DiscountValue</c>/
@@ -239,7 +255,10 @@ public static class OrderDtoMappings
         line.LineTotal.ToDto(),
         line.Notes,
         line.IsVoided,
-        line.VoidReason);
+        line.VoidReason,
+        line.Course,
+        line.IsFired,
+        line.FiredAtUtc);
 
     /// <summary>Converts an issued fiscal document to its wire representation.</summary>
     public static FiscalDocumentDto ToDto(this FiscalDocument document) => new(
