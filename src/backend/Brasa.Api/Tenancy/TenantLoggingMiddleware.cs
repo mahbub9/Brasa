@@ -18,16 +18,21 @@ namespace Brasa.Api.Tenancy;
 /// today, real auth later) — <see cref="ITenantContext.TenantId"/> is
 /// <see cref="Guid.Empty"/> before that.
 /// <para>
-/// <b>Known gap:</b> registered after <c>UseSerilogRequestLogging()</c> in
-/// <c>Program.cs</c> (which itself runs early, deliberately, so a request
-/// short-circuited by CORS or the rate limiter still gets a completion log
-/// line — see the comments there), so unlike
+/// Registered after <c>UseSerilogRequestLogging()</c> in <c>Program.cs</c>
+/// (which itself runs early, deliberately, so a request short-circuited by
+/// CORS or the rate limiter still gets a completion log line), so unlike
 /// <see cref="Brasa.Api.ClientVersioning.ClientVersionMiddleware"/> this
-/// does <b>not</b> reach that one summary line, only everything logged
-/// during the request itself (EF Core commands, application code). Reaching
-/// the summary line too would mean moving tenant resolution earlier in the
-/// pipeline, which is a real pipeline-ordering change, not a slot in this
-/// middleware — tracked as a known limitation, not implied to already work.
+/// middleware's own <see cref="LogContext.PushProperty(string, object,
+/// bool)"/> scopes are already disposed by the time control returns to
+/// <c>UseSerilogRequestLogging</c>'s own completion-log call — pushed
+/// properties don't survive past the <c>using</c> block that pushed them.
+/// The completion line still carries the same ids, just via a different
+/// mechanism: <c>Program.cs</c>'s own <c>EnrichDiagnosticContext</c>
+/// callback reads <see cref="ITenantContext"/> straight from DI at
+/// completion time instead, which works precisely because it's a scoped
+/// per-request service holding its resolved value for the request's whole
+/// lifetime, not an ambient log-context stack tied to this middleware's own
+/// call frame.
 /// </para>
 /// </remarks>
 public sealed class TenantLoggingMiddleware(RequestDelegate next)

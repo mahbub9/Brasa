@@ -287,7 +287,38 @@ app.UseMiddleware<ClientVersionMiddleware>();
 // unconditionally rather than gate behind whether anything is configured.
 app.UseMiddleware<ApiDeprecationMiddleware>();
 
-app.UseSerilogRequestLogging();
+// OPS-07 — EnrichDiagnosticContext runs at request-completion time, in the
+// outer middleware's own stack frame, reading straight from DI rather than
+// depending on Serilog.Context.LogContext's push/pop timing. That's what
+// makes this reach the completion line itself even though tenant
+// resolution (DevTenantMiddleware) and TenantLoggingMiddleware both run
+// later in the pipeline, inside this middleware's own next() call: by the
+// time TenantLoggingMiddleware's LogContext.PushProperty scopes have been
+// disposed and control returns here, ITenantContext itself (a scoped
+// per-request service, not an ambient log-context stack) still holds
+// whatever it resolved. No pipeline reordering needed after all.
+app.UseSerilogRequestLogging(options =>
+{
+    options.EnrichDiagnosticContext = (diagnosticContext, httpContext) =>
+    {
+        var tenantContext = httpContext.RequestServices.GetRequiredService<ITenantContext>();
+        diagnosticContext.Set("TenantId", tenantContext.TenantId);
+        if (tenantContext.SiteId is { } siteId)
+        {
+            diagnosticContext.Set("SiteId", siteId);
+        }
+
+        if (tenantContext.TerminalId is { } terminalId)
+        {
+            diagnosticContext.Set("TerminalId", terminalId);
+        }
+
+        if (tenantContext.UserId is { } userId)
+        {
+            diagnosticContext.Set("UserId", userId);
+        }
+    };
+});
 app.UseExceptionHandler();
 app.UseStatusCodePages();
 
@@ -326,9 +357,9 @@ app.UseMiddleware<DevTenantMiddleware>();
 app.UseMiddleware<TestClockMiddleware>();
 
 // OPS-07 — every log line for the rest of the request carries TenantId
-// (and Site/Terminal/User ids once auth populates them). Doesn't reach
-// UseSerilogRequestLogging's own completion line — see
-// TenantLoggingMiddleware's remarks for why.
+// (and Site/Terminal/User ids once auth populates them). The completion
+// line itself gets the same ids a different way — see the
+// EnrichDiagnosticContext callback on UseSerilogRequestLogging above.
 app.UseMiddleware<TenantLoggingMiddleware>();
 
 // API-12 — before IdempotencyMiddleware on purpose: a request this rejects

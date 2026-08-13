@@ -148,12 +148,12 @@ The plan of record. Every feature and task, with a stable ID and a status.
 > sending `X-Brasa-Client` yet — fixed with a generous dev-only override
 > rather than a production default weakened to match. Every log line during
 > a request now carries `TenantId` too (OPS-07, `TenantLoggingMiddleware`) —
-> verified live against a real request's EF Core command log, with an
-> honestly-documented gap rather than an overclaimed one: it doesn't yet
-> reach the one-line HTTP completion summary, since that middleware is
-> registered earlier in the pipeline on purpose (so a CORS- or
-> rate-limit-rejected request still gets logged), and reaching it would mean
-> reordering the pipeline, not just adding a middleware. The two deep-link
+> verified live against a real request's EF Core command log. The one-line
+> HTTP completion summary now carries it too (closed in a later session) —
+> not via reordering the pipeline as first assumed necessary, but an
+> `EnrichDiagnosticContext` callback reading `ITenantContext` straight from
+> DI at completion time, sidestepping `LogContext`'s own push/pop timing
+> entirely. The two deep-link
 > verification documents (API-18) now exist too — honestly empty rather
 > than fabricated, since no bundle id or package name exists to put in
 > either until a native app does — and the `/ping` endpoint's own
@@ -802,7 +802,7 @@ The plan of record. Every feature and task, with a stable ID and a status.
 | OPS-04 | Docs site published to GitHub Pages | ✅ |
 | OPS-05 | `.gitattributes` line-ending normalisation | ✅ |
 | OPS-06 | Issue and PR templates | ✅ |
-| OPS-07 | Structured logging with tenant / site / terminal enrichment | 🚧 `TenantLoggingMiddleware` pushes `TenantId`/`SiteId`/`TerminalId`/`UserId` onto Serilog's `LogContext` for the rest of the request — every EF Core command, every application log line, carries it, verified live against the console/Seq sink (a real `GET /menu` request's `CommandExecuted` line shows `"TenantId":"…"`; a hidden field is simply absent, not a literal "null"). **Known gap, not silently claimed working:** doesn't yet reach `UseSerilogRequestLogging`'s own one-line HTTP completion summary — that middleware is registered early on purpose (so a request short-circuited by CORS or the rate limiter still gets logged), and tenant resolution runs later; closing that gap means reordering the pipeline, a bigger change than this middleware itself, tracked separately. `Site`/`Terminal`/`User` ids are always absent today — nothing populates them before auth (IDN-03…08) exists |
+| OPS-07 | Structured logging with tenant / site / terminal enrichment | ✅ `TenantLoggingMiddleware` pushes `TenantId`/`SiteId`/`TerminalId`/`UserId` onto Serilog's `LogContext` for the rest of the request — every EF Core command, every application log line, carries it, verified live against the console/Seq sink (a real `GET /menu` request's `CommandExecuted` line shows `"TenantId":"…"`; a hidden field is simply absent, not a literal "null"). The one-line HTTP completion summary (`UseSerilogRequestLogging`) now carries the same ids too, closing what was flagged as a known gap — not via the pipeline reordering that gap's own note once assumed was required, but an `EnrichDiagnosticContext` callback that reads `ITenantContext` straight from DI at request-completion time, sidestepping `LogContext`'s push/pop timing (see the trap entry in `docs/ai/README.md`). Verified live: a real `GET /floor` request's completion line shows `"TenantId":"…"` directly on the `Serilog.AspNetCore.RequestLoggingMiddleware` line itself, not just on lines logged during the request. `Site`/`Terminal`/`User` ids are always absent today — nothing populates them before auth (IDN-03…08) exists |
 | OPS-08 | OpenTelemetry traces and metrics | ✅ ASP.NET Core, outbound `HttpClient` and Npgsql tracing (the latter via `AddSource("Npgsql")` — Npgsql emits its own spans natively since v7) plus ASP.NET Core/HTTP/.NET runtime metrics, OTLP-exported to Seq (native OTLP ingestion, no separate collector). Config-bound (`Otel:OtlpEndpoint`), empty in the base `appsettings.json` — no real OTLP collector exists for a production deployment yet (OPS-11) — set only in `appsettings.Development.json`, pointed at the local Seq instance. **Verified live**: a real request's HTTP span and its child Npgsql query span both land in Seq with correct `ParentId` linkage and `service.name=brasa-api`, and a periodic metrics export lands too |
 | OPS-09 | Health and readiness probes including the database | ✅ `GET /health` (liveness, no dependencies) / `GET /health/ready` (PostgreSQL reachability, `DatabaseHealthCheck`). Verified live: healthy with DB up, `503` with the container stopped, recovers once it's back |
 | OPS-10 | Hangfire setup and dashboard | ⬜ |
