@@ -1124,9 +1124,40 @@ export interface components {
             /** Format: double */
             price: number | string;
         };
+        AdminMenuCategoryDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: int32 */
+            displayOrder: number | string;
+            isVisible: boolean;
+            items: components["schemas"]["MenuItemDto"][];
+        };
         AssignRoomSectionRequest: {
             /** Format: uuid */
             staffId: null | string;
+        };
+        ClientRequirementsDto: {
+            minimumSupported: string;
+            recommended: string;
+            sunsetAfter: null | string;
+        };
+        CloseOrderResponse: {
+            order: components["schemas"]["OrderDto"];
+            document: components["schemas"]["FiscalDocumentDto"];
+        };
+        ComboComponentDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            menuItemId: string;
+        };
+        ComboDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            price: components["schemas"]["MoneyDto"];
+            components: components["schemas"]["ComboComponentDto"][];
         };
         CreateComboRequest: {
             name: string;
@@ -1185,12 +1216,102 @@ export interface components {
         CreateTerminalRequest: {
             label: string;
         };
+        EffectivePriceDto: {
+            /** Format: uuid */
+            menuItemId: string;
+            price: components["schemas"]["MoneyDto"];
+            isOverridden: boolean;
+        };
+        FiscalDocumentDto: {
+            documentNumber: string;
+            atcud: string;
+            netTotal: components["schemas"]["MoneyDto"];
+            vatTotal: components["schemas"]["MoneyDto"];
+            grossTotal: components["schemas"]["MoneyDto"];
+            qrPayload: string;
+            /** Format: date-time */
+            issuedAtUtc: string;
+        };
         ImportMenuItemsRequest: {
             csv: string;
+        };
+        ImportMenuItemsResponse: {
+            /** Format: int32 */
+            created: number | string;
+            errors: components["schemas"]["ImportMenuItemsRowError"][];
+        };
+        ImportMenuItemsRowError: {
+            /** Format: int32 */
+            rowNumber: number | string;
+            message: string;
+        };
+        MenuCategoryDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: int32 */
+            displayOrder: number | string;
+            items: components["schemas"]["MenuItemDto"][];
+        };
+        MenuCategoryVisibilityDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            isVisible: boolean;
+        };
+        MenuItemDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            description: null | string;
+            price: components["schemas"]["MoneyDto"];
+            takeawayPrice: null | components["schemas"]["MoneyDto"];
+            /** Format: double */
+            vatRatePercent: number | string;
+            isAlcoholic: boolean;
+            isAvailable: boolean;
+            course: null | string;
+            station: null | string;
+            schedule: null | components["schemas"]["MenuItemScheduleDto"];
+            isCouvert: boolean;
+            scheduledPrice: null | components["schemas"]["ScheduledPriceDto"];
+            allergens: string[];
+            modifierGroups: components["schemas"]["ModifierGroupDto"][];
+        };
+        MenuItemScheduleDto: {
+            daysOfWeek: string[];
+            startTime: string;
+            endTime: string;
         };
         MergeOrdersRequest: {
             /** Format: uuid */
             secondaryOrderId: string;
+        };
+        MergeOrdersResponse: {
+            primaryOrder: components["schemas"]["OrderDto"];
+            secondaryOrder: components["schemas"]["OrderDto"];
+        };
+        ModifierDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            priceDelta: components["schemas"]["MoneyDto"];
+        };
+        ModifierGroupDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            isRequired: boolean;
+            /** Format: int32 */
+            minSelect: number | string;
+            /** Format: int32 */
+            maxSelect: number | string;
+            modifiers: components["schemas"]["ModifierDto"][];
+        };
+        MoneyDto: {
+            /** Format: double */
+            amount: number | string;
+            currency: string;
         };
         OpenOrderRequest: {
             /** Format: uuid */
@@ -1200,6 +1321,121 @@ export interface components {
         };
         OpenTakeawayOrderRequest: {
             label: null | string;
+        };
+        OrderDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tableId: string;
+            tableLabel: string;
+            /** Format: int32 */
+            coverCount: number | string;
+            isTakeaway: boolean;
+            status: string;
+            discountType: null | string;
+            /** Format: double */
+            discountValue: null | number | string;
+            discountAmount: components["schemas"]["MoneyDto"];
+            total: components["schemas"]["MoneyDto"];
+            lines: components["schemas"]["OrderLineDto"][];
+        };
+        OrderLineDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            menuItemId: string;
+            itemName: string;
+            unitPrice: components["schemas"]["MoneyDto"];
+            /** Format: int32 */
+            quantity: number | string;
+            modifiers: components["schemas"]["OrderLineModifierDto"][];
+            discountType: null | string;
+            /** Format: double */
+            discountValue: null | number | string;
+            discountAmount: components["schemas"]["MoneyDto"];
+            lineTotal: components["schemas"]["MoneyDto"];
+            notes: null | string;
+            isVoided: boolean;
+            voidReason: null | string;
+        };
+        OrderLineModifierDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            priceDelta: components["schemas"]["MoneyDto"];
+        };
+        OrderSummaryDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            tableId: string;
+            tableLabel: string;
+            /** Format: int32 */
+            coverCount: number | string;
+            isTakeaway: boolean;
+            status: string;
+            total: components["schemas"]["MoneyDto"];
+            /** Format: int32 */
+            lineCount: number | string;
+            /** Format: date-time */
+            openedAtUtc: string;
+            /** Format: date-time */
+            closedAtUtc: null | string;
+        };
+        OrganizationDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+        };
+        PreBillDto: {
+            /** Format: uuid */
+            orderId: string;
+            tableLabel: string;
+            /** Format: int32 */
+            coverCount: number | string;
+            lines: components["schemas"]["OrderLineDto"][];
+            vatBreakdown: components["schemas"]["VatBreakdownDto"][];
+            total: components["schemas"]["MoneyDto"];
+            /** Format: date-time */
+            generatedAtUtc: string;
+            documentKind: string;
+        };
+        PriceListDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            siteId: string;
+            name: string;
+            entries: components["schemas"]["PriceListEntryDto"][];
+        };
+        PriceListEntryDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            menuItemId: string;
+            price: components["schemas"]["MoneyDto"];
+        };
+        ResolvedTaxRuleDto: {
+            /** Format: double */
+            vatRatePercent: number | string;
+        };
+        RoomDto: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** Format: int32 */
+            displayOrder: number | string;
+            /** Format: int32 */
+            floorLevel: number | string;
+            /** Format: uuid */
+            assignedStaffId: null | string;
+            assignedStaffName: null | string;
+            tables: components["schemas"]["TableDto"][];
+        };
+        ScheduledPriceDto: {
+            newPrice: components["schemas"]["MoneyDto"];
+            effectiveFromUtc: string;
+            isActive: boolean;
         };
         SetDiscountRequest: {
             type: null | string;
@@ -1221,24 +1457,95 @@ export interface components {
             price: null | number | string;
             effectiveFromUtc: null | string;
         };
+        SiteDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            organizationId: string;
+            name: string;
+            region: string;
+        };
         SplitByItemAllocationRequest: {
             /** Format: uuid */
             lineId: string;
             /** Format: int32 */
             quantity: number | string;
         };
+        SplitByItemGroupDto: {
+            lines: components["schemas"]["SplitByItemLineDto"][];
+            total: components["schemas"]["MoneyDto"];
+        };
         SplitByItemGroupRequest: {
             lines: components["schemas"]["SplitByItemAllocationRequest"][];
+        };
+        SplitByItemLineDto: {
+            /** Format: uuid */
+            lineId: string;
+            itemName: string;
+            /** Format: int32 */
+            quantity: number | string;
+            total: components["schemas"]["MoneyDto"];
         };
         SplitByItemRequest: {
             groups: components["schemas"]["SplitByItemGroupRequest"][];
         };
+        SplitByItemResponse: {
+            groups: components["schemas"]["SplitByItemGroupDto"][];
+        };
+        StaffDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            siteId: string;
+            name: string;
+            role: string;
+            isLocked: boolean;
+        };
         StaffPinRequest: {
             pin: string;
+        };
+        TableDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            roomId: string;
+            label: string;
+            /** Format: int32 */
+            seats: number | string;
+            /** Format: int32 */
+            positionX: number | string;
+            /** Format: int32 */
+            positionY: number | string;
+            shape: string;
+            state: string;
+            /** Format: uuid */
+            groupId: null | string;
+        };
+        TaxRuleDto: {
+            /** Format: uuid */
+            id: string;
+            isAlcoholic: boolean;
+            isTakeaway: boolean;
+            region: string;
+            /** Format: double */
+            vatRatePercent: number | string;
+            effectiveFromUtc: string;
+            effectiveToUtc: null | string;
+        };
+        TerminalDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            siteId: string;
+            label: string;
         };
         TransferLineRequest: {
             /** Format: uuid */
             destinationOrderId: string;
+        };
+        TransferLineResponse: {
+            sourceOrder: components["schemas"]["OrderDto"];
+            destinationOrder: components["schemas"]["OrderDto"];
         };
         TransferOrderRequest: {
             /** Format: uuid */
@@ -1293,6 +1600,13 @@ export interface components {
             positionY: number | string;
             shape: string;
         };
+        VatBreakdownDto: {
+            /** Format: double */
+            vatRateFraction: number | string;
+            netTotal: components["schemas"]["MoneyDto"];
+            vatAmount: components["schemas"]["MoneyDto"];
+            grossTotal: components["schemas"]["MoneyDto"];
+        };
         VoidLineRequest: {
             reason: null | string;
             /** Format: uuid */
@@ -1340,6 +1654,15 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
+                content: {
+                    "application/json": components["schemas"]["MenuCategoryDto"][];
+                };
+            };
+            /** @description Not Modified */
+            304: {
+                headers: {
+                    [name: string]: unknown;
+                };
                 content?: never;
             };
         };
@@ -1358,7 +1681,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["AdminMenuCategoryDto"][];
+                };
             };
         };
     };
@@ -1373,8 +1698,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1402,7 +1727,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
             };
         };
     };
@@ -1424,7 +1751,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ImportMenuItemsResponse"];
+                };
             };
         };
     };
@@ -1448,7 +1777,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
             };
         };
     };
@@ -1472,7 +1803,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
             };
         };
     };
@@ -1496,7 +1829,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
             };
         };
     };
@@ -1520,7 +1855,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
             };
         };
     };
@@ -1544,7 +1881,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
             };
         };
     };
@@ -1568,7 +1907,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
             };
         };
     };
@@ -1592,7 +1933,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
             };
         };
     };
@@ -1616,7 +1959,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MenuItemDto"];
+                };
             };
         };
     };
@@ -1640,7 +1985,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MenuCategoryVisibilityDto"];
+                };
             };
         };
     };
@@ -1655,6 +2002,15 @@ export interface operations {
         responses: {
             /** @description OK */
             200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoomDto"][];
+                };
+            };
+            /** @description Not Modified */
+            304: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1678,7 +2034,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TableDto"];
+                };
             };
         };
     };
@@ -1698,7 +2056,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TableDto"];
+                };
             };
         };
     };
@@ -1722,7 +2082,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TableDto"];
+                };
             };
         };
     };
@@ -1746,7 +2108,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TableDto"];
+                };
             };
         };
     };
@@ -1761,8 +2125,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1788,7 +2152,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RoomDto"];
+                };
             };
         };
     };
@@ -1812,7 +2178,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RoomDto"];
+                };
             };
         };
     };
@@ -1827,8 +2195,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1856,7 +2224,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["RoomDto"];
+                };
             };
         };
     };
@@ -1878,7 +2248,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TableDto"][];
+                };
             };
         };
     };
@@ -1893,8 +2265,8 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description OK */
-            200: {
+            /** @description No Content */
+            204: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -1916,7 +2288,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrganizationDto"][];
+                };
             };
         };
     };
@@ -1938,7 +2312,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrganizationDto"];
+                };
             };
         };
     };
@@ -1958,7 +2334,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SiteDto"][];
+                };
             };
         };
     };
@@ -1982,7 +2360,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SiteDto"];
+                };
             };
         };
     };
@@ -2002,7 +2382,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TerminalDto"][];
+                };
             };
         };
     };
@@ -2026,7 +2408,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TerminalDto"];
+                };
             };
         };
     };
@@ -2046,7 +2430,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StaffDto"][];
+                };
             };
         };
     };
@@ -2070,7 +2456,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StaffDto"];
+                };
             };
         };
     };
@@ -2094,7 +2482,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StaffDto"];
+                };
             };
         };
     };
@@ -2118,7 +2508,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["StaffDto"];
+                };
             };
         };
     };
@@ -2140,7 +2532,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PriceListDto"];
+                };
             };
         };
     };
@@ -2160,7 +2554,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PriceListDto"];
+                };
             };
         };
     };
@@ -2180,7 +2576,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PriceListDto"][];
+                };
             };
         };
     };
@@ -2204,7 +2602,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PriceListDto"];
+                };
             };
         };
     };
@@ -2225,7 +2625,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["EffectivePriceDto"];
+                };
             };
         };
     };
@@ -2243,7 +2645,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ComboDto"][];
+                };
             };
         };
     };
@@ -2265,7 +2669,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ComboDto"];
+                };
             };
         };
     };
@@ -2285,7 +2691,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ComboDto"];
+                };
             };
         };
     };
@@ -2309,7 +2717,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ComboDto"];
+                };
             };
         };
     };
@@ -2327,7 +2737,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TaxRuleDto"][];
+                };
             };
         };
     };
@@ -2349,7 +2761,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TaxRuleDto"];
+                };
             };
         };
     };
@@ -2372,7 +2786,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ResolvedTaxRuleDto"];
+                };
             };
         };
     };
@@ -2397,7 +2813,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderSummaryDto"][];
+                };
             };
         };
     };
@@ -2414,12 +2832,14 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Created */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2436,12 +2856,14 @@ export interface operations {
             };
         };
         responses: {
-            /** @description OK */
-            200: {
+            /** @description Created */
+            201: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2461,7 +2883,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2485,7 +2909,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2509,7 +2935,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2534,7 +2962,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2559,7 +2989,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2584,7 +3016,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2609,7 +3043,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2633,7 +3069,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2657,7 +3095,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["OrderDto"];
+                };
             };
         };
     };
@@ -2682,7 +3122,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["TransferLineResponse"];
+                };
             };
         };
     };
@@ -2706,7 +3148,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MergeOrdersResponse"];
+                };
             };
         };
     };
@@ -2728,7 +3172,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MoneyDto"][];
+                };
             };
         };
     };
@@ -2752,7 +3198,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["SplitByItemResponse"];
+                };
             };
         };
     };
@@ -2774,7 +3222,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["MoneyDto"][];
+                };
             };
         };
     };
@@ -2794,7 +3244,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PreBillDto"];
+                };
             };
         };
     };
@@ -2814,7 +3266,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["CloseOrderResponse"];
+                };
             };
         };
     };
@@ -2832,7 +3286,9 @@ export interface operations {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["ClientRequirementsDto"];
+                };
             };
         };
     };

@@ -35,79 +35,98 @@ public static class OrderEndpoints
 
         group.MapPost("/orders", OpenOrderAsync)
             .WithName("OpenOrder")
-            .WithSummary("Opens a table.");
+            .WithSummary("Opens a table.")
+            .Produces<OrderDto>(StatusCodes.Status201Created);
 
         group.MapPost("/orders/takeaway", OpenTakeawayOrderAsync)
             .WithName("OpenTakeawayOrder")
-            .WithSummary("Opens a takeaway/counter-sale order — no Floor table involved (ORD-20).");
+            .WithSummary("Opens a takeaway/counter-sale order — no Floor table involved (ORD-20).")
+            .Produces<OrderDto>(StatusCodes.Status201Created);
 
         group.MapGet("/orders", SearchOrdersAsync)
             .WithName("SearchOrders")
-            .WithSummary("Order history/search — filter by status, table and opened-date range (ORD-22).");
+            .WithSummary("Order history/search — filter by status, table and opened-date range (ORD-22).")
+            .Produces<OrderSummaryDto[]>();
 
         group.MapGet("/orders/{orderId:guid}", GetOrderAsync)
             .WithName("GetOrder")
-            .WithSummary("Current state of an order.");
+            .WithSummary("Current state of an order.")
+            .Produces<OrderDto>();
 
         group.MapPost("/orders/{orderId:guid}/lines", AddLineAsync)
             .WithName("AddOrderLine")
-            .WithSummary("Rings up a menu item onto an open order.");
+            .WithSummary("Rings up a menu item onto an open order.")
+            .Produces<OrderDto>();
 
         group.MapPost("/orders/{orderId:guid}/combo-lines", AddComboLineAsync)
             .WithName("AddComboLine")
-            .WithSummary("Rings a combo up onto an open order (CAT-10), one ordinary line per component at its own VAT rate.");
+            .WithSummary("Rings a combo up onto an open order (CAT-10), one ordinary line per component at its own VAT rate.")
+            .Produces<OrderDto>();
 
         group.MapPut("/orders/{orderId:guid}/lines/{lineId:guid}/notes", SetLineNotesAsync)
             .WithName("SetOrderLineNotes")
-            .WithSummary("Sets or clears a line's free-text kitchen note (ORD-06).");
+            .WithSummary("Sets or clears a line's free-text kitchen note (ORD-06).")
+            .Produces<OrderDto>();
 
         group.MapPut("/orders/{orderId:guid}/lines/{lineId:guid}/quantity", SetLineQuantityAsync)
             .WithName("SetOrderLineQuantity")
-            .WithSummary("Changes how many of a line's item were ordered (ORD-03).");
+            .WithSummary("Changes how many of a line's item were ordered (ORD-03).")
+            .Produces<OrderDto>();
 
         group.MapPut("/orders/{orderId:guid}/lines/{lineId:guid}/discount", SetLineDiscountAsync)
             .WithName("SetOrderLineDiscount")
-            .WithSummary("Sets or clears a percentage/fixed discount on one line (ORD-11).");
+            .WithSummary("Sets or clears a percentage/fixed discount on one line (ORD-11).")
+            .Produces<OrderDto>();
 
         group.MapPost("/orders/{orderId:guid}/lines/{lineId:guid}/void", VoidLineAsync)
             .WithName("VoidOrderLine")
-            .WithSummary("Voids a line, with a required reason (ORD-10).");
+            .WithSummary("Voids a line, with a required reason (ORD-10).")
+            .Produces<OrderDto>();
 
         group.MapPut("/orders/{orderId:guid}/discount", SetOrderDiscountAsync)
             .WithName("SetOrderDiscount")
-            .WithSummary("Sets or clears a percentage/fixed discount on the whole order (ORD-11).");
+            .WithSummary("Sets or clears a percentage/fixed discount on the whole order (ORD-11).")
+            .Produces<OrderDto>();
 
         group.MapPost("/orders/{orderId:guid}/transfer", TransferOrderAsync)
             .WithName("TransferOrder")
-            .WithSummary("Moves an open order to a different table (ORD-12).");
+            .WithSummary("Moves an open order to a different table (ORD-12).")
+            .Produces<OrderDto>();
 
         group.MapPost("/orders/{orderId:guid}/lines/{lineId:guid}/transfer", TransferLineAsync)
             .WithName("TransferOrderLine")
-            .WithSummary("Moves a single line onto a different open order (ORD-13).");
+            .WithSummary("Moves a single line onto a different open order (ORD-13).")
+            .Produces<TransferLineResponse>();
 
         group.MapPost("/orders/{orderId:guid}/merge", MergeOrdersAsync)
             .WithName("MergeOrders")
-            .WithSummary("Merges another open order's lines into this one and frees its table (ORD-14).");
+            .WithSummary("Merges another open order's lines into this one and frees its table (ORD-14).")
+            .Produces<MergeOrdersResponse>();
 
         group.MapGet("/orders/{orderId:guid}/split", PreviewSplitAsync)
             .WithName("PreviewOrderSplit")
-            .WithSummary("Computes an even split of the current total, without changing order state.");
+            .WithSummary("Computes an even split of the current total, without changing order state.")
+            .Produces<MoneyDto[]>();
 
         group.MapPost("/orders/{orderId:guid}/split/by-item", PreviewSplitByItemAsync)
             .WithName("PreviewOrderSplitByItem")
-            .WithSummary("Previews a bill split by item (ORD-16), without changing order state.");
+            .WithSummary("Previews a bill split by item (ORD-16), without changing order state.")
+            .Produces<SplitByItemResponse>();
 
         group.MapGet("/orders/{orderId:guid}/split/by-cover", PreviewSplitByCoverAsync)
             .WithName("PreviewOrderSplitByCover")
-            .WithSummary("Previews a bill split proportionally by covers per group (ORD-17), without changing order state.");
+            .WithSummary("Previews a bill split proportionally by covers per group (ORD-17), without changing order state.")
+            .Produces<MoneyDto[]>();
 
         group.MapGet("/orders/{orderId:guid}/pre-bill", GetPreBillAsync)
             .WithName("GetOrderPreBill")
-            .WithSummary("Pre-bill preview for the table — a documento não fiscal, not an invoice. Safe to call repeatedly.");
+            .WithSummary("Pre-bill preview for the table — a documento não fiscal, not an invoice. Safe to call repeatedly.")
+            .Produces<PreBillDto>();
 
         group.MapPost("/orders/{orderId:guid}/close", CloseOrderAsync)
             .WithName("CloseOrder")
-            .WithSummary("Closes the order and issues its fiscal document.");
+            .WithSummary("Closes the order and issues its fiscal document.")
+            .Produces<CloseOrderResponse>();
 
         return group;
     }

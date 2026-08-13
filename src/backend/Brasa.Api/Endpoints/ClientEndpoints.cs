@@ -20,7 +20,8 @@ public static class ClientEndpoints
 
         group.MapGet("/client-requirements", GetClientRequirementsAsync)
             .WithName("GetClientRequirements")
-            .WithSummary("Minimum/recommended version and sunset date for the calling client (API-07).");
+            .WithSummary("Minimum/recommended version and sunset date for the calling client (API-07).")
+            .Produces<ClientRequirementsDto>();
 
         return group;
     }

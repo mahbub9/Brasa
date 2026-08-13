@@ -26,59 +26,74 @@ public static class CatalogEndpoints
 
         group.MapGet("/menu", GetMenuAsync)
             .WithName("GetMenu")
-            .WithSummary("Every visible category and its available items, for the POS to render.");
+            .WithSummary("Every visible category and its available items, for the POS to render.")
+            .Produces<List<MenuCategoryDto>>()
+            .Produces(StatusCodes.Status304NotModified);
 
         group.MapGet("/menu/all", GetMenuAllAsync)
             .WithName("GetMenuAll")
-            .WithSummary("Every category and item, including hidden and unavailable ones, for management tooling.");
+            .WithSummary("Every category and item, including hidden and unavailable ones, for management tooling.")
+            .Produces<List<AdminMenuCategoryDto>>();
 
         group.MapDelete("/menu/items/{itemId:guid}", DeleteMenuItemAsync)
             .WithName("DeleteMenuItem")
-            .WithSummary("Soft-deletes a menu item. Past orders keep their own snapshot of its name and price.");
+            .WithSummary("Soft-deletes a menu item. Past orders keep their own snapshot of its name and price.")
+            .Produces(StatusCodes.Status204NoContent);
 
         group.MapPut("/menu/items/{itemId:guid}/details", UpdateMenuItemDetailsAsync)
             .WithName("UpdateMenuItemDetails")
-            .WithSummary("Sets a menu item's description and declared allergens (CAT-02).");
+            .WithSummary("Sets a menu item's description and declared allergens (CAT-02).")
+            .Produces<MenuItemDto>();
 
         group.MapPost("/menu/items/import", ImportMenuItemsAsync)
             .WithName("ImportMenuItems")
-            .WithSummary("Bulk-creates menu items from a CSV file (CAT-17).");
+            .WithSummary("Bulk-creates menu items from a CSV file (CAT-17).")
+            .Produces<ImportMenuItemsResponse>();
 
         group.MapPut("/menu/items/{itemId:guid}/availability", UpdateMenuItemAvailabilityAsync)
             .WithName("UpdateMenuItemAvailability")
-            .WithSummary("86's a menu item, or brings it back (CAT-13).");
+            .WithSummary("86's a menu item, or brings it back (CAT-13).")
+            .Produces<MenuItemDto>();
 
         group.MapPut("/menu/items/{itemId:guid}/price", UpdateMenuItemPriceAsync)
             .WithName("UpdateMenuItemPrice")
-            .WithSummary("Changes a menu item's price for future orders. Past order lines keep their own snapshot.");
+            .WithSummary("Changes a menu item's price for future orders. Past order lines keep their own snapshot.")
+            .Produces<MenuItemDto>();
 
         group.MapPut("/menu/items/{itemId:guid}/takeaway-price", UpdateMenuItemTakeawayPriceAsync)
             .WithName("UpdateMenuItemTakeawayPrice")
-            .WithSummary("Sets or clears a menu item's separate takeaway price (CAT-06). Null falls back to the dine-in price.");
+            .WithSummary("Sets or clears a menu item's separate takeaway price (CAT-06). Null falls back to the dine-in price.")
+            .Produces<MenuItemDto>();
 
         group.MapPut("/menu/items/{itemId:guid}/course", UpdateMenuItemCourseAsync)
             .WithName("UpdateMenuItemCourse")
-            .WithSummary("Sets or clears which course a menu item is served at (CAT-14).");
+            .WithSummary("Sets or clears which course a menu item is served at (CAT-14).")
+            .Produces<MenuItemDto>();
 
         group.MapPut("/menu/items/{itemId:guid}/station", UpdateMenuItemStationAsync)
             .WithName("UpdateMenuItemStation")
-            .WithSummary("Sets or clears which kitchen station prepares a menu item (CAT-15).");
+            .WithSummary("Sets or clears which kitchen station prepares a menu item (CAT-15).")
+            .Produces<MenuItemDto>();
 
         group.MapPut("/menu/items/{itemId:guid}/schedule", UpdateMenuItemScheduleAsync)
             .WithName("UpdateMenuItemSchedule")
-            .WithSummary("Sets or clears a menu item's recurring day/time availability window (CAT-11).");
+            .WithSummary("Sets or clears a menu item's recurring day/time availability window (CAT-11).")
+            .Produces<MenuItemDto>();
 
         group.MapPut("/menu/items/{itemId:guid}/couvert", UpdateMenuItemCouvertAsync)
             .WithName("UpdateMenuItemCouvert")
-            .WithSummary("Marks or unmarks a menu item as couvert (CAT-12).");
+            .WithSummary("Marks or unmarks a menu item as couvert (CAT-12).")
+            .Produces<MenuItemDto>();
 
         group.MapPut("/menu/items/{itemId:guid}/scheduled-price", UpdateMenuItemScheduledPriceAsync)
             .WithName("UpdateMenuItemScheduledPrice")
-            .WithSummary("Sets or clears a menu item's pending future price change (CAT-16).");
+            .WithSummary("Sets or clears a menu item's pending future price change (CAT-16).")
+            .Produces<MenuItemDto>();
 
         group.MapPut("/menu/categories/{categoryId:guid}/visibility", UpdateMenuCategoryVisibilityAsync)
             .WithName("UpdateMenuCategoryVisibility")
-            .WithSummary("Hides a whole category (and every item under it) from GET /menu, or shows it again (CAT-01).");
+            .WithSummary("Hides a whole category (and every item under it) from GET /menu, or shows it again (CAT-01).")
+            .Produces<MenuCategoryVisibilityDto>();
 
         return group;
     }

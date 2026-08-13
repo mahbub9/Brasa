@@ -25,51 +25,64 @@ public static class FloorEndpoints
 
         group.MapGet("/floor", GetFloorAsync)
             .WithName("GetFloor")
-            .WithSummary("Every room and its tables, with current state, for the POS to render as a table picker.");
+            .WithSummary("Every room and its tables, with current state, for the POS to render as a table picker.")
+            .Produces<List<RoomDto>>()
+            .Produces(StatusCodes.Status304NotModified);
 
         group.MapPost("/tables/{tableId:guid}/clear", ClearTableAsync)
             .WithName("ClearTable")
-            .WithSummary("Marks a dirty table cleared and free for the next party.");
+            .WithSummary("Marks a dirty table cleared and free for the next party.")
+            .Produces<TableDto>();
 
         group.MapPost("/tables/{tableId:guid}/request-bill", RequestBillAsync)
             .WithName("RequestBill")
-            .WithSummary("Flags that the table has asked for the bill (FLR-04) — a floor-plan signal for staff, separate from actually previewing the bill (ORD-18/19).");
+            .WithSummary("Flags that the table has asked for the bill (FLR-04) — a floor-plan signal for staff, separate from actually previewing the bill (ORD-18/19).")
+            .Produces<TableDto>();
 
         group.MapPost("/rooms/{roomId:guid}/tables", CreateTableAsync)
             .WithName("CreateTable")
-            .WithSummary("Adds a table to a room (FLR-03).");
+            .WithSummary("Adds a table to a room (FLR-03).")
+            .Produces<TableDto>();
 
         group.MapPut("/tables/{tableId:guid}", UpdateTableAsync)
             .WithName("UpdateTable")
-            .WithSummary("Edits a table's label, seats, shape or position (FLR-03).");
+            .WithSummary("Edits a table's label, seats, shape or position (FLR-03).")
+            .Produces<TableDto>();
 
         group.MapDelete("/tables/{tableId:guid}", DeleteTableAsync)
             .WithName("DeleteTable")
-            .WithSummary("Removes a table from the floor plan. Requires the table to be free (FLR-03).");
+            .WithSummary("Removes a table from the floor plan. Requires the table to be free (FLR-03).")
+            .Produces(StatusCodes.Status204NoContent);
 
         group.MapPost("/rooms", CreateRoomAsync)
             .WithName("CreateRoom")
-            .WithSummary("Creates a room (FLR-03's room-CRUD follow-up).");
+            .WithSummary("Creates a room (FLR-03's room-CRUD follow-up).")
+            .Produces<RoomDto>();
 
         group.MapPut("/rooms/{roomId:guid}", UpdateRoomAsync)
             .WithName("UpdateRoom")
-            .WithSummary("Renames or reorders a room (FLR-03's room-CRUD follow-up).");
+            .WithSummary("Renames or reorders a room (FLR-03's room-CRUD follow-up).")
+            .Produces<RoomDto>();
 
         group.MapDelete("/rooms/{roomId:guid}", DeleteRoomAsync)
             .WithName("DeleteRoom")
-            .WithSummary("Removes a room. Requires it to have no tables (FLR-03's room-CRUD follow-up).");
+            .WithSummary("Removes a room. Requires it to have no tables (FLR-03's room-CRUD follow-up).")
+            .Produces(StatusCodes.Status204NoContent);
 
         group.MapPut("/rooms/{roomId:guid}/section", AssignRoomSectionAsync)
             .WithName("AssignRoomSection")
-            .WithSummary("Assigns or clears which waiter is working a room as their section (FLR-06).");
+            .WithSummary("Assigns or clears which waiter is working a room as their section (FLR-06).")
+            .Produces<RoomDto>();
 
         group.MapPost("/table-groups", CreateTableGroupAsync)
             .WithName("CreateTableGroup")
-            .WithSummary("Pushes 2+ free tables together into one seating group for a large party (FLR-05).");
+            .WithSummary("Pushes 2+ free tables together into one seating group for a large party (FLR-05).")
+            .Produces<List<TableDto>>();
 
         group.MapDelete("/table-groups/{groupId:guid}", DeleteTableGroupAsync)
             .WithName("DeleteTableGroup")
-            .WithSummary("Un-groups every table in a seating group, freeing them to be seated individually again (FLR-05).");
+            .WithSummary("Un-groups every table in a seating group, freeing them to be seated individually again (FLR-05).")
+            .Produces(StatusCodes.Status204NoContent);
 
         return group;
     }

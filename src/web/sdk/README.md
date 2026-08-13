@@ -23,33 +23,35 @@ cheap type-level check against exactly that: it fails to compile if a
 request field this codebase actually depends on stops existing or changes
 shape.
 
+## What this does now
+
+**Both request and success-response bodies are typed**, as of the same
+session this package first shipped. Every endpoint in `Brasa.Api` returns
+a bare `Results.Ok(...)`/`IResult`, which erased the response shape from
+`Microsoft.AspNetCore.OpenApi`'s reflection-based generator — it could
+only ever infer a *request* body that way, never a response. Every one of
+the 68 route mappings across eight endpoint files now carries an explicit
+`.Produces<T>(statusCode)` call telling the generator what its success
+response actually looks like, so `docs/openapi/v1.json` — and therefore
+`src/schema.ts` — describes both halves of the contract now, not just
+request bodies. `src/schema.guard.ts` checks a response shape
+(`operations['GetFloor']['responses'][200]['content']`) the same way it
+already checked request shapes, so a future endpoint change that forgets
+`.Produces<T>()` fails to compile here rather than silently reverting.
+
+**Error responses are still undescribed.** `.Produces<T>()` only names a
+route's *success* shape; a `400`/`404`/`409`/`403` remains as undescribed
+as every response was before this session — enumerating every distinct
+error code a given endpoint can return (several handlers have 3–6
+different validation paths, each its own code) is a separate, materially
+larger undertaking, deliberately not attempted here. Every error response
+still shares one real runtime shape (`ProblemDetails` plus a stable
+`code` field), just not one this document names yet.
+
 ## What this doesn't do yet
-
-**Response bodies are not typed.** Every endpoint in `Brasa.Api` returns
-a bare `Results.Ok(...)`/`IResult` rather than a `TypedResults`-based
-concrete return type or explicit `.Produces<T>()` metadata, so
-`Microsoft.AspNetCore.OpenApi`'s reflection-based generator has no way to
-know what shape a `200` actually carries — every response in
-`docs/openapi/v1.json` today is `{"description": "OK"}` with no `content`
-key at all. This was already true the moment API-13 first committed that
-file; it went unnoticed until API-15 needed response shapes to be useful
-for anything beyond request bodies. Request bodies, path parameters and
-query parameters — the half of an endpoint contract a generator *can*
-infer from a strongly-typed C# parameter — are correctly generated and
-verified against real endpoints (`src/schema.guard.ts`).
-
-Fixing this for real means adding `.Produces<T>()` (or switching to
-`TypedResults`) across roughly 68 route mappings spanning eight endpoint
-files — a bounded, mechanical, but broad change deserving its own
-dedicated pass, not a side effect of shipping the generator. Until then,
-this package types what a client *sends*, not what it gets back — a
-real, honest limitation, not a bug in the generator itself.
-
-## What this doesn't do yet, either
 
 No typed fetch client (e.g. `openapi-fetch`) wraps these types yet —
 `pos`/`admin` each still hand-write their own `api/client.ts` with their
 own `ApiError`/`ProblemDetails` handling, matching this codebase's error
 model more precisely than a generic wrapper would today. Wiring either
-app onto `@brasa/sdk` — for request bodies now, response bodies once the
-gap above closes — is separate, deliberately unstarted work.
+app onto `@brasa/sdk` is separate, deliberately unstarted work.

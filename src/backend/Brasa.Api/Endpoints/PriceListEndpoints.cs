@@ -33,23 +33,28 @@ public static class PriceListEndpoints
 
         group.MapPost("/price-lists", CreatePriceListAsync)
             .WithName("CreatePriceList")
-            .WithSummary("Creates an empty price list for a site (CAT-05).");
+            .WithSummary("Creates an empty price list for a site (CAT-05).")
+            .Produces<PriceListDto>();
 
         group.MapGet("/price-lists/{priceListId:guid}", GetPriceListAsync)
             .WithName("GetPriceList")
-            .WithSummary("Gets a price list and every entry it currently holds.");
+            .WithSummary("Gets a price list and every entry it currently holds.")
+            .Produces<PriceListDto>();
 
         group.MapGet("/sites/{siteId:guid}/price-lists", GetPriceListsForSiteAsync)
             .WithName("GetPriceListsForSite")
-            .WithSummary("Lists every price list for a site.");
+            .WithSummary("Lists every price list for a site.")
+            .Produces<List<PriceListDto>>();
 
         group.MapPost("/price-lists/{priceListId:guid}/entries", AddPriceListEntryAsync)
             .WithName("AddPriceListEntry")
-            .WithSummary("Adds a price override for one menu item to a price list. Rejects a second entry for the same item.");
+            .WithSummary("Adds a price override for one menu item to a price list. Rejects a second entry for the same item.")
+            .Produces<PriceListDto>();
 
         group.MapGet("/price-lists/{priceListId:guid}/effective-price/{menuItemId:guid}", GetEffectivePriceAsync)
             .WithName("GetEffectivePrice")
-            .WithSummary("Resolves the price an item currently charges under a price list — the list's own override, or the item's ordinary price when none is set.");
+            .WithSummary("Resolves the price an item currently charges under a price list — the list's own override, or the item's ordinary price when none is set.")
+            .Produces<EffectivePriceDto>();
 
         return group;
     }

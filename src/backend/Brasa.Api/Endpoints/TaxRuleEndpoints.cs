@@ -28,15 +28,18 @@ public static class TaxRuleEndpoints
 
         group.MapPost("/tax-rules", CreateTaxRuleAsync)
             .WithName("CreateTaxRule")
-            .WithSummary("Adds an effective-dated VAT rate for one (alcohol band, channel, region) combination (CAT-07).");
+            .WithSummary("Adds an effective-dated VAT rate for one (alcohol band, channel, region) combination (CAT-07).")
+            .Produces<TaxRuleDto>();
 
         group.MapGet("/tax-rules", GetTaxRulesAsync)
             .WithName("GetTaxRules")
-            .WithSummary("Lists every tax rule on file.");
+            .WithSummary("Lists every tax rule on file.")
+            .Produces<List<TaxRuleDto>>();
 
         group.MapGet("/tax-rules/resolve", ResolveTaxRuleAsync)
             .WithName("ResolveTaxRule")
-            .WithSummary("Resolves the VAT rate in force for a combination at an instant (CAT-08). Defaults to now.");
+            .WithSummary("Resolves the VAT rate in force for a combination at an instant (CAT-08). Defaults to now.")
+            .Produces<ResolvedTaxRuleDto>();
 
         return group;
     }

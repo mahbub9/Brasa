@@ -1426,6 +1426,42 @@ shapes match the shell's TypeScript types field-for-field and that a missing
 > [src/web/sdk/README.md](https://github.com/mahbub9/Brasa/blob/main/src/web/sdk/README.md)
 > for the full accounting.
 
+> **Update (response schemas, API-15 second slice):** Closed the gap the
+> update above found, the same session — every one of the 68 route
+> mappings across eight endpoint files (`OrderEndpoints`, `FloorEndpoints`,
+> `CatalogEndpoints`, `PriceListEndpoints`, `ComboEndpoints`,
+> `TaxRuleEndpoints`, `ClientEndpoints`, `IdentityEndpoints`) now carries
+> an explicit `.Produces<T>(statusCode)` call naming its real success
+> response — `Results.Ok(...)`'s own runtime type was always correct,
+> only the OpenAPI reflection describing it from the outside couldn't see
+> through the plain `IResult` return type without this metadata.
+> `GET /floor`'s `200` now describes `RoomDto[]` (with FLR-06's own
+> `assignedStaffId`/`assignedStaffName` fields correctly included) instead
+> of `{"description": "OK"}`; a `204`/`304` correctly still has no
+> `content` key, since neither carries a body at all — not a remaining
+> gap, just accurate. Error responses (`400`/`404`/`409`/`403`) stay
+> undescribed: `.Produces<T>()` only names a success shape, and
+> enumerating every distinct error code a handler can return (several
+> have 3–6 different validation paths, each its own code) is a separate,
+> materially larger task, deliberately not attempted here. Regenerated
+> `docs/openapi/v1.json` and `web/sdk/src/schema.ts` from the running API
+> and confirmed live: `content?: never` — the SDK's own signal for "no
+> schema known" — dropped from 71 occurrences to 9, and every remaining
+> one is a genuinely bodyless `204`/`304` response or the out-of-scope
+> `/ping` endpoint, not a missed case. `schema.guard.ts` (the permanent
+> type-level regression guard from the first slice) now checks a response
+> shape the same way it already checked request shapes. Also fixed a real
+> Windows PowerShell 5.1 trap hit regenerating the OpenAPI doc by hand
+> (`Set-Content -Encoding utf8` silently writes a UTF-8 BOM, unlike
+> PowerShell Core's same-named encoding) and corrected a stale `CLAUDE.md`
+> claim that Docker isn't installed — it is, and
+> `Brasa.Api.IntegrationTests` (Testcontainers-based) has been passing
+> against it all session. **Verified live**: full solution build clean;
+> 51 backend unit + 31 integration tests green; full E2E suite 160/160 —
+> this task changed only OpenAPI metadata, no runtime behaviour, so the
+> existing suite is exactly what needed to keep passing, not new coverage
+> to add.
+
 Three real bugs were found and fixed by this live run — none were caught by
 `dotnet build` or the pre-existing unit tests:
 

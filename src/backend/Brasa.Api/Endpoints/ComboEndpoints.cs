@@ -22,19 +22,23 @@ public static class ComboEndpoints
 
         group.MapPost("/combos", CreateComboAsync)
             .WithName("CreateCombo")
-            .WithSummary("Creates an empty combo (CAT-10) — a fixed-price bundle of menu items.");
+            .WithSummary("Creates an empty combo (CAT-10) — a fixed-price bundle of menu items.")
+            .Produces<ComboDto>();
 
         group.MapGet("/combos", GetCombosAsync)
             .WithName("GetCombos")
-            .WithSummary("Lists every combo for the current tenant.");
+            .WithSummary("Lists every combo for the current tenant.")
+            .Produces<List<ComboDto>>();
 
         group.MapGet("/combos/{comboId:guid}", GetComboAsync)
             .WithName("GetCombo")
-            .WithSummary("Gets a combo and every component it currently holds.");
+            .WithSummary("Gets a combo and every component it currently holds.")
+            .Produces<ComboDto>();
 
         group.MapPost("/combos/{comboId:guid}/components", AddComboComponentAsync)
             .WithName("AddComboComponent")
-            .WithSummary("Adds one component item to a combo. Rejects a second entry for the same item.");
+            .WithSummary("Adds one component item to a combo. Rejects a second entry for the same item.")
+            .Produces<ComboDto>();
 
         return group;
     }

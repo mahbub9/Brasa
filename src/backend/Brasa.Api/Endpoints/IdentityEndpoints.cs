@@ -24,43 +24,53 @@ public static class IdentityEndpoints
 
         group.MapPost("/organizations", CreateOrganizationAsync)
             .WithName("CreateOrganization")
-            .WithSummary("Creates an organization — the top of the Organization/Site/Terminal hierarchy (IDN-01).");
+            .WithSummary("Creates an organization — the top of the Organization/Site/Terminal hierarchy (IDN-01).")
+            .Produces<OrganizationDto>();
 
         group.MapGet("/organizations", GetOrganizationsAsync)
             .WithName("GetOrganizations")
-            .WithSummary("Lists every organization for the current tenant.");
+            .WithSummary("Lists every organization for the current tenant.")
+            .Produces<List<OrganizationDto>>();
 
         group.MapPost("/organizations/{organizationId:guid}/sites", CreateSiteAsync)
             .WithName("CreateSite")
-            .WithSummary("Creates a site (a physical restaurant location) under an organization (IDN-01).");
+            .WithSummary("Creates a site (a physical restaurant location) under an organization (IDN-01).")
+            .Produces<SiteDto>();
 
         group.MapGet("/organizations/{organizationId:guid}/sites", GetSitesAsync)
             .WithName("GetSites")
-            .WithSummary("Lists every site under an organization.");
+            .WithSummary("Lists every site under an organization.")
+            .Produces<List<SiteDto>>();
 
         group.MapPost("/sites/{siteId:guid}/terminals", CreateTerminalAsync)
             .WithName("CreateTerminal")
-            .WithSummary("Registers a terminal (a physical POS device) at a site (IDN-01). No pairing/auth yet.");
+            .WithSummary("Registers a terminal (a physical POS device) at a site (IDN-01). No pairing/auth yet.")
+            .Produces<TerminalDto>();
 
         group.MapGet("/sites/{siteId:guid}/terminals", GetTerminalsAsync)
             .WithName("GetTerminals")
-            .WithSummary("Lists every terminal registered at a site.");
+            .WithSummary("Lists every terminal registered at a site.")
+            .Produces<List<TerminalDto>>();
 
         group.MapPost("/sites/{siteId:guid}/staff", CreateStaffAsync)
             .WithName("CreateStaff")
-            .WithSummary("Creates a staff member with an initial PIN at a site (IDN-08/09).");
+            .WithSummary("Creates a staff member with an initial PIN at a site (IDN-08/09).")
+            .Produces<StaffDto>();
 
         group.MapGet("/sites/{siteId:guid}/staff", GetStaffAsync)
             .WithName("GetStaff")
-            .WithSummary("Lists every staff member at a site.");
+            .WithSummary("Lists every staff member at a site.")
+            .Produces<List<StaffDto>>();
 
         group.MapPost("/staff/{staffId:guid}/verify-pin", VerifyStaffPinAsync)
             .WithName("VerifyStaffPin")
-            .WithSummary("Verifies a staff member's PIN. Locks the account out after 5 consecutive incorrect PINs.");
+            .WithSummary("Verifies a staff member's PIN. Locks the account out after 5 consecutive incorrect PINs.")
+            .Produces<StaffDto>();
 
         group.MapPut("/staff/{staffId:guid}/pin", SetStaffPinAsync)
             .WithName("SetStaffPin")
-            .WithSummary("Sets a staff member's PIN, clearing any lockout — an admin reset, not a self-service change.");
+            .WithSummary("Sets a staff member's PIN, clearing any lockout — an admin reset, not a self-service change.")
+            .Produces<StaffDto>();
 
         return group;
     }

@@ -43,25 +43,36 @@ simpler than editing it out of the JSON string afterward.
 - **API-14** — a CI job that diffs a freshly generated document against this
   file and fails the build on an unreviewed breaking change.
 - **API-15** — generating the `web/sdk` TypeScript client from this document
-  instead of hand-writing `api/client.ts` in each web app. Started,
-  narrowly — see
+  instead of hand-writing `api/client.ts` in each web app. The generator and
+  every request/response type it needs both exist now; still no consumer —
+  see
   [`src/web/sdk/README.md`](https://github.com/mahbub9/Brasa/blob/main/src/web/sdk/README.md)
   for exactly how narrowly.
 
-API-14 doesn't exist yet. API-15's first slice landed the same session
-this note was added, and building it surfaced a real, previously-unnoticed
-gap worth recording here directly: **every response body in this document is
-undescribed.** `Brasa.Api`'s endpoints all return `Results.Ok(...)`
-through a plain `IResult`-returning method, and ASP.NET Core's OpenAPI
-reflection can only infer a request body's shape that way, never a
-response's — every `"200"` in this file has always been
-`{"description": "OK"}` with no `content`/schema at all, since the moment
-API-13 first committed it. Request bodies, path parameters and query
-parameters are correctly described; nothing a client receives back is.
-Closing that needs `.Produces<T>()` (or `TypedResults`) added across
-roughly 68 route mappings — a bounded, mechanical, but broad change of
-its own, not a side effect of any one endpoint's own feature work.
+API-14 doesn't exist yet. API-15 shipped in two slices the same session:
+the generator first, which surfaced a real, previously-unnoticed gap —
+every response body in this document was undescribed, since the moment
+API-13 first committed it — and closing that gap second. `Brasa.Api`'s
+endpoints all return `Results.Ok(...)` through a plain `IResult`-returning
+method, and ASP.NET Core's OpenAPI reflection can only infer a *request*
+body's shape that way on its own, never a response's; every `.MapGet`/
+`.MapPost`/`.MapPut`/`.MapDelete` across all 68 route mappings (eight
+endpoint files) now carries an explicit `.Produces<T>(statusCode)` call
+telling it what a success response actually looks like. `GET /floor`'s
+`200` now describes `RoomDto[]`, not just `{"description": "OK"}`; a
+`204`/`304` correctly still has no `content` key, since neither carries a
+body by HTTP's own definition — that isn't a gap, it's accurate.
+
+**Still not described: error responses.** A `400`/`404`/`409`/`403` from
+any endpoint remains as undescribed as every response was before this
+pass — `.Produces<T>()` only names the *success* shape a route was mapped
+with; enumerating every distinct error code a given endpoint can return
+(several validation paths in the same handler often return 3–6 different
+codes) is a separate, much larger undertaking this pass deliberately
+didn't attempt. Every error response still shares the same real shape at
+runtime (`ProblemDetails` plus a stable `code` field, `ErrorMapping.cs`) —
+just not one machine-readable from this document yet.
 
 This file is still the first, additive piece it always was: a reviewable
-snapshot of the contract, not an enforced one — and, as of now, an
-honestly half-described one.
+snapshot of the contract, not an enforced one — now honestly describing
+every success response, not just every request.
