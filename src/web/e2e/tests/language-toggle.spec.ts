@@ -82,7 +82,7 @@ test.describe('language toggle', () => {
   });
 
   test('table labels read "Table N" in English, not the seeded "Mesa N"', async ({ page }) => {
-    // DevFloorSeeder stores literal "Mesa 1".."Mesa 16" — real seed data, but
+    // DevFloorSeeder stores literal "Mesa 1".."Mesa 32" — real seed data, but
     // "Mesa" is a generic word ("table"), not identity-bearing content like a
     // dish name, so it goes through src/lib/tableLabel.ts rather than being
     // left untranslated the way menu item names are. Staff who don't read

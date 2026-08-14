@@ -1,7 +1,7 @@
 const SEEDED_TABLE_LABEL = /^Mesa (\d+)$/;
 
 /**
- * "Mesa 1".."Mesa 16" are DevFloorSeeder's placeholder labels (standing in
+ * "Mesa 1".."Mesa 32" are DevFloorSeeder's placeholder labels (standing in
  * for FLR-03's real floor editor, see its own doc comment) — not yet
  * tenant-entered content the way a real restaurant's own table names would
  * be once that editor exists. "Mesa" is a generic word ("table"), not an

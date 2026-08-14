@@ -9,9 +9,12 @@ namespace Brasa.Api.Seed;
 /// Seeds a demo floor plan for <see cref="DevTenant"/> on startup.
 /// </summary>
 /// <remarks>
-/// Stands in for FLR's drag-and-drop floor editor (FLR-03, not built yet) and
-/// for real tenant onboarding (IDN-13) — same role <see cref="DevCatalogSeeder"/>
-/// plays for the menu. Guarded the same way: never in Production.
+/// Stands in for real tenant onboarding (IDN-13, not built yet) — same role
+/// <see cref="DevCatalogSeeder"/> plays for the menu. FLR-03's own editor
+/// (table/room CRUD plus the drag-and-drop canvas) is built and lets a
+/// tenant reshape this seeded starting point; this seeder is what a brand
+/// new tenant would otherwise stare at an empty floor plan without.
+/// Guarded the same way: never in Production.
 /// </remarks>
 public static class DevFloorSeeder
 {
@@ -46,30 +49,40 @@ public static class DevFloorSeeder
 
         db.Rooms.AddRange(salao, esplanada);
 
-        // 16 tables, not 8 — the original count. E2E has grown past twenty
-        // tests sharing this seeded floor plan (src/web/e2e), and back-to-back
-        // full runs started occasionally exhausting an 8-table pool under
-        // real 2-worker parallelism (a QA-02 scaling limitation, not a
-        // product bug — see docs/development/e2e-testing.md). Doubling the
-        // pool is a cheap mitigation; a disposable-per-run database is the
-        // real fix, tracked separately.
-        db.Tables.AddRange(
-            new Table(salao.Id, "Mesa 1", seats: 2, positionX: 0, positionY: 0, TableShape.Round),
-            new Table(salao.Id, "Mesa 2", seats: 2, positionX: 1, positionY: 0, TableShape.Round),
-            new Table(salao.Id, "Mesa 3", seats: 4, positionX: 2, positionY: 0, TableShape.Square),
-            new Table(salao.Id, "Mesa 4", seats: 4, positionX: 0, positionY: 1, TableShape.Square),
-            new Table(salao.Id, "Mesa 5", seats: 6, positionX: 1, positionY: 1, TableShape.Rectangle),
-            new Table(salao.Id, "Mesa 9", seats: 2, positionX: 2, positionY: 1, TableShape.Round),
-            new Table(salao.Id, "Mesa 10", seats: 4, positionX: 0, positionY: 2, TableShape.Square),
-            new Table(salao.Id, "Mesa 11", seats: 4, positionX: 1, positionY: 2, TableShape.Square),
-            new Table(salao.Id, "Mesa 12", seats: 6, positionX: 2, positionY: 2, TableShape.Rectangle),
-            new Table(esplanada.Id, "Mesa 6", seats: 2, positionX: 0, positionY: 0, TableShape.Round),
-            new Table(esplanada.Id, "Mesa 7", seats: 2, positionX: 1, positionY: 0, TableShape.Round),
-            new Table(esplanada.Id, "Mesa 8", seats: 4, positionX: 2, positionY: 0, TableShape.Rectangle),
-            new Table(esplanada.Id, "Mesa 13", seats: 2, positionX: 0, positionY: 1, TableShape.Round),
-            new Table(esplanada.Id, "Mesa 14", seats: 2, positionX: 1, positionY: 1, TableShape.Round),
-            new Table(esplanada.Id, "Mesa 15", seats: 4, positionX: 2, positionY: 1, TableShape.Rectangle),
-            new Table(esplanada.Id, "Mesa 16", seats: 6, positionX: 0, positionY: 2, TableShape.Rectangle));
+        // 32 tables, not 16. E2E has grown from ~23 tests sharing an 8-table
+        // pool (when this was first doubled) to 185 sharing 16 — a worse
+        // tests-per-table ratio than the one that originally exhausted the
+        // pool under real 2-worker parallelism (a QA-02 scaling limitation,
+        // not a product bug — see docs/development/e2e-testing.md). Doubling
+        // again is the same cheap mitigation that doc's own "what's next"
+        // section names; a disposable-per-run database is the real fix,
+        // tracked separately. A 4x4 grid per room, shape and seat count
+        // cycling for visual variety (matters for FLR-03's canvas).
+        var shapes = new[] { TableShape.Round, TableShape.Square, TableShape.Rectangle };
+        var seatCounts = new[] { 2, 4, 6, 4 };
+        var tables = new List<Table>();
+        var mesaNumber = 1;
+
+        foreach (var room in new[] { salao, esplanada })
+        {
+            for (var y = 0; y < 4; y++)
+            {
+                for (var x = 0; x < 4; x++)
+                {
+                    var index = tables.Count;
+                    tables.Add(new Table(
+                        room.Id,
+                        $"Mesa {mesaNumber}",
+                        seats: seatCounts[index % seatCounts.Length],
+                        positionX: x,
+                        positionY: y,
+                        shapes[index % shapes.Length]));
+                    mesaNumber++;
+                }
+            }
+        }
+
+        db.Tables.AddRange(tables);
 
         await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
     }

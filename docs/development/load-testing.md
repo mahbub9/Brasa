@@ -48,7 +48,7 @@ Both live in `src/web/e2e/load/`, run via `npm run load` (both),
 | Script | What it does |
 |---|---|
 | `read-load.mjs` | [autocannon](https://github.com/mcollina/autocannon) against `GET /menu` and `GET /floor` — the two endpoints every terminal polls constantly through a shift. No correlated state between requests, so a generic HTTP benchmarking tool fits directly. autocannon's own latency buckets skip from p90 straight to p97.5 — no exact p95 — so p97.5 is used as a deliberately conservative stand-in and labelled `p95 (p97.5)` in the output rather than silently claiming a percentile the tool doesn't actually report. |
-| `write-load.mjs` | A hand-rolled harness: N concurrent "terminals," each claiming exactly one seeded table for the whole run and cycling **open → ring up an item → close (issues a real fiscal document) → clear** repeatedly for a fixed duration. Bounded by the 16-table seed pool — more terminals than tables would just produce table-conflict `409`s that look like failures but are really a fixture-size limit, not a performance one. |
+| `write-load.mjs` | A hand-rolled harness: N concurrent "terminals," each claiming exactly one seeded table for the whole run and cycling **open → ring up an item → close (issues a real fiscal document) → clear** repeatedly for a fixed duration. Bounded by the seeded table pool (32 as of this writing, doubled from 16 once — see QA-02 in `e2e-testing.md`) — more terminals than tables would just produce table-conflict `409`s that look like failures but are really a fixture-size limit, not a performance one. |
 | `run-all.mjs` | Runs both, exits non-zero if either failed. |
 
 Environment variables (all optional, sensible defaults):

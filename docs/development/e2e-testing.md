@@ -232,11 +232,15 @@ If that passes reliably, the core product promise is proven.
    fresh per run. A disposable-per-run database (Testcontainers-driven, or a
    `docker compose` invocation from `globalSetup`) is a reasonable follow-up
    once tests start wanting to run in parallel against independent data —
-   **now observably worth doing**: at 23 tests sharing 8 seeded tables,
-   back-to-back full runs have started occasionally exhausting the pool (see
-   the note above). A cheaper interim mitigation — more seeded tables in
-   `DevFloorSeeder` — buys headroom without the bigger lift of per-run
-   isolation.
+   still the real fix, tracked separately. The cheaper interim mitigation —
+   more seeded tables in `DevFloorSeeder` — has been applied twice now: 8 →
+   16 tables once the suite passed twenty tests, then 16 → 32 once it passed
+   180 (a worse tests-per-table ratio than the one that first motivated
+   doubling — see `docs/ai/README.md` §7). Confirmed live: three consecutive
+   full runs back-to-back, no pause between them, 185/185 clean each time —
+   the same load pattern that used to occasionally exhaust the pool before.
+   This mitigation doesn't scale indefinitely; if the suite keeps growing,
+   per-run isolation stops being optional.
 2. ~~**QA-05** happy path~~ — done (`walking-skeleton.spec.ts`).
 3. ~~Wire into CI~~ — done (`.github/workflows/ci.yml`, job `e2e`), **not yet
    verified by an actual CI run**.

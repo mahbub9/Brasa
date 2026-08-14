@@ -20,7 +20,7 @@ test.describe('admin back-office shell', () => {
     await expect(cards).toBeVisible();
 
     // Real numbers, not placeholders — the seeded dev catalog and floor plan
-    // are never empty (see docs/ai/README.md §7 on the 16-table seed).
+    // are never empty (see docs/ai/README.md §7 on the 32-table seed).
     await expect(page.getByTestId('overview-categories')).not.toHaveText('0');
     await expect(page.getByTestId('overview-items')).not.toHaveText('0');
     await expect(page.getByTestId('overview-rooms')).not.toHaveText('0');

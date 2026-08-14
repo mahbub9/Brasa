@@ -73,7 +73,7 @@ test.describe('table transfer', () => {
     // This test chains two independently-retrying helpers — openAnyFreeTable
     // for the initial seating, then transferToAnyFreeTable for the move —
     // each good for up to 5 attempts × 5s under real contention for the
-    // shared 16-table pool (QA-02). Their worst cases can add, so the default
+    // shared 32-table pool (QA-02). Their worst cases can add, so the default
     // 30s (or even 60s) test timeout is too tight; this gives real headroom.
     test.setTimeout(120_000);
 
