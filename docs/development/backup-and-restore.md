@@ -1,10 +1,11 @@
 # Backup and restore
 
-> **Status:** the mechanism is built and drilled (OPS-12). Nothing runs it on
-> a schedule yet — there is no production deployment to schedule it in
-> (OPS-11), so this is run on demand today, the same "ship the seam ahead of
-> the trigger" shape as [OpenTelemetry](../product/status.md#infrastructure)
-> (OPS-08) and [error tracking](../product/status.md#infrastructure) (OPS-14).
+> **Status:** the mechanism is built, drilled, and now scheduled (OPS-12,
+> OPS-10). `DatabaseBackupJob` (`src/backend/Brasa.Api/Jobs/`) wraps
+> `backup-database.ps1`/`restore-drill.ps1` as two Hangfire recurring jobs —
+> a nightly backup, a weekly full drill — visible and manually triggerable
+> from `/hangfire` outside Production. Both scripts still also work run by
+> hand, exactly as documented below.
 
 ## Why "tested," not just "automated"
 
@@ -26,7 +27,16 @@ nothing silently dropped a table along the way.
 All three live in `infra/scripts/` and are PowerShell (this project's
 primary dev environment is Windows PowerShell 5.1 — see the root
 `CLAUDE.md`). Run them from the repository root, or anywhere — each resolves
-its own paths relative to `$PSScriptRoot`.
+its own paths relative to `$PSScriptRoot`, **except** when a script is
+launched via `-File` from a redirected, non-interactive process (exactly how
+`DatabaseBackupJob` invokes them, and reproducible with a plain
+`powershell.exe -File ... 2>&1` from any non-interactive shell, no Hangfire
+involved) — Windows PowerShell 5.1 leaves `$PSScriptRoot` empty specifically
+inside that script's own `param()` block in that one launch style, though it
+resolves correctly everywhere else (the script body, and any script it goes
+on to invoke via `&`). `backup-database.ps1`'s own `-OutputDir` default hit
+this; `DatabaseBackupJob` works around it by passing `-OutputDir` explicitly
+rather than relying on the default, so the script itself needed no change.
 
 | Script | Purpose |
 |---|---|
@@ -95,14 +105,32 @@ using the same query shape the script uses — both were correctly flagged
 (`FAIL` on the count, `MISSING` on the absent table) before this page was
 written.
 
+**`hangfire.*` is excluded from the row-count comparison, on purpose.**
+Once OPS-10 wired Hangfire in, its own tables (`hangfire.lock`,
+`hangfire.server`, and friends) became the first source of writes in this
+database that happen continuously, independent of the drill's own
+timing — the job scheduler, distributed locks, and server heartbeats keep
+mutating them every few seconds regardless of any tenant traffic. A
+row-count comparison assumes the source is quiescent between "back it up"
+and "count it again for comparison"; true for every tenant-data table
+(this drill runs at 3am UTC via its own recurring job, when there's no
+tenant traffic to race against), never true for Hangfire's own operational
+state. That's fine to exclude, not just convenient: a lost lock row or
+stale heartbeat after a real restore isn't a disaster-recovery failure the
+way losing tenant data would be — it gets re-acquired or re-sent on its
+own. Confirmed live: `hangfire.lock` genuinely mismatched (0 vs. 1 row) on
+one real drill run before this exclusion existed, while all 34 other
+tables matched exactly — proof the mechanism itself was never broken, only
+the comparison's assumption that nothing else in the database moves.
+
+**Scheduled via Hangfire now, both jobs manually triggered end to end
+through the running server** (`RecurringJob.TriggerJob`, not just the
+underlying scripts run by hand) — a real ~1MB backup file produced by
+`nightly-database-backup`, a real drill passing clean via
+`weekly-restore-drill`.
+
 ## What this doesn't cover yet
 
-- **No schedule.** There is nothing to schedule it *in* — no production
-  deployment (OPS-11) and no job runner (OPS-10, itself gated on having a
-  real recurring job to run). Once either exists, `restore-drill.ps1` (or
-  just `backup-database.ps1` for routine backups, with the drill run
-  periodically rather than on every backup) is what a cron entry or
-  Hangfire recurring job would call.
 - **No off-host storage.** Backups land in `infra/backups/` on the same
   machine as the database they're backing up — fine for proving the
   mechanism works, not a real disaster-recovery posture. Off-host storage

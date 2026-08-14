@@ -56,7 +56,20 @@ $scratchDatabase = "${Database}_restore_drill"
 
 function Get-TableList {
     param([string]$TargetDatabase)
-    $query = "SELECT table_schema || '.' || table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema') ORDER BY 1"
+    # hangfire.* excluded alongside the two system schemas -- OPS-10 (later
+    # than this script's own OPS-12 origin) made Hangfire's own tables the
+    # first source of writes in this database that happen continuously,
+    # independent of the drill's own timing: its job scheduler, distributed
+    # locks and server heartbeats keep mutating hangfire.lock/server/etc.
+    # every few seconds regardless of any tenant traffic. A row-count
+    # comparison assumes the source is quiescent between "back it up" and
+    # "count it again for comparison" -- true for every tenant-data table
+    # (this drill runs at 3am, docs/development/backup-and-restore.md's own
+    # cron), but never true for Hangfire's own operational state, which
+    # isn't business data needing a disaster-recovery guarantee anyway: a
+    # lost lock row or stale heartbeat after a real restore just gets
+    # re-acquired/re-sent, it was never data anyone needed to recover.
+    $query = "SELECT table_schema || '.' || table_name FROM information_schema.tables WHERE table_type = 'BASE TABLE' AND table_schema NOT IN ('pg_catalog', 'information_schema', 'hangfire') ORDER BY 1"
     $output = docker exec $Container psql -U $User -d $TargetDatabase -tAc $query
     if ($LASTEXITCODE -ne 0) { throw "Listing tables in '$TargetDatabase' failed with exit code $LASTEXITCODE" }
     return @($output | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })

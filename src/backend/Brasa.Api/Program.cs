@@ -7,6 +7,7 @@ using Brasa.Api.Endpoints;
 using Brasa.Api.HealthChecks;
 using Brasa.Api.Hubs;
 using Brasa.Api.Idempotency;
+using Brasa.Api.Jobs;
 using Brasa.Api.RateLimiting;
 using Brasa.Api.Seed;
 using Brasa.Api.Tenancy;
@@ -27,6 +28,8 @@ using Brasa.Shared.Time;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.ResponseCompression;
+using Hangfire;
+using Hangfire.PostgreSql;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
@@ -203,6 +206,19 @@ builder.Services.AddIdentityModule(connectionString);
 // documents to a real restaurant.
 builder.Services.AddMockFiscalProvider(builder.Environment);
 
+// ── Background jobs (OPS-10) ─────────────────────────────────────────────────
+// Uses the migrations (superuser) connection, the same reasoning as
+// MigrateAsync below — Hangfire's own storage schema needs DDL rights the
+// unprivileged runtime role doesn't have. DatabaseBackupJob (Jobs/) wraps
+// the already-verified backup/restore-drill scripts; this is what closes
+// OPS-12's own "nothing schedules it yet" gap.
+builder.Services.AddHangfire(config => config
+    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+    .UseSimpleAssemblyNameTypeSerializer()
+    .UseRecommendedSerializerSettings()
+    .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(migrationsConnectionString)));
+builder.Services.AddHangfireServer();
+
 // ── API platform ─────────────────────────────────────────────────────────────
 // RFC 9457 responses for every failure, so clients get one error shape.
 builder.Services.AddProblemDetails();
@@ -342,6 +358,18 @@ app.UseStaticFiles(new StaticFileOptions
     RequestPath = "/uploads/menu-items",
 });
 
+// OPS-10 — Hangfire's dashboard has no authorization filter configured:
+// this app has no auth story at all yet (IDN-03…08, I3), so there is
+// nothing to gate it behind today. Mapped only outside Production, the
+// same "structurally impossible in Production" shape DevTenantMiddleware
+// and TestClockMiddleware already use, and doubly true here since
+// DatabaseBackupJob's own scripts only work against the local dev Docker
+// container anyway.
+if (!app.Environment.IsProduction())
+{
+    app.UseHangfireDashboard("/hangfire");
+}
+
 app.UseRouting();
 app.UseCors(WebClientsCorsPolicy);
 
@@ -424,6 +452,21 @@ v1.MapClientEndpoints();
 // API-16/17: this codebase's first realtime channel, broadcast-only,
 // payload-less (see FloorHub's own remarks for why).
 app.MapHub<FloorHub>("/hubs/floor");
+
+// OPS-10/OPS-12 — a routine backup daily, the full (backup + restore +
+// row-count) drill weekly, same split docs/development/backup-and-restore.md
+// itself already suggested before either job existed: the drill is the
+// expensive half, worth running periodically rather than on every backup.
+// Times are UTC (Hangfire's Cron default) -- an unattended backup job has
+// no reason to care about Europe/Lisbon vs Azores, unlike fiscal daily
+// close. Never in Production -- see DatabaseBackupJob's own remarks.
+if (!app.Environment.IsProduction())
+{
+    RecurringJob.AddOrUpdate<DatabaseBackupJob>(
+        "nightly-database-backup", job => job.RunBackupAsync(CancellationToken.None), Cron.Daily(3));
+    RecurringJob.AddOrUpdate<DatabaseBackupJob>(
+        "weekly-restore-drill", job => job.RunRestoreDrillAsync(CancellationToken.None), Cron.Weekly(DayOfWeek.Sunday, 4));
+}
 
 await app.RunAsync().ConfigureAwait(false);
 
