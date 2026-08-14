@@ -40,6 +40,8 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | [Menu item photos, description and allergens](menu-item-photos-and-details.md) | CAT-02 | Catalog |
 | [Menu item classification: course and station](menu-item-classification.md) | CAT-14, CAT-15 | Catalog |
 | [Channel pricing — dine-in vs takeaway](channel-pricing.md) | CAT-06 | Catalog |
+| [Combos (menu do dia)](combos.md) | CAT-10 | Catalog |
+| [Pre-bill: a documento não fiscal, not an invoice](pre-bill.md) | ORD-18, ORD-19 | Ordering |
 | [Floor-plan editor: table/room CRUD, seating groups, multiple floors, section assignment](floor-plan-editor.md) | FLR-03, FLR-05, FLR-06, FLR-07 | Floor |
 | [Effective-dated tax rules](tax-rules.md) | CAT-07, CAT-08 | Catalog |
 | [Realtime floor updates](realtime-floor-updates.md) | API-16, API-17 | Web |
