@@ -107,6 +107,9 @@ as any change to an error code, the same rule as everything else in
 | `order.not_open` | Conflict | 409 | `AddLine()`, `EnsureCanGeneratePreBill()`, `SetLineNotes()`, `SetLineQuantity()`, `SetLineDiscount()`, `SetDiscount()`, `VoidLine()`, `FireLines()` (ORD-07/08), `TransferToTable()`, `DetachLine()`, `ReceiveLine()` or `MarkMerged()` was called on an order that isn't `Open`. |
 | `order.notes_too_long` | Validation | 400 | `SetLineNotes()`'s `notes` is over 300 characters. |
 | `order.void_reason_required` | Validation | 400 | `POST /orders/{id}/lines/{lineId}/void`'s (ORD-10) `reason` is missing, empty or whitespace. |
+| `payment.insufficient_tender` | Validation | 400 | `POST /orders/{id}/payments`'s (PAY-02) `amountTendered` is less than the order's own current total. Partial payment isn't supported yet (PAY-05) — a payment must cover the total in one record. |
+| `payment.invalid_amount_tendered` | Validation | 400 | `POST /orders/{id}/payments`'s `amountTendered` is zero or negative. |
+| `payment.unsupported_method` | Validation | 400 | `POST /orders/{id}/payments`'s `method` isn't a recognised, supported `PaymentMethod` — only `"Cash"` exists today (PAY-02); card/split/voucher tenders are each their own later task (PAY-03/04/12). |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |
 | `request.rate_limited` | RateLimited | 429 | The calling `(tenant, X-Brasa-Client client id)` pair exceeded `RateLimiting`'s configured requests-per-window (API-12). The response carries a `Retry-After` header. |
 

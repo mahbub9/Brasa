@@ -1,6 +1,7 @@
 import { formatMoney } from '@brasa/ui/lib/money';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@brasa/ui/components/Button';
+import { CashPayment } from './CashPayment';
 import type { CloseOrderResponse } from '../api/types';
 import { formatTableLabel } from '../lib/tableLabel';
 
@@ -45,6 +46,8 @@ export function Receipt({ result, onNewTable }: ReceiptProps) {
         {t('receipt.mockNotice')}{' '}
         <code>docs/architecture/decisions/0002-own-fiscal-engine.md</code>.
       </p>
+
+      <CashPayment orderId={order.id} amountDue={order.total} />
 
       <Button onClick={onNewTable}>{t('receipt.newTable')}</Button>
     </div>

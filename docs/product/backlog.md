@@ -723,8 +723,8 @@ The plan of record. Every feature and task, with a stable ID and a status.
 
 | ID | Task | Status |
 |---|---|---|
-| PAY-01 | Payment / tender model | ⬜ |
-| PAY-02 | Cash tender with change calculation | ⬜ |
+| PAY-01 | Payment / tender model | ✅ New `Brasa.Modules.Payments` module — a `Payment` entity (`OrderId`, `Method`, `AmountDue`, `AmountTendered`, computed `Change`, `PaidAtUtc`), its own `payments` schema, own `PaymentsDbContext`/migration/RLS. Purely additive: does not gate `Order.Close()` and is never queried by Ordering — the API layer composes both contexts, the same shape `PriceListEndpoints` already uses. Full tender only, no partial payment (constructor throws if `amountTendered < amountDue` — that's PAY-05). See [cash payments](../features/cash-payments.md) |
+| PAY-02 | Cash tender with change calculation | ✅ `PaymentMethod.Cash` is the only case today. `POST /orders/{id}/payments` reads the order's own total server-side (never trusts a client-sent amount due), validates the tender, and returns the computed `change`. `GET /orders/{id}/payments` lists every payment recorded. `pos`'s receipt screen (`CashPayment.tsx`) records a tender and shows change due. **Verified live**: backend suite (101 tests) + `verify.ps1` clean; `payments.spec.ts` (6 tests: correct change, insufficient tender, invalid amount/method/order, listing, payment-after-close) all pass; full E2E suite 193/194 (the one failure, `transfer-table.spec.ts`, is the pre-existing QA-02 table-pool flake, confirmed clean in isolation). See [cash payments](../features/cash-payments.md) |
 | PAY-03 | Card tender, manually captured from a standalone TPA | ⬜ |
 | PAY-04 | Split tender across multiple methods | ⬜ |
 | PAY-05 | Partial payment against an open order | ⬜ |

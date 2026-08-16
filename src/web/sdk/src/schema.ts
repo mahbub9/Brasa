@@ -1185,6 +1185,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/orders/{orderId}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every payment recorded against an order, oldest first. */
+        get: operations["GetPayments"];
+        put?: never;
+        /** Records a cash tender against an order, computing change (PAY-01/02). Full payment only — no partial tender yet (PAY-05). */
+        post: operations["RecordPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/client-requirements": {
         parameters: {
             query?: never;
@@ -1507,6 +1525,17 @@ export interface components {
             id: string;
             name: string;
         };
+        PaymentDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            orderId: string;
+            method: string;
+            amountDue: components["schemas"]["MoneyDto"];
+            amountTendered: components["schemas"]["MoneyDto"];
+            change: components["schemas"]["MoneyDto"];
+            paidAtUtc: string;
+        };
         PreBillDto: {
             /** Format: uuid */
             orderId: string;
@@ -1534,6 +1563,11 @@ export interface components {
             /** Format: uuid */
             menuItemId: string;
             price: components["schemas"]["MoneyDto"];
+        };
+        RecordPaymentRequest: {
+            method: string;
+            /** Format: double */
+            amountTendered: number | string;
         };
         ResolvedFeatureFlagDto: {
             key: string;
@@ -3569,6 +3603,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CloseOrderResponse"];
+                };
+            };
+        };
+    };
+    GetPayments: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentDto"][];
+                };
+            };
+        };
+    };
+    RecordPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentDto"];
                 };
             };
         };

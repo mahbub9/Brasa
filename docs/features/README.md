@@ -50,3 +50,4 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | [Feature flags](feature-flags.md) | IDN-16 | Identity |
 | [Order concurrency — a lost-update guard for the order aggregate](order-concurrency.md) | ORD-21 | Ordering |
 | [Privileged system-context role for background jobs](system-context-role.md) | DAT-07 | Shared kernel |
+| [Cash payments — a tender recorded against an order, with change](cash-payments.md) | PAY-01, PAY-02 | Payments |

@@ -7,8 +7,10 @@ import type {
   OpenTakeawayOrderRequest,
   OrderDto,
   OrganizationDto,
+  PaymentDto,
   PreBillDto,
   ProblemDetails,
+  RecordPaymentRequest,
   RoomDto,
   SetLineNotesRequest,
   SetLineQuantityRequest,
@@ -124,6 +126,11 @@ export const api = {
   getPreBill: (orderId: string) => request<PreBillDto>(`/orders/${orderId}/pre-bill`),
 
   closeOrder: (orderId: string) => post<CloseOrderResponse>(`/orders/${orderId}/close`),
+
+  recordPayment: (orderId: string, body: RecordPaymentRequest) =>
+    post<PaymentDto>(`/orders/${orderId}/payments`, body),
+
+  getPayments: (orderId: string) => request<PaymentDto[]>(`/orders/${orderId}/payments`),
 
   // IDN-01/08/09 (WEB-07) -- staff sign-in. No site-selector exists in pos
   // any more than it does in admin, so this resolves the same "first

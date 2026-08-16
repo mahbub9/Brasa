@@ -151,6 +151,22 @@ export interface CloseOrderResponse {
   document: FiscalDocumentDto;
 }
 
+/** A tender recorded against an order (PAY-01/02). Only `'Cash'` exists today. */
+export interface PaymentDto {
+  id: string;
+  orderId: string;
+  method: 'Cash';
+  amountDue: MoneyDto;
+  amountTendered: MoneyDto;
+  change: MoneyDto;
+  paidAtUtc: string;
+}
+
+export interface RecordPaymentRequest {
+  method: 'Cash';
+  amountTendered: number;
+}
+
 /** One VAT band's subtotal on a pre-bill, e.g. the 13% and 23% lines shown separately. */
 export interface VatBreakdownDto {
   vatRateFraction: number;

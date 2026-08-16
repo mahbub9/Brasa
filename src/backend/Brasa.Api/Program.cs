@@ -21,6 +21,8 @@ using Brasa.Modules.Identity;
 using Brasa.Modules.Identity.Persistence;
 using Brasa.Modules.Ordering;
 using Brasa.Modules.Ordering.Persistence;
+using Brasa.Modules.Payments;
+using Brasa.Modules.Payments.Persistence;
 using Brasa.Shared.Persistence;
 using Brasa.Shared.Primitives;
 using Brasa.Shared.Tenancy;
@@ -227,6 +229,7 @@ builder.Services.AddCatalogModule(databaseOptions, connectionString, systemConne
 builder.Services.AddOrderingModule(databaseOptions, connectionString, systemConnectionString);
 builder.Services.AddFloorModule(databaseOptions, connectionString, systemConnectionString);
 builder.Services.AddIdentityModule(databaseOptions, connectionString, systemConnectionString);
+builder.Services.AddPaymentsModule(databaseOptions, connectionString, systemConnectionString);
 
 // Fiscal.Portugal (the real, AT-certifiable engine) is I7 work — see
 // docs/architecture/decisions/0002-own-fiscal-engine.md. Until it exists, there
@@ -513,6 +516,7 @@ v1.MapPriceListEndpoints();
 v1.MapComboEndpoints();
 v1.MapTaxRuleEndpoints();
 v1.MapOrderEndpoints();
+v1.MapPaymentEndpoints();
 v1.MapClientEndpoints();
 
 // Not under /api/v1 -- a hub is a connection, not a versioned resource.
@@ -587,6 +591,14 @@ static async Task MigrateAsync(string migrationsConnectionString, CancellationTo
     {
         await identityDb.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
     }
+
+    var paymentsOptions = new DbContextOptionsBuilder<PaymentsDbContext>()
+        .UseNpgsql(migrationsConnectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "payments"))
+        .Options;
+    await using (var paymentsDb = new PaymentsDbContext(paymentsOptions, tenantContext, tenantContextAccessor, clock))
+    {
+        await paymentsDb.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
+    }
 }
 
 /// <summary>
@@ -607,6 +619,7 @@ static async Task EnsureCreatedAsync(IServiceProvider services, CancellationToke
     await scope.ServiceProvider.GetRequiredService<OrderingDbContext>().Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
     await scope.ServiceProvider.GetRequiredService<FloorDbContext>().Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
     await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+    await scope.ServiceProvider.GetRequiredService<PaymentsDbContext>().Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
 }
 
 /// <summary>

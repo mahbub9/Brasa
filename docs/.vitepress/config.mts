@@ -163,6 +163,7 @@ export default defineConfig({
           { text: 'Feature flags', link: '/features/feature-flags' },
           { text: 'Order concurrency', link: '/features/order-concurrency' },
           { text: 'Privileged system-context role', link: '/features/system-context-role' },
+          { text: 'Cash payments', link: '/features/cash-payments' },
         ],
       },
     ],

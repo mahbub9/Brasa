@@ -108,6 +108,14 @@ export const en = {
     mockNotice: 'Mock fiscal provider — this document has no legal value.',
     newTable: 'Open another table',
   },
+  payment: {
+    title: 'Cash payment',
+    amountDue: 'Amount due: {{amount}}',
+    tenderedPlaceholder: 'Cash tendered',
+    record: 'Record payment',
+    recorded: 'Payment recorded.',
+    changeDue: 'Change due: {{amount}}',
+  },
   staff: {
     signIn: 'Sign in',
     signOut: 'Sign out',
@@ -158,6 +166,11 @@ export const en = {
       },
       fiscal: {
         no_lines: "Can't issue the receipt: there's nothing left to bill.",
+      },
+      payment: {
+        insufficient_tender: 'That amount is less than what is owed.',
+        invalid_amount_tendered: 'Enter a valid amount.',
+        unsupported_method: 'That payment method is not supported yet.',
       },
       request: {
         idempotency_key_required: 'Something went wrong. Please try again.',

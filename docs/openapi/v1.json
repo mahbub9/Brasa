@@ -2840,6 +2840,81 @@
         }
       }
     },
+    "/api/v1/orders/{orderId}/payments": {
+      "post": {
+        "tags": [
+          "PaymentEndpoints"
+        ],
+        "summary": "Records a cash tender against an order, computing change (PAY-01/02). Full payment only — no partial tender yet (PAY-05).",
+        "operationId": "RecordPayment",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordPaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentDto"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "PaymentEndpoints"
+        ],
+        "summary": "Lists every payment recorded against an order, oldest first.",
+        "operationId": "GetPayments",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/client-requirements": {
       "get": {
         "tags": [
@@ -4051,6 +4126,43 @@
           }
         }
       },
+      "PaymentDto": {
+        "required": [
+          "id",
+          "orderId",
+          "method",
+          "amountDue",
+          "amountTendered",
+          "change",
+          "paidAtUtc"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "orderId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "method": {
+            "type": "string"
+          },
+          "amountDue": {
+            "$ref": "#/components/schemas/MoneyDto"
+          },
+          "amountTendered": {
+            "$ref": "#/components/schemas/MoneyDto"
+          },
+          "change": {
+            "$ref": "#/components/schemas/MoneyDto"
+          },
+          "paidAtUtc": {
+            "type": "string"
+          }
+        }
+      },
       "PreBillDto": {
         "required": [
           "orderId",
@@ -4149,6 +4261,26 @@
           },
           "price": {
             "$ref": "#/components/schemas/MoneyDto"
+          }
+        }
+      },
+      "RecordPaymentRequest": {
+        "required": [
+          "method",
+          "amountTendered"
+        ],
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "amountTendered": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
@@ -5013,6 +5145,9 @@
     },
     {
       "name": "OrderEndpoints"
+    },
+    {
+      "name": "PaymentEndpoints"
     },
     {
       "name": "ClientEndpoints"

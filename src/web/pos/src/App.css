@@ -625,6 +625,55 @@ main {
   margin: var(--space-4) 0 var(--space-5);
 }
 
+/* Cash payment (PAY-01/02) */
+
+.cash-payment {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4);
+  background: var(--paper);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  text-align: left;
+}
+
+.cash-payment h2 {
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-body-lg);
+}
+
+.cash-payment-due {
+  margin: 0 0 var(--space-3);
+  color: var(--muted);
+}
+
+.cash-payment-form {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.cash-payment-form .brasa-field-control {
+  flex: 1;
+  min-width: 0;
+}
+
+.cash-payment-error {
+  margin: var(--space-2) 0 0;
+  color: var(--danger);
+  font-size: var(--text-caption);
+}
+
+.cash-payment-done {
+  text-align: center;
+}
+
+.cash-payment-change {
+  margin: 0;
+  font-size: var(--text-heading-sm);
+  font-weight: 700;
+  color: var(--brasa-dark);
+}
+
 /* Modifier picker */
 
 /* Backdrop/panel now come from the shared Modal component (@brasa/ui) —

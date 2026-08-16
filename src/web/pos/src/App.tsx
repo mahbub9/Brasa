@@ -1,7 +1,7 @@
 import { LanguageToggle } from '@brasa/ui/components/LanguageToggle';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { api, ApiError } from './api/client';
+import { api } from './api/client';
 import { connectFloorHub } from './api/floorHub';
 import type {
   CloseOrderResponse,
@@ -15,7 +15,6 @@ import type {
 } from './api/types';
 import { CouvertBar } from './components/CouvertBar';
 import { ErrorBanner } from './components/ErrorBanner';
-import i18n from './i18n/i18n';
 import { MenuGrid } from './components/MenuGrid';
 import { ModifierPicker } from './components/ModifierPicker';
 import { OrderSummary } from './components/OrderSummary';
@@ -24,6 +23,7 @@ import { Receipt } from './components/Receipt';
 import { StaffLogin } from './components/StaffLogin';
 import { TablePicker } from './components/TablePicker';
 import { TransferTablePicker } from './components/TransferTablePicker';
+import { describeError } from './lib/describeError';
 import './App.css';
 
 /**
@@ -382,27 +382,3 @@ export default function App() {
   );
 }
 
-/**
- * The server's ProblemDetails.title is always English — it's a developer-
- * facing string, not localized copy (docs/architecture/api-contract.md).
- * Showing it verbatim means Portuguese-speaking staff see English error
- * text regardless of the language toggle, so this looks up a real
- * translation by the stable error code first (error.code.<code> in
- * resources/{pt,en}.ts) and only falls back to the raw server message —
- * with the code shown alongside, for support purposes — when no
- * translation exists yet for that code. An untranslated code is never
- * silently hidden, just shown in English until someone adds it.
- */
-function describeError(err: unknown): string {
-  if (err instanceof ApiError) {
-    if (err.code) {
-      const key = `error.code.${err.code}`;
-      if (i18n.exists(key)) {
-        return i18n.t(key);
-      }
-      return `${err.message} (${err.code})`;
-    }
-    return err.message;
-  }
-  return err instanceof Error ? err.message : i18n.t('error.generic');
-}

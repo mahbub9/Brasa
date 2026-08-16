@@ -9,6 +9,7 @@ import type {
   OrderDto,
   OrderSummaryDto,
   OrganizationDto,
+  PaymentDto,
   PreBillDto,
   PriceListDto,
   ResolvedTaxRuleDto,
@@ -924,6 +925,45 @@ export async function closeOrderAndClearTable(
 ): Promise<void> {
   await closeOrder(request, orderId);
   await clearTable(request, tableId);
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (PAY-01/02). */
+export function recordPaymentResponse(
+  request: APIRequestContext,
+  orderId: string,
+  method: string,
+  amountTendered: number,
+) {
+  return request.post(`${apiBaseUrl}/orders/${orderId}/payments`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { method, amountTendered },
+  });
+}
+
+export async function recordPayment(
+  request: APIRequestContext,
+  orderId: string,
+  method: string,
+  amountTendered: number,
+): Promise<PaymentDto> {
+  const response = await recordPaymentResponse(request, orderId, method, amountTendered);
+  if (!response.ok()) {
+    throw new Error(`POST /orders/${orderId}/payments failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (PAY-01/02). */
+export function getPaymentsResponse(request: APIRequestContext, orderId: string) {
+  return request.get(`${apiBaseUrl}/orders/${orderId}/payments`);
+}
+
+export async function getPayments(request: APIRequestContext, orderId: string): Promise<PaymentDto[]> {
+  const response = await getPaymentsResponse(request, orderId);
+  if (!response.ok()) {
+    throw new Error(`GET /orders/${orderId}/payments failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
 }
 
 /** Raw response so callers can assert on status/body for the failure cases too (FLR-04). */

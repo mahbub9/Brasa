@@ -239,6 +239,16 @@ export interface CloseOrderResponse {
   document: FiscalDocumentDto;
 }
 
+export interface PaymentDto {
+  id: string;
+  orderId: string;
+  method: 'Cash';
+  amountDue: MoneyDto;
+  amountTendered: MoneyDto;
+  change: MoneyDto;
+  paidAtUtc: string;
+}
+
 export interface TableDto {
   id: string;
   roomId: string;
