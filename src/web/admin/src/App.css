@@ -185,31 +185,8 @@
   margin: 0;
 }
 
-.badge {
-  padding: 0.15rem 0.55rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.badge-on {
-  background: #e4f3e7;
-  color: #1c6b34;
-}
-
-.badge-off {
-  background: var(--danger-bg);
-  color: var(--danger);
-}
-
-/* Purely informational, not a status indicator -- the floor-level tag
-   (FLR-07) reuses the pill shape without borrowing on/off's good/bad
-   color meaning. */
-.badge-neutral {
-  background: var(--border);
-  color: var(--muted);
-  margin-left: 0.5rem;
-}
+/* Badge styling (on/off/neutral pills) now comes from the shared Badge
+   component (@brasa/ui) — see components.css's .brasa-badge-*. */
 
 .menu-manager-category-heading button {
   margin-left: auto;
@@ -260,11 +237,8 @@
   gap: 0.35rem;
 }
 
-.menu-manager-item-price-edit input {
+.menu-manager-item-price-edit .brasa-field-control {
   width: 5.5rem;
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
 }
 
 .menu-manager-item-image {
@@ -449,13 +423,6 @@
   font-size: 0.85rem;
 }
 
-.floor-manager-table-edit input,
-.floor-manager-table-edit select {
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
 .floor-manager-table-edit input[type='number'] {
   width: 4rem;
 }
@@ -468,27 +435,11 @@
   color: var(--danger);
 }
 
-.floor-manager-add-table {
-  border: none;
-  background: none;
-  padding: 0;
-  color: var(--brasa);
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
 .floor-manager-add-table-form {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-}
-
-.floor-manager-add-table-form input,
-.floor-manager-add-table-form select {
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
 }
 
 .floor-manager-add-table-form input[type='number'] {
@@ -520,24 +471,12 @@
   margin-left: auto;
 }
 
-.floor-manager-room-heading-edit input {
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
 .floor-manager-room-section {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
   font-size: 0.85rem;
-}
-
-.floor-manager-room-section select {
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
 }
 
 .floor-manager-room-delete-confirm {
@@ -548,13 +487,11 @@
   color: var(--danger);
 }
 
+/* A direct child of .floor-manager's own flex column -- without this it
+   would stretch to the full column width now that Button's secondary
+   variant gives it real, visible chrome to stretch. */
 .floor-manager-add-room {
-  border: none;
-  background: none;
-  padding: 0;
-  color: var(--brasa);
-  font-size: 0.9rem;
-  font-weight: 600;
+  align-self: flex-start;
 }
 
 .floor-manager-add-room-form {
@@ -562,12 +499,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-}
-
-.floor-manager-add-room-form input {
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
 }
 
 .staff-manager {
@@ -613,20 +544,13 @@
   gap: 0.5rem;
 }
 
-.staff-row-reset input {
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
+.staff-row-reset .brasa-field-control {
   width: 10rem;
 }
 
+/* A direct child of .staff-manager's own flex column -- see the identical
+   note on .floor-manager-add-room. */
 .staff-manager-add {
-  border: none;
-  background: none;
-  padding: 0;
-  color: var(--brasa);
-  font-size: 0.9rem;
-  font-weight: 600;
   align-self: flex-start;
 }
 
@@ -635,13 +559,6 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 0.5rem;
-}
-
-.staff-manager-add-form input,
-.staff-manager-add-form select {
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
 }
 
 .staff-manager-add-form input[type='text'] {
@@ -700,13 +617,9 @@
   min-width: 6rem;
 }
 
+/* A direct child of .feature-flag-manager's own flex column -- see the
+   identical note on .floor-manager-add-room. */
 .feature-flag-manager-add {
-  border: none;
-  background: none;
-  padding: 0;
-  color: var(--brasa);
-  font-size: 0.9rem;
-  font-weight: 600;
   align-self: flex-start;
 }
 
@@ -718,9 +631,6 @@
 }
 
 .feature-flag-manager-add-form input[type='text'] {
-  padding: 0.2rem 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
   width: 10rem;
 }
 

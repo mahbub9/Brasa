@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@brasa/ui/components/Badge';
+import { Button } from '@brasa/ui/components/Button';
+import { TextField } from '@brasa/ui/components/TextField';
 import { api, ApiError } from '../api/client';
 import type { FeatureFlagDto } from '../api/types';
 
@@ -91,12 +94,12 @@ function FeatureFlagRow({ flag, onReload, onErrorChange }: FeatureFlagRowProps) 
       <span className="feature-flag-platform">
         {flag.platform === ALL_PLATFORMS ? t('featureFlags.allPlatforms') : flag.platform}
       </span>
-      <span className={`badge ${flag.isEnabled ? 'badge-on' : 'badge-off'}`}>
+      <Badge tone={flag.isEnabled ? 'success' : 'danger'}>
         {flag.isEnabled ? t('featureFlags.enabled') : t('featureFlags.disabled')}
-      </span>
-      <button type="button" data-testid={`flag-toggle-${flag.key}-${flag.platform}`} disabled={busy} onClick={toggle}>
+      </Badge>
+      <Button variant="secondary" data-testid={`flag-toggle-${flag.key}-${flag.platform}`} disabled={busy} onClick={toggle}>
         {flag.isEnabled ? t('featureFlags.disable') : t('featureFlags.enable')}
-      </button>
+      </Button>
     </li>
   );
 }
@@ -136,15 +139,15 @@ function AddFeatureFlagForm({ onReload, onErrorChange }: AddFeatureFlagFormProps
 
   if (!adding) {
     return (
-      <button type="button" className="feature-flag-manager-add" data-testid="add-flag" onClick={() => setAdding(true)}>
+      <Button variant="secondary" className="feature-flag-manager-add" data-testid="add-flag" onClick={() => setAdding(true)}>
         + {t('featureFlags.addFlag')}
-      </button>
+      </Button>
     );
   }
 
   return (
     <div className="feature-flag-manager-add-form">
-      <input
+      <TextField
         type="text"
         placeholder={t('featureFlags.keyPlaceholder')}
         value={key}
@@ -152,7 +155,7 @@ function AddFeatureFlagForm({ onReload, onErrorChange }: AddFeatureFlagFormProps
         disabled={busy}
         onChange={(e) => setKey(e.target.value)}
       />
-      <input
+      <TextField
         type="text"
         placeholder={t('featureFlags.platformPlaceholder')}
         value={platform}
@@ -170,12 +173,12 @@ function AddFeatureFlagForm({ onReload, onErrorChange }: AddFeatureFlagFormProps
         />
         {t('featureFlags.enabled')}
       </label>
-      <button type="button" data-testid="new-flag-save" disabled={busy || key.trim() === ''} onClick={submit}>
+      <Button data-testid="new-flag-save" disabled={busy || key.trim() === ''} onClick={submit}>
         {t('common.save')}
-      </button>
-      <button type="button" disabled={busy} onClick={reset}>
+      </Button>
+      <Button variant="ghost" disabled={busy} onClick={reset}>
         {t('common.cancel')}
-      </button>
+      </Button>
     </div>
   );
 }

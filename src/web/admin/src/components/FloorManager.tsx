@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { PointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@brasa/ui/components/Badge';
+import type { BadgeTone } from '@brasa/ui/components/Badge';
+import { Button } from '@brasa/ui/components/Button';
+import { SelectField } from '@brasa/ui/components/SelectField';
+import { TextField } from '@brasa/ui/components/TextField';
 import { api, ApiError } from '../api/client';
 import type { RoomDto, StaffDto, TableDto, TableShape } from '../api/types';
 import { formatTableLabel } from '../lib/tableLabel';
@@ -14,6 +19,16 @@ interface FloorManagerProps {
 }
 
 const SHAPES: TableShape[] = ['Round', 'Square', 'Rectangle'];
+
+// Same accessible per-state palette TablePicker's own STATE_TONE already
+// uses (QA-14) — a table's real state, not the old on/off badge this row
+// used to show for "Free = deletable."
+const STATE_TONE: Record<TableDto['state'], BadgeTone> = {
+  Free: 'success',
+  Occupied: 'danger',
+  BillRequested: 'warning',
+  Dirty: 'neutral',
+};
 
 /**
  * FLR-03 — table and room CRUD (position/shape as plain number/select
@@ -111,7 +126,9 @@ const CANVAS_TABLE_SIZE = 56;
  * exact same `PUT /tables/{id}` the number-input form below already used;
  * this is a second way to set the same two fields, not a new capability.
  * `aria-hidden` on the whole canvas — see the module doc comment above for
- * why that's not a functionality loss.
+ * why that's not a functionality loss. Purely visual, so it stays outside
+ * the WEB-02 design-system wiring below — no shared component fits a
+ * pointer-tracked grid.
  */
 function FloorCanvas({ room, onReload, onErrorChange }: FloorCanvasProps) {
   const { t } = useTranslation();
@@ -234,7 +251,7 @@ function FloorManagerSection({ room, staff, onReload, onErrorChange }: FloorMana
   return (
     <div className="floor-manager-room-section">
       <label htmlFor={`room-section-${room.name}`}>{t('floor.section')}</label>
-      <select
+      <SelectField
         id={`room-section-${room.name}`}
         data-testid={`room-section-${room.name}`}
         value={room.assignedStaffId ?? ''}
@@ -247,7 +264,7 @@ function FloorManagerSection({ room, staff, onReload, onErrorChange }: FloorMana
             {member.name}
           </option>
         ))}
-      </select>
+      </SelectField>
     </div>
   );
 }
@@ -302,14 +319,14 @@ function FloorManagerRoomHeading({ room, showFloors, onReload, onErrorChange }: 
   if (editing) {
     return (
       <div className="floor-manager-room-heading-edit">
-        <input
+        <TextField
           type="text"
           value={nameDraft}
           data-testid={`room-name-input-${room.name}`}
           disabled={busy}
           onChange={(e) => setNameDraft(e.target.value)}
         />
-        <input
+        <TextField
           type="number"
           value={floorLevelDraft}
           aria-label={t('floor.floorLevel')}
@@ -317,11 +334,11 @@ function FloorManagerRoomHeading({ room, showFloors, onReload, onErrorChange }: 
           disabled={busy}
           onChange={(e) => setFloorLevelDraft(e.target.value)}
         />
-        <button type="button" data-testid={`room-name-save-${room.name}`} disabled={busy} onClick={saveRename}>
+        <Button data-testid={`room-name-save-${room.name}`} disabled={busy} onClick={saveRename}>
           {t('common.save')}
-        </button>
-        <button
-          type="button"
+        </Button>
+        <Button
+          variant="ghost"
           disabled={busy}
           onClick={() => {
             setNameDraft(room.name);
@@ -330,7 +347,7 @@ function FloorManagerRoomHeading({ room, showFloors, onReload, onErrorChange }: 
           }}
         >
           {t('common.cancel')}
-        </button>
+        </Button>
       </div>
     );
   }
@@ -350,32 +367,32 @@ function FloorManagerRoomHeading({ room, showFloors, onReload, onErrorChange }: 
       >
         <h2>{room.name}</h2>
         {showFloors && (
-          <span className="badge badge-neutral" data-testid={`room-floor-badge-${room.name}`}>
+          <Badge tone="neutral" data-testid={`room-floor-badge-${room.name}`}>
             {t('floor.floorBadge', { level: room.floorLevel })}
-          </span>
+          </Badge>
         )}
       </button>
 
       {confirmingDelete ? (
         <span className="floor-manager-room-delete-confirm">
           {t('menu.deleteConfirm')}
-          <button type="button" data-testid={`room-delete-confirm-${room.name}`} disabled={busy} onClick={confirmDelete}>
+          <Button variant="danger" data-testid={`room-delete-confirm-${room.name}`} disabled={busy} onClick={confirmDelete}>
             {t('common.yes')}
-          </button>
-          <button type="button" disabled={busy} onClick={() => setConfirmingDelete(false)}>
+          </Button>
+          <Button variant="ghost" disabled={busy} onClick={() => setConfirmingDelete(false)}>
             {t('common.no')}
-          </button>
+          </Button>
         </span>
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="danger"
           data-testid={`room-delete-${room.name}`}
           disabled={busy || !canDelete}
           title={canDelete ? undefined : t('floor.cannotDeleteRoomNotEmpty')}
           onClick={() => setConfirmingDelete(true)}
         >
           {t('floor.deleteRoom')}
-        </button>
+        </Button>
       )}
     </div>
   );
@@ -419,15 +436,15 @@ function AddRoomForm({ nextDisplayOrder, onReload, onErrorChange }: AddRoomFormP
 
   if (!adding) {
     return (
-      <button type="button" className="floor-manager-add-room" data-testid="add-room" onClick={() => setAdding(true)}>
+      <Button variant="secondary" className="floor-manager-add-room" data-testid="add-room" onClick={() => setAdding(true)}>
         + {t('floor.addRoom')}
-      </button>
+      </Button>
     );
   }
 
   return (
     <div className="floor-manager-add-room-form">
-      <input
+      <TextField
         type="text"
         placeholder={t('floor.roomNamePlaceholder')}
         value={name}
@@ -435,7 +452,7 @@ function AddRoomForm({ nextDisplayOrder, onReload, onErrorChange }: AddRoomFormP
         disabled={busy}
         onChange={(e) => setName(e.target.value)}
       />
-      <input
+      <TextField
         type="number"
         value={floorLevel}
         aria-label={t('floor.floorLevel')}
@@ -443,12 +460,12 @@ function AddRoomForm({ nextDisplayOrder, onReload, onErrorChange }: AddRoomFormP
         disabled={busy}
         onChange={(e) => setFloorLevel(e.target.value)}
       />
-      <button type="button" data-testid="new-room-save" disabled={busy || name.trim() === ''} onClick={submit}>
+      <Button data-testid="new-room-save" disabled={busy || name.trim() === ''} onClick={submit}>
         {t('common.save')}
-      </button>
-      <button type="button" disabled={busy} onClick={reset}>
+      </Button>
+      <Button variant="ghost" disabled={busy} onClick={reset}>
         {t('common.cancel')}
-      </button>
+      </Button>
     </div>
   );
 }
@@ -518,14 +535,14 @@ function FloorManagerTable({ table, onReload, onErrorChange }: FloorManagerTable
     <li className="floor-manager-table" data-testid={`table-${table.label}`}>
       {editing ? (
         <div className="floor-manager-table-edit">
-          <input
+          <TextField
             type="text"
             value={labelDraft}
             data-testid={`table-label-input-${table.label}`}
             disabled={busy}
             onChange={(e) => setLabelDraft(e.target.value)}
           />
-          <input
+          <TextField
             type="number"
             min="1"
             value={seatsDraft}
@@ -533,7 +550,7 @@ function FloorManagerTable({ table, onReload, onErrorChange }: FloorManagerTable
             disabled={busy}
             onChange={(e) => setSeatsDraft(e.target.value)}
           />
-          <select
+          <SelectField
             value={shapeDraft}
             data-testid={`table-shape-input-${table.label}`}
             disabled={busy}
@@ -544,8 +561,8 @@ function FloorManagerTable({ table, onReload, onErrorChange }: FloorManagerTable
                 {t(`floor.shapeOption.${shape}`)}
               </option>
             ))}
-          </select>
-          <input
+          </SelectField>
+          <TextField
             type="number"
             value={xDraft}
             aria-label={t('floor.positionX')}
@@ -553,7 +570,7 @@ function FloorManagerTable({ table, onReload, onErrorChange }: FloorManagerTable
             disabled={busy}
             onChange={(e) => setXDraft(e.target.value)}
           />
-          <input
+          <TextField
             type="number"
             value={yDraft}
             aria-label={t('floor.positionY')}
@@ -561,12 +578,12 @@ function FloorManagerTable({ table, onReload, onErrorChange }: FloorManagerTable
             disabled={busy}
             onChange={(e) => setYDraft(e.target.value)}
           />
-          <button type="button" data-testid={`table-save-${table.label}`} disabled={busy} onClick={saveEdit}>
+          <Button data-testid={`table-save-${table.label}`} disabled={busy} onClick={saveEdit}>
             {t('common.save')}
-          </button>
-          <button type="button" disabled={busy} onClick={() => setEditing(false)}>
+          </Button>
+          <Button variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
             {t('common.cancel')}
-          </button>
+          </Button>
         </div>
       ) : (
         <div className="floor-manager-table-row">
@@ -581,33 +598,33 @@ function FloorManagerTable({ table, onReload, onErrorChange }: FloorManagerTable
           </button>
           <span className="floor-manager-table-detail">{t('floor.seatsCount', { count: table.seats })}</span>
           <span className="floor-manager-table-detail">{t(`floor.shapeOption.${table.shape}`)}</span>
-          <span className={`badge badge-${canDelete ? 'on' : 'off'}`}>{t(`floor.state.${table.state}`)}</span>
+          <Badge tone={STATE_TONE[table.state]}>{t(`floor.state.${table.state}`)}</Badge>
 
           {confirmingDelete ? (
             <span className="floor-manager-table-delete-confirm">
               {t('menu.deleteConfirm')}
-              <button
-                type="button"
+              <Button
+                variant="danger"
                 data-testid={`table-delete-confirm-${table.label}`}
                 disabled={busy}
                 onClick={confirmDelete}
               >
                 {t('common.yes')}
-              </button>
-              <button type="button" disabled={busy} onClick={() => setConfirmingDelete(false)}>
+              </Button>
+              <Button variant="ghost" disabled={busy} onClick={() => setConfirmingDelete(false)}>
                 {t('common.no')}
-              </button>
+              </Button>
             </span>
           ) : (
-            <button
-              type="button"
+            <Button
+              variant="danger"
               data-testid={`table-delete-${table.label}`}
               disabled={busy || !canDelete}
               title={canDelete ? undefined : t('floor.cannotDeleteNotFree')}
               onClick={() => setConfirmingDelete(true)}
             >
               {t('floor.deleteTable')}
-            </button>
+            </Button>
           )}
         </div>
       )}
@@ -655,15 +672,20 @@ function AddTableForm({ roomId, onReload, onErrorChange }: AddTableFormProps) {
 
   if (!adding) {
     return (
-      <button type="button" className="floor-manager-add-table" data-testid={`add-table-${roomId}`} onClick={() => setAdding(true)}>
+      <Button
+        variant="secondary"
+        className="floor-manager-add-table"
+        data-testid={`add-table-${roomId}`}
+        onClick={() => setAdding(true)}
+      >
         + {t('floor.addTable')}
-      </button>
+      </Button>
     );
   }
 
   return (
     <div className="floor-manager-add-table-form">
-      <input
+      <TextField
         type="text"
         placeholder={t('floor.tableLabelPlaceholder')}
         value={label}
@@ -671,7 +693,7 @@ function AddTableForm({ roomId, onReload, onErrorChange }: AddTableFormProps) {
         disabled={busy}
         onChange={(e) => setLabel(e.target.value)}
       />
-      <input
+      <TextField
         type="number"
         min="1"
         value={seats}
@@ -679,7 +701,7 @@ function AddTableForm({ roomId, onReload, onErrorChange }: AddTableFormProps) {
         disabled={busy}
         onChange={(e) => setSeats(e.target.value)}
       />
-      <select
+      <SelectField
         value={shape}
         data-testid={`new-table-shape-${roomId}`}
         disabled={busy}
@@ -690,13 +712,13 @@ function AddTableForm({ roomId, onReload, onErrorChange }: AddTableFormProps) {
             {t(`floor.shapeOption.${s}`)}
           </option>
         ))}
-      </select>
-      <button type="button" data-testid={`new-table-save-${roomId}`} disabled={busy || label.trim() === ''} onClick={submit}>
+      </SelectField>
+      <Button data-testid={`new-table-save-${roomId}`} disabled={busy || label.trim() === ''} onClick={submit}>
         {t('common.save')}
-      </button>
-      <button type="button" disabled={busy} onClick={reset}>
+      </Button>
+      <Button variant="ghost" disabled={busy} onClick={reset}>
         {t('common.cancel')}
-      </button>
+      </Button>
     </div>
   );
 }

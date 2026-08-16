@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@brasa/ui/components/Badge';
+import { Button } from '@brasa/ui/components/Button';
+import { SelectField } from '@brasa/ui/components/SelectField';
+import { TextField } from '@brasa/ui/components/TextField';
 import { api, ApiError } from '../api/client';
 import type { StaffDto, StaffRole } from '../api/types';
 
@@ -99,19 +103,17 @@ function StaffRow({ staff, onReload, onErrorChange }: StaffRowProps) {
     <li className="staff-row" data-testid={`staff-${staff.name}`}>
       <div className="staff-row-summary">
         <span className="staff-row-name">{staff.name}</span>
-        <span className={`badge ${staff.role === 'Manager' ? 'badge-on' : 'badge-neutral'}`}>
-          {t(`staff.roleOption.${staff.role}`)}
-        </span>
+        <Badge tone={staff.role === 'Manager' ? 'brand' : 'neutral'}>{t(`staff.roleOption.${staff.role}`)}</Badge>
         {staff.isLocked && (
-          <span className="badge badge-off" data-testid={`staff-locked-${staff.name}`}>
+          <Badge tone="danger" data-testid={`staff-locked-${staff.name}`}>
             {t('staff.locked')}
-          </span>
+          </Badge>
         )}
       </div>
 
       {resetting ? (
         <div className="staff-row-reset">
-          <input
+          <TextField
             type="text"
             inputMode="numeric"
             placeholder={t('staff.newPinPlaceholder')}
@@ -120,16 +122,15 @@ function StaffRow({ staff, onReload, onErrorChange }: StaffRowProps) {
             disabled={busy}
             onChange={(e) => setNewPin(e.target.value)}
           />
-          <button
-            type="button"
+          <Button
             data-testid={`staff-save-pin-${staff.name}`}
             disabled={busy || newPin.trim() === ''}
             onClick={saveNewPin}
           >
             {t('common.save')}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant="ghost"
             disabled={busy}
             onClick={() => {
               setNewPin('');
@@ -137,17 +138,17 @@ function StaffRow({ staff, onReload, onErrorChange }: StaffRowProps) {
             }}
           >
             {t('common.cancel')}
-          </button>
+          </Button>
         </div>
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           data-testid={`staff-reset-pin-${staff.name}`}
           disabled={busy}
           onClick={() => setResetting(true)}
         >
           {t('staff.resetPin')}
-        </button>
+        </Button>
       )}
     </li>
   );
@@ -189,15 +190,15 @@ function AddStaffForm({ siteId, onReload, onErrorChange }: AddStaffFormProps) {
 
   if (!adding) {
     return (
-      <button type="button" className="staff-manager-add" data-testid="add-staff" onClick={() => setAdding(true)}>
+      <Button variant="secondary" className="staff-manager-add" data-testid="add-staff" onClick={() => setAdding(true)}>
         + {t('staff.addStaff')}
-      </button>
+      </Button>
     );
   }
 
   return (
     <div className="staff-manager-add-form">
-      <input
+      <TextField
         type="text"
         placeholder={t('staff.namePlaceholder')}
         value={name}
@@ -205,7 +206,7 @@ function AddStaffForm({ siteId, onReload, onErrorChange }: AddStaffFormProps) {
         disabled={busy}
         onChange={(e) => setName(e.target.value)}
       />
-      <select
+      <SelectField
         value={role}
         aria-label={t('staff.role')}
         data-testid="new-staff-role"
@@ -217,8 +218,8 @@ function AddStaffForm({ siteId, onReload, onErrorChange }: AddStaffFormProps) {
             {t(`staff.roleOption.${option}`)}
           </option>
         ))}
-      </select>
-      <input
+      </SelectField>
+      <TextField
         type="text"
         inputMode="numeric"
         placeholder={t('staff.pinPlaceholder')}
@@ -227,17 +228,12 @@ function AddStaffForm({ siteId, onReload, onErrorChange }: AddStaffFormProps) {
         disabled={busy}
         onChange={(e) => setPin(e.target.value)}
       />
-      <button
-        type="button"
-        data-testid="new-staff-save"
-        disabled={busy || name.trim() === '' || pin.trim() === ''}
-        onClick={submit}
-      >
+      <Button data-testid="new-staff-save" disabled={busy || name.trim() === '' || pin.trim() === ''} onClick={submit}>
         {t('common.save')}
-      </button>
-      <button type="button" disabled={busy} onClick={reset}>
+      </Button>
+      <Button variant="ghost" disabled={busy} onClick={reset}>
         {t('common.cancel')}
-      </button>
+      </Button>
     </div>
   );
 }

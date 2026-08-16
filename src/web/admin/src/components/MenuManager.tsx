@@ -1,6 +1,9 @@
 import { formatMoney } from '@brasa/ui/lib/money';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@brasa/ui/components/Badge';
+import { Button } from '@brasa/ui/components/Button';
+import { TextField } from '@brasa/ui/components/TextField';
 import { api, apiOrigin, ApiError } from '../api/client';
 import type { AdminMenuCategoryDto, ImportMenuItemsResponse, MenuItemDto } from '../api/types';
 
@@ -97,17 +100,17 @@ export function MenuManager({ categories, onReload, onErrorChange }: MenuManager
         <section key={category.id} className="menu-manager-category" data-testid={`category-${category.name}`}>
           <div className="menu-manager-category-heading">
             <h2>{category.name}</h2>
-            <span className={category.isVisible ? 'badge badge-on' : 'badge badge-off'}>
+            <Badge tone={category.isVisible ? 'success' : 'danger'}>
               {category.isVisible ? t('menu.visible') : t('menu.hidden')}
-            </span>
-            <button
-              type="button"
+            </Badge>
+            <Button
+              variant="secondary"
               data-testid={`toggle-category-${category.name}`}
               disabled={togglingCategoryId === category.id}
               onClick={() => toggleCategoryVisibility(category)}
             >
               {category.isVisible ? t('menu.hide') : t('menu.show')}
-            </button>
+            </Button>
           </div>
 
           {category.items.length === 0 ? (
@@ -271,9 +274,9 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
                 className="menu-manager-item-thumb"
                 data-testid={`item-image-${item.name}`}
               />
-              <button type="button" data-testid={`remove-image-${item.name}`} disabled={busy} onClick={removeImage}>
+              <Button variant="ghost" data-testid={`remove-image-${item.name}`} disabled={busy} onClick={removeImage}>
                 {t('menu.removeImage')}
-              </button>
+              </Button>
             </>
           ) : (
             <label className="menu-manager-item-image-upload">
@@ -295,7 +298,7 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
 
         {editingPrice ? (
           <span className="menu-manager-item-price-edit">
-            <input
+            <TextField
               type="number"
               step="0.01"
               min="0"
@@ -304,11 +307,11 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
               disabled={busy}
               onChange={(e) => setPriceDraft(e.target.value)}
             />
-            <button type="button" data-testid={`price-save-${item.name}`} disabled={busy} onClick={savePrice}>
+            <Button data-testid={`price-save-${item.name}`} disabled={busy} onClick={savePrice}>
               {t('common.save')}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
               disabled={busy}
               onClick={() => {
                 setEditingPrice(false);
@@ -316,23 +319,23 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
               }}
             >
               {t('common.cancel')}
-            </button>
+            </Button>
           </span>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             className="menu-manager-item-price"
             data-testid={`price-edit-${item.name}`}
             disabled={busy}
             onClick={() => setEditingPrice(true)}
           >
             {formatMoney(item.price)}
-          </button>
+          </Button>
         )}
 
         {editingTakeawayPrice ? (
           <span className="menu-manager-item-price-edit">
-            <input
+            <TextField
               type="number"
               step="0.01"
               min="0"
@@ -342,16 +345,11 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
               disabled={busy}
               onChange={(e) => setTakeawayPriceDraft(e.target.value)}
             />
-            <button
-              type="button"
-              data-testid={`takeaway-price-save-${item.name}`}
-              disabled={busy}
-              onClick={saveTakeawayPrice}
-            >
+            <Button data-testid={`takeaway-price-save-${item.name}`} disabled={busy} onClick={saveTakeawayPrice}>
               {t('common.save')}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
               disabled={busy}
               onClick={() => {
                 setEditingTakeawayPrice(false);
@@ -359,38 +357,38 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
               }}
             >
               {t('common.cancel')}
-            </button>
+            </Button>
           </span>
         ) : item.takeawayPrice ? (
           <span className="menu-manager-item-takeaway-price">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               className="menu-manager-item-price"
               data-testid={`takeaway-price-edit-${item.name}`}
               disabled={busy}
               onClick={() => setEditingTakeawayPrice(true)}
             >
               {t('menu.takeaway')}: {formatMoney(item.takeawayPrice)}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
               data-testid={`takeaway-price-clear-${item.name}`}
               disabled={busy}
               onClick={clearTakeawayPrice}
             >
               {t('common.clear')}
-            </button>
+            </Button>
           </span>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             className="menu-manager-item-takeaway-price-add"
             data-testid={`takeaway-price-add-${item.name}`}
             disabled={busy}
             onClick={() => setEditingTakeawayPrice(true)}
           >
             + {t('menu.addTakeawayPrice')}
-          </button>
+          </Button>
         )}
 
         {editingSchedule ? (
@@ -407,25 +405,25 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
                 {t(`menu.day.${day}`)}
               </label>
             ))}
-            <input
+            <TextField
               type="time"
               value={scheduleStartDraft}
               data-testid={`schedule-start-${item.name}`}
               disabled={busy}
               onChange={(e) => setScheduleStartDraft(e.target.value)}
             />
-            <input
+            <TextField
               type="time"
               value={scheduleEndDraft}
               data-testid={`schedule-end-${item.name}`}
               disabled={busy}
               onChange={(e) => setScheduleEndDraft(e.target.value)}
             />
-            <button type="button" data-testid={`schedule-save-${item.name}`} disabled={busy} onClick={saveSchedule}>
+            <Button data-testid={`schedule-save-${item.name}`} disabled={busy} onClick={saveSchedule}>
               {t('common.save')}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="ghost"
               disabled={busy}
               onClick={() => {
                 setEditingSchedule(false);
@@ -435,12 +433,12 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
               }}
             >
               {t('common.cancel')}
-            </button>
+            </Button>
           </span>
         ) : item.schedule ? (
           <span className="menu-manager-item-schedule">
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               className="menu-manager-item-price"
               data-testid={`schedule-edit-open-${item.name}`}
               disabled={busy}
@@ -448,59 +446,59 @@ function MenuManagerItem({ item, onReload, onErrorChange }: MenuManagerItemProps
             >
               {item.schedule.daysOfWeek.map((d) => t(`menu.day.${d}`)).join(' ')} {item.schedule.startTime}–
               {item.schedule.endTime}
-            </button>
-            <button type="button" data-testid={`schedule-clear-${item.name}`} disabled={busy} onClick={clearSchedule}>
+            </Button>
+            <Button variant="ghost" data-testid={`schedule-clear-${item.name}`} disabled={busy} onClick={clearSchedule}>
               {t('common.clear')}
-            </button>
+            </Button>
           </span>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="ghost"
             className="menu-manager-item-schedule-add"
             data-testid={`schedule-add-${item.name}`}
             disabled={busy}
             onClick={() => setEditingSchedule(true)}
           >
             + {t('menu.addSchedule')}
-          </button>
+          </Button>
         )}
 
-        <span className={item.isAvailable ? 'badge badge-on' : 'badge badge-off'}>
+        <Badge tone={item.isAvailable ? 'success' : 'danger'}>
           {item.isAvailable ? t('menu.available') : t('menu.unavailable')}
-        </span>
-        <button
-          type="button"
+        </Badge>
+        <Button
+          variant="secondary"
           data-testid={`toggle-availability-${item.name}`}
           disabled={busy}
           onClick={toggleAvailability}
         >
           {item.isAvailable ? t('menu.markUnavailable') : t('menu.markAvailable')}
-        </button>
+        </Button>
 
-        {item.isCouvert && <span className="badge badge-on">{t('menu.couvert')}</span>}
-        <button type="button" data-testid={`toggle-couvert-${item.name}`} disabled={busy} onClick={toggleCouvert}>
+        {item.isCouvert && <Badge tone="brand">{t('menu.couvert')}</Badge>}
+        <Button variant="secondary" data-testid={`toggle-couvert-${item.name}`} disabled={busy} onClick={toggleCouvert}>
           {item.isCouvert ? t('menu.unmarkCouvert') : t('menu.markCouvert')}
-        </button>
+        </Button>
 
         {confirmingDelete ? (
           <span className="menu-manager-item-delete-confirm">
             {t('menu.deleteConfirm')}
-            <button type="button" data-testid={`delete-confirm-${item.name}`} disabled={busy} onClick={confirmDelete}>
+            <Button variant="danger" data-testid={`delete-confirm-${item.name}`} disabled={busy} onClick={confirmDelete}>
               {t('common.yes')}
-            </button>
-            <button type="button" disabled={busy} onClick={() => setConfirmingDelete(false)}>
+            </Button>
+            <Button variant="ghost" disabled={busy} onClick={() => setConfirmingDelete(false)}>
               {t('common.no')}
-            </button>
+            </Button>
           </span>
         ) : (
-          <button
-            type="button"
+          <Button
+            variant="danger"
             data-testid={`delete-item-${item.name}`}
             disabled={busy}
             onClick={() => setConfirmingDelete(true)}
           >
             {t('menu.deleteItem')}
-          </button>
+          </Button>
         )}
       </div>
       {item.description && <p className="menu-manager-item-description">{item.description}</p>}
