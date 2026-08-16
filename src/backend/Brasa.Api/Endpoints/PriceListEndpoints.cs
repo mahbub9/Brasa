@@ -106,11 +106,13 @@ public static class PriceListEndpoints
         var priceLists = await catalogDb.PriceLists
             .Include(p => p.Entries)
             .Where(p => p.SiteId == siteId)
-            .OrderBy(p => p.CreatedAtUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return Results.Ok(priceLists.Select(p => p.ToDto()).ToList());
+        // Sorted client-side: SQLite's EF Core provider (ADR 0012) cannot
+        // translate an ORDER BY over DateTimeOffset. Small, tenant-scoped
+        // table — client-side ordering costs nothing measurable either way.
+        return Results.Ok(priceLists.OrderBy(p => p.CreatedAtUtc).Select(p => p.ToDto()).ToList());
     }
 
     private static async Task<IResult> AddPriceListEntryAsync(

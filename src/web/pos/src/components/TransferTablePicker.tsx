@@ -1,4 +1,6 @@
 import { useTranslation } from 'react-i18next';
+import { Button } from '@brasa/ui/components/Button';
+import { Modal, ModalActions } from '@brasa/ui/components/Modal';
 import type { RoomDto } from '../api/types';
 import { formatTableLabel } from '../lib/tableLabel';
 
@@ -24,37 +26,35 @@ export function TransferTablePicker({ rooms, busy, onSelect, onCancel }: Transfe
     .filter((room) => room.tables.length > 0);
 
   return (
-    <div className="transfer-picker-backdrop" role="dialog" aria-modal="true" aria-label={t('transfer.title')}>
-      <div className="transfer-picker">
-        <h2>{t('transfer.title')}</h2>
+    <Modal title={t('transfer.title')} className="transfer-picker">
+      {roomsWithFreeTables.length === 0 ? (
+        <p className="empty-state">{t('transfer.noFreeTables')}</p>
+      ) : (
+        roomsWithFreeTables.map((room) => (
+          <section key={room.id} className="transfer-picker-room">
+            <h3>{room.name}</h3>
+            <div className="transfer-picker-tables">
+              {room.tables.map((table) => (
+                <Button
+                  key={table.id}
+                  variant="secondary"
+                  data-testid={`transfer-target-${table.label}`}
+                  disabled={busy}
+                  onClick={() => onSelect(table.id)}
+                >
+                  {formatTableLabel(table.label, t)}
+                </Button>
+              ))}
+            </div>
+          </section>
+        ))
+      )}
 
-        {roomsWithFreeTables.length === 0 ? (
-          <p className="empty-state">{t('transfer.noFreeTables')}</p>
-        ) : (
-          roomsWithFreeTables.map((room) => (
-            <section key={room.id} className="transfer-picker-room">
-              <h3>{room.name}</h3>
-              <div className="transfer-picker-tables">
-                {room.tables.map((table) => (
-                  <button
-                    key={table.id}
-                    type="button"
-                    data-testid={`transfer-target-${table.label}`}
-                    disabled={busy}
-                    onClick={() => onSelect(table.id)}
-                  >
-                    {formatTableLabel(table.label, t)}
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))
-        )}
-
-        <button type="button" data-testid="cancel-transfer" onClick={onCancel} disabled={busy}>
+      <ModalActions>
+        <Button variant="ghost" data-testid="cancel-transfer" onClick={onCancel} disabled={busy}>
           {t('transfer.cancel')}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </ModalActions>
+    </Modal>
   );
 }

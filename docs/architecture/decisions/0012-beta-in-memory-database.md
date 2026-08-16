@@ -109,6 +109,22 @@ other relational annotation already written for Postgres) works unchanged:
   the same class of accepted trade-down as the RLS drop above: a
   single-restaurant pilot has far lower concurrent-occupy pressure than
   production multi-terminal use.
+- **A third, broader incompatibility, found live driving the app end to
+  end, not by inspection**: SQLite's EF Core provider cannot translate
+  *any* `DateTimeOffset` comparison against the database — not just
+  `ORDER BY` (`GET /organizations` etc. threw first), but `>=`/`<=`/`<`
+  `WHERE` comparisons too (`GET /orders?openedFrom=...` threw the identical
+  "could not be translated" error once ordering was fixed). Every endpoint
+  that sorted by a `*AtUtc` column (`organizations`, `sites`, `terminals`,
+  `staff`, `price-lists`, `combos`, `tax-rules`, order search) now
+  `ToListAsync()`s its (still server-side-filtered on non-date columns)
+  result first and sorts client-side; order search's `openedFrom`/
+  `openedTo`/cursor-bound filters moved client-side the same way, only
+  `status`/`tableId` stay server-side `Where`s (both translate fine, being
+  plain equality on non-date types). Safe at this scale — every affected
+  table is small and tenant-scoped, and even order history over a
+  multi-day pilot is a few thousand rows at most, not the millions where
+  client-side filtering would actually cost something.
 
 Default stays `Postgres` in `appsettings.json` — nothing changes for the
 existing dev/test/Postgres path unless explicitly overridden. The beta run
@@ -151,6 +167,11 @@ because the database provider changed.
   Low-probability for one pilot restaurant's terminal count, but a real,
   intentional loss versus Postgres, not just a theoretical one — see the
   `xmin`/`FloorDbContext` note in Context above.
+- **Date-sorted/filtered list endpoints load their full (non-date-filtered)
+  result set into memory while `InMemory`**, instead of letting Postgres do
+  it server-side — fine at this pilot's scale (see Context above), but a
+  real ceiling that would need revisiting before this pattern serves a
+  larger or longer-lived deployment, not just the swap-back to Postgres.
 - The kept-alive `SqliteConnection` per module is never explicitly disposed
   — it lives for the process's lifetime by design (closing it would wipe
   the store), so there's no clean shutdown path for it. Acceptable for a

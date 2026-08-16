@@ -1,7 +1,18 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@brasa/ui/components/Badge';
+import type { BadgeTone } from '@brasa/ui/components/Badge';
+import { Button } from '@brasa/ui/components/Button';
+import { TextField } from '@brasa/ui/components/TextField';
 import type { RoomDto, TableDto } from '../api/types';
 import { formatTableLabel } from '../lib/tableLabel';
+
+const STATE_TONE: Record<TableDto['state'], BadgeTone> = {
+  Free: 'success',
+  Occupied: 'danger',
+  BillRequested: 'warning',
+  Dirty: 'neutral',
+};
 
 interface TablePickerProps {
   rooms: RoomDto[];
@@ -52,15 +63,14 @@ export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTake
       <div className="takeaway-picker">
         {showTakeaway ? (
           <div className="takeaway-confirm" data-testid="takeaway-confirm">
-            <input
+            <TextField
               type="text"
               placeholder={t('floor.takeawayLabelPlaceholder')}
               value={takeawayLabel}
               onChange={(e) => setTakeawayLabel(e.target.value)}
               data-testid="takeaway-label-input"
             />
-            <button
-              type="button"
+            <Button
               data-testid="confirm-open-takeaway"
               disabled={busy}
               onClick={() => {
@@ -70,12 +80,12 @@ export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTake
               }}
             >
               {busy ? t('floor.opening') : t('floor.open')}
-            </button>
+            </Button>
           </div>
         ) : (
-          <button type="button" data-testid="new-takeaway-button" disabled={busy} onClick={() => setShowTakeaway(true)}>
+          <Button variant="secondary" data-testid="new-takeaway-button" disabled={busy} onClick={() => setShowTakeaway(true)}>
             {t('floor.newTakeaway')}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -101,28 +111,25 @@ export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTake
                     >
                       <span className="floor-table-label">{formatTableLabel(table.label, t)}</span>
                       <span className="floor-table-seats">{t('floor.seats', { count: table.seats })}</span>
-                      <span className="floor-table-state">{t(`floor.state.${table.state}`)}</span>
+                      <Badge tone={STATE_TONE[table.state]} className="floor-table-state">
+                        {t(`floor.state.${table.state}`)}
+                      </Badge>
                     </button>
 
                     {selectedTableId === table.id && (
                       <div className="floor-table-confirm" data-testid="table-confirm">
                         <label>
                           {t('floor.covers')}
-                          <input
+                          <TextField
                             type="number"
                             min={1}
                             value={coverCount}
                             onChange={(e) => setCoverCount(Math.max(1, Number(e.target.value)))}
                           />
                         </label>
-                        <button
-                          type="button"
-                          data-testid="confirm-open-table"
-                          disabled={busy}
-                          onClick={() => onOpenTable(table.id, coverCount)}
-                        >
+                        <Button data-testid="confirm-open-table" disabled={busy} onClick={() => onOpenTable(table.id, coverCount)}>
                           {busy ? t('floor.opening') : t('floor.open')}
-                        </button>
+                        </Button>
                       </div>
                     )}
                   </div>

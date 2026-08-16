@@ -281,14 +281,26 @@ public static class OrderEndpoints
             query = query.Where(o => o.TableId == tableId);
         }
 
+        // openedFrom/openedTo/the cursor bound, the sort itself, and the
+        // page-size Take all happen client-side from here — SQLite's EF
+        // Core provider (ADR 0012) cannot translate *any* DateTimeOffset
+        // comparison, not just ORDER BY (confirmed live: the >=/<= filters
+        // below threw the same "could not be translated" error ORDER BY
+        // did). status/tableId stay server-side since those translate
+        // fine; a single pilot restaurant's order history is small enough
+        // that pulling the (status/table-filtered) rest into memory costs
+        // nothing measurable.
+        var filtered = await query.ToListAsync(cancellationToken).ConfigureAwait(false);
+
+        IEnumerable<Order> candidates = filtered;
         if (openedFrom is not null)
         {
-            query = query.Where(o => o.OpenedAtUtc >= openedFrom);
+            candidates = candidates.Where(o => o.OpenedAtUtc >= openedFrom);
         }
 
         if (openedTo is not null)
         {
-            query = query.Where(o => o.OpenedAtUtc <= openedTo);
+            candidates = candidates.Where(o => o.OpenedAtUtc <= openedTo);
         }
 
         if (cursorBookmark is not null)
@@ -298,14 +310,10 @@ public static class OrderEndpoints
             // be a gap here, but OpenedAtUtc is set once per HTTP request by
             // IClock and Postgres timestamptz precision is microseconds, so
             // that can't happen at this restaurant's realistic order rate.
-            query = query.Where(o => o.OpenedAtUtc < cursorBookmark);
+            candidates = candidates.Where(o => o.OpenedAtUtc < cursorBookmark);
         }
 
-        var orders = await query
-            .OrderByDescending(o => o.OpenedAtUtc)
-            .Take(take)
-            .ToListAsync(cancellationToken)
-            .ConfigureAwait(false);
+        var orders = candidates.OrderByDescending(o => o.OpenedAtUtc).Take(take).ToList();
 
         if (orders.Count == take)
         {

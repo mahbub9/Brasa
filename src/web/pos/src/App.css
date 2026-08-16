@@ -57,26 +57,9 @@
   font-size: 0.75rem;
 }
 
-.staff-login-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(36, 28, 21, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 20;
-}
-
-.staff-login-modal {
-  background: var(--panel);
-  color: var(--ink);
-  border-radius: 10px;
-  padding: 1.5rem;
-  min-width: 20rem;
-  max-width: 90vw;
-  max-height: 85vh;
-  overflow-y: auto;
-}
+/* Backdrop/panel/list-button/pin-input sizing now come from the shared
+   Modal/Button/TextField components (@brasa/ui) — only the layout and the
+   PIN field's own letter-spacing stay app-local. */
 
 .staff-login-list {
   list-style: none;
@@ -84,35 +67,24 @@
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
+  min-width: 18rem;
 }
 
-.staff-login-list button {
+.staff-login-list .brasa-btn {
   width: 100%;
-  padding: 0.6rem 1rem;
-  text-align: left;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: none;
-  font-size: 1rem;
-}
-
-.staff-login-list button:disabled {
-  opacity: 0.5;
+  justify-content: flex-start;
 }
 
 .staff-login-pin-form {
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-3);
 }
 
-.staff-login-pin-form input {
-  padding: 0.6rem;
+.staff-login-pin-form .brasa-field-control {
   font-size: 1.1rem;
   letter-spacing: 0.2em;
-  border: 1px solid var(--border);
-  border-radius: 8px;
 }
 
 .staff-login-error {
@@ -175,12 +147,12 @@ main {
   border-bottom: 1px solid var(--danger);
 }
 
-.error-banner button {
+.error-banner-dismiss {
   background: none;
   border: none;
   color: inherit;
-  font-size: 1.25rem;
-  line-height: 1;
+  display: inline-flex;
+  padding: var(--space-2);
 }
 
 /* Table picker */
@@ -191,53 +163,21 @@ main {
 }
 
 .takeaway-picker {
-  margin-bottom: 1.5rem;
-}
-
-.takeaway-picker > button {
-  padding: 0.75rem 1.25rem;
-  border: 1px solid var(--brasa);
-  border-radius: 8px;
-  background: none;
-  color: var(--brasa);
-  font-weight: 600;
-}
-
-.takeaway-picker > button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  margin-bottom: var(--space-5);
 }
 
 .takeaway-confirm {
   display: flex;
-  gap: 0.6rem;
-  padding: 0.75rem;
+  gap: var(--space-3);
+  padding: var(--space-4);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
 }
 
-.takeaway-confirm input {
+.takeaway-confirm .brasa-field-control {
   flex: 1;
   min-width: 0;
-  padding: 0.5rem 0.65rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.takeaway-confirm button {
-  padding: 0.6rem 1rem;
-  border: none;
-  border-radius: 8px;
-  background: var(--brasa);
-  color: #fff;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.takeaway-confirm button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 /* FLR-07: only rendered once a tenant's own rooms actually span more than
@@ -277,12 +217,20 @@ main {
   width: 100%;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 1rem;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-4);
   background: var(--panel);
-  border: 2px solid var(--border);
-  border-radius: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
   text-align: left;
+  transition: box-shadow var(--duration-base) var(--ease), transform var(--duration-base) var(--ease);
+}
+
+.floor-table button:not(:disabled):hover {
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
 }
 
 .floor-table button:disabled {
@@ -291,90 +239,47 @@ main {
 
 .floor-table-label {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: var(--text-body-lg);
 }
 
 .floor-table-seats {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-caption);
 }
 
-.floor-table-state {
-  align-self: flex-start;
-  padding: 0.15rem 0.5rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
+/* Color per state now comes from Badge's own tone (STATE_TONE in
+   TablePicker.tsx) — only the card's own border still varies by state. */
 .floor-table-Free button {
-  border-color: #2f9e44;
-}
-.floor-table-Free .floor-table-state {
-  background: #ebfbee;
-  /* 5.9:1 on this background — the original #2f9e44 only cleared 3.2:1
-     (QA-14/axe). */
-  color: #1c6e2f;
-}
-
-.floor-table-Occupied .floor-table-state {
-  background: #fff0f0;
-  color: var(--danger);
-}
-
-.floor-table-BillRequested .floor-table-state {
-  background: #fff4e6;
-  /* 4.6:1 — the original #e8590c only cleared 3.3:1 (QA-14/axe). */
-  color: #c4460a;
+  border-color: var(--success);
 }
 
 .floor-table-Dirty button {
-  border-color: #868e96;
+  border-color: var(--muted);
   border-style: dashed;
-}
-.floor-table-Dirty .floor-table-state {
-  background: #f1f3f5;
-  color: #495057;
 }
 
 .floor-table-confirm {
-  margin-top: 0.5rem;
-  padding: 0.75rem;
+  margin-top: var(--space-2);
+  padding: var(--space-4);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
-  gap: 0.6rem;
+  gap: var(--space-3);
 }
 
 .floor-table-confirm label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.9rem;
+  gap: var(--space-3);
+  font-size: var(--text-body);
   color: var(--muted);
 }
 
-.floor-table-confirm input {
-  width: 4rem;
-  padding: 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.floor-table-confirm button {
-  padding: 0.6rem;
-  border: none;
-  border-radius: 8px;
-  background: var(--brasa);
-  color: #fff;
-  font-weight: 600;
-}
-
-.floor-table-confirm button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+.floor-table-confirm .brasa-field-control {
+  width: 4.5rem;
 }
 
 /* Ordering layout */
@@ -407,36 +312,42 @@ main {
    category too, this is purely a shortcut that rings one up at the order's
    cover count instead of the usual quantity of 1. */
 .couvert-bar {
-  margin-bottom: 1.5rem;
-  padding-bottom: 1.25rem;
+  margin-bottom: var(--space-5);
+  padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border);
 }
 
 .couvert-bar h2 {
   font-size: 1.05rem;
   color: var(--brasa);
-  margin: 0 0 0.75rem;
+  margin: 0 0 var(--space-3);
 }
 
 .menu-items {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
 .menu-item {
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  padding: 0.9rem;
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  min-height: var(--touch-target);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
   text-align: left;
+  transition: box-shadow var(--duration-base) var(--ease), transform var(--duration-base) var(--ease), border-color var(--duration-fast) var(--ease);
 }
 
 .menu-item:hover:not(:disabled) {
   border-color: var(--brasa);
+  box-shadow: var(--shadow-2);
+  transform: translateY(-1px);
 }
 
 .menu-item:disabled {
@@ -448,27 +359,28 @@ main {
   width: 100%;
   height: 6rem;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .menu-item-name {
   font-weight: 600;
+  font-size: var(--text-body);
 }
 
 .menu-item-description {
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
   line-height: 1.3;
 }
 
 .menu-item-price {
   color: var(--muted);
-  font-size: 0.9rem;
+  font-size: var(--text-body);
 }
 
 .menu-item-allergens {
   color: var(--ink);
-  font-size: 0.75rem;
+  font-size: var(--text-caption);
   font-weight: 600;
 }
 
@@ -476,80 +388,39 @@ main {
 
 .order-summary {
   position: sticky;
-  top: 1.5rem;
-  padding: 1.25rem;
+  top: var(--space-5);
+  padding: var(--space-5);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: var(--space-4);
 }
 
 .order-summary h2 {
   margin-bottom: 0;
+  font-size: var(--text-heading-sm);
 }
 
 .order-summary-heading {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.75rem;
-}
-
-.transfer-table-trigger {
-  padding: 0.35rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: none;
-  color: var(--ink);
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.transfer-table-trigger:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  gap: var(--space-3);
 }
 
 .covers {
   margin: 0;
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-caption);
 }
 
 .fire-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem;
-}
-
-.fire-controls button {
-  padding: 0.35rem 0.6rem;
-  border: 1px solid var(--brasa);
-  border-radius: 6px;
-  background: none;
-  color: var(--brasa);
-  font-size: 0.75rem;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.fire-controls button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.order-line-fired-badge {
-  margin-left: 0.4rem;
-  padding: 0.05rem 0.4rem;
-  border-radius: 999px;
-  background: var(--brasa);
-  color: var(--panel);
-  font-size: 0.7rem;
-  font-weight: 600;
-  white-space: nowrap;
+  gap: var(--space-2);
 }
 
 .order-lines {
@@ -558,39 +429,49 @@ main {
   padding: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-3);
 }
 
 .order-lines li {
-  font-size: 0.9rem;
+  font-size: var(--text-body);
 }
 
 .order-line-row {
   display: grid;
   grid-template-columns: auto 1fr auto;
-  gap: 0.5rem;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .order-line-qty {
   color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 
 .order-line-qty-stepper {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: var(--space-1);
 }
 
+/* Compact by design, not the full 44px touch target — a dense per-line
+   stepper next to several others needs to stay small; the quantity value
+   between the two buttons is the larger, easier target for a mis-tap. */
 .order-line-qty-stepper button {
-  width: 1.4rem;
-  height: 1.4rem;
+  width: 2rem;
+  height: 2rem;
   padding: 0;
   border: 1px solid var(--border);
-  border-radius: 4px;
-  background: none;
-  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  font-size: var(--text-body);
   line-height: 1;
   cursor: pointer;
+  transition: border-color var(--duration-fast) var(--ease);
+}
+
+.order-line-qty-stepper button:hover:not(:disabled) {
+  border-color: var(--brasa);
 }
 
 .order-line-qty-stepper button:disabled {
@@ -600,23 +481,20 @@ main {
 
 .order-line-modifiers {
   list-style: none;
-  margin: 0.2rem 0 0;
+  margin: var(--space-1) 0 0;
   padding: 0 0 0 1.4rem;
   color: var(--muted);
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
 }
 
 .order-line-notes-add,
 .order-line-notes-display {
-  display: block;
-  margin-top: 0.3rem;
-  padding: 0;
-  border: none;
-  background: none;
-  color: var(--brasa);
-  font-size: 0.8rem;
-  font-weight: 600;
-  text-align: left;
+  display: inline-flex;
+  min-height: unset;
+  margin-top: var(--space-1);
+  padding: var(--space-1) 0;
+  color: var(--brasa-dark);
+  font-size: var(--text-caption);
 }
 
 .order-line-notes-display {
@@ -627,66 +505,49 @@ main {
 
 .order-line-notes-edit {
   display: flex;
-  gap: 0.4rem;
-  margin-top: 0.3rem;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
 }
 
-.order-line-notes-edit input {
+.order-line-notes-edit .brasa-field-control {
   flex: 1;
   min-width: 0;
-  padding: 0.35rem 0.5rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font-size: 0.8rem;
 }
 
-.order-line-notes-edit button {
-  padding: 0.35rem 0.6rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: none;
-  font-size: 0.8rem;
+.order-line-notes-edit .brasa-btn {
+  min-height: 2.25rem;
+  padding: 0 var(--space-3);
 }
 
 .order-total {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--border);
-  font-size: 1.1rem;
+  padding-top: var(--space-4);
+  border-top: 2px solid var(--ink);
+  font-size: var(--text-body-lg);
+  font-weight: 700;
 }
 
 .split-preview {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem 0;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
   border-top: 1px solid var(--border);
 }
 
 .split-preview label {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+  gap: var(--space-2);
+  font-size: var(--text-body);
   color: var(--muted);
 }
 
-.split-preview input {
-  width: 4rem;
-  padding: 0.4rem;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-}
-
-.split-preview button {
-  padding: 0.5rem;
-  border: 1px solid var(--brasa);
-  border-radius: 8px;
-  background: none;
-  color: var(--brasa);
-  font-weight: 600;
+.split-preview .brasa-field-control {
+  width: 4.5rem;
 }
 
 .split-amounts {
@@ -695,77 +556,52 @@ main {
   padding: 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  font-size: 0.9rem;
+  gap: var(--space-2);
+  font-size: var(--text-body);
+  font-variant-numeric: tabular-nums;
 }
 
 .split-amounts li {
-  padding: 0.25rem 0.6rem;
+  padding: var(--space-1) var(--space-3);
   background: var(--paper);
-  border-radius: 6px;
-}
-
-.pre-bill-trigger,
-.request-bill-trigger {
-  padding: 0.75rem;
-  border: 1px solid var(--brasa);
-  border-radius: 8px;
-  background: none;
-  color: var(--brasa);
-  font-weight: 600;
-}
-
-.close-order {
-  padding: 0.9rem;
-  border: none;
-  border-radius: 8px;
-  background: var(--brasa);
-  color: #fff;
-  font-weight: 700;
-  font-size: 1rem;
-}
-
-.close-order:disabled,
-.pre-bill-trigger:disabled,
-.request-bill-trigger:disabled,
-.split-preview button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  border-radius: var(--radius-sm);
 }
 
 /* Receipt */
 
 .receipt {
   max-width: 420px;
-  margin: 2rem auto;
-  padding: 2rem;
+  margin: var(--space-6) auto;
+  padding: var(--space-6);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
   text-align: center;
 }
 
 .receipt-table {
   color: var(--muted);
-  margin-bottom: 1.5rem;
+  margin-bottom: var(--space-5);
 }
 
 .receipt-fields {
   display: grid;
   grid-template-columns: auto 1fr;
-  gap: 0.4rem 1rem;
+  gap: var(--space-2) var(--space-4);
   text-align: left;
-  margin: 0 0 1.5rem;
+  margin: 0 0 var(--space-5);
 }
 
 .receipt-fields dt {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-caption);
 }
 
 .receipt-fields dd {
   margin: 0;
   text-align: right;
+  font-variant-numeric: tabular-nums;
 }
 
 .receipt-gross {
@@ -774,77 +610,55 @@ main {
 }
 
 .receipt-qr-payload {
-  font-family: ui-monospace, Consolas, monospace;
+  font-family: var(--font-mono);
   font-size: 0.7rem;
   color: var(--muted);
   word-break: break-all;
-  padding: 0.5rem;
+  padding: var(--space-2);
   background: var(--paper);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
 }
 
 .receipt-note {
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
   color: var(--muted);
-  margin: 1rem 0 1.5rem;
-}
-
-.receipt button {
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 8px;
-  background: var(--brasa);
-  color: #fff;
-  font-weight: 600;
+  margin: var(--space-4) 0 var(--space-5);
 }
 
 /* Modifier picker */
 
-.modifier-picker-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(36, 28, 21, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  z-index: 10;
-}
+/* Backdrop/panel now come from the shared Modal component (@brasa/ui) —
+   these three (.modifier-picker/.pre-bill/.transfer-picker) only set their
+   own max-width on top of it, via the className each passes to <Modal>. */
 
 .modifier-picker {
-  width: 100%;
   max-width: 440px;
-  max-height: 90svh;
-  overflow-y: auto;
-  background: var(--panel);
-  border-radius: 12px;
-  padding: 1.5rem;
 }
 
 .modifier-group {
   border: none;
   padding: 0;
-  margin: 1.25rem 0 0;
+  margin: var(--space-5) 0 0;
 }
 
 .modifier-group legend {
   display: flex;
   align-items: baseline;
-  gap: 0.5rem;
+  gap: var(--space-2);
   font-weight: 600;
   padding: 0;
-  margin-bottom: 0.5rem;
+  margin-bottom: var(--space-2);
 }
 
 .modifier-required {
-  font-size: 0.7rem;
+  font-size: var(--text-caption);
   font-weight: 700;
   color: var(--brasa);
   text-transform: uppercase;
 }
 
 .modifier-hint {
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
   font-weight: 400;
   color: var(--muted);
 }
@@ -852,99 +666,51 @@ main {
 .modifier-choices {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: var(--space-2);
 }
 
 .modifier-choice {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.65rem 0.9rem;
+  min-height: var(--touch-target);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   background: var(--paper);
   text-align: left;
+  transition: border-color var(--duration-fast) var(--ease), background var(--duration-fast) var(--ease);
 }
 
 .modifier-choice.active {
   border-color: var(--brasa);
-  background: #fdf1ea;
+  background: var(--brasa-tint);
 }
 
 .modifier-price {
   color: var(--muted);
-  font-size: 0.85rem;
-}
-
-.modifier-picker-actions {
-  display: flex;
-  gap: 0.75rem;
-  margin-top: 1.5rem;
-}
-
-.modifier-picker-actions button {
-  flex: 1;
-  padding: 0.75rem;
-  border-radius: 8px;
-  font-weight: 600;
-}
-
-.modifier-picker-actions button:first-child {
-  border: 1px solid var(--border);
-  background: none;
-  color: var(--ink);
-}
-
-.modifier-picker-actions button:last-child {
-  border: none;
-  background: var(--brasa);
-  color: #fff;
-}
-
-.modifier-picker-actions button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  font-size: var(--text-caption);
 }
 
 /* Pre-bill (ORD-18/19) */
 
-.pre-bill-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(36, 28, 21, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  z-index: 10;
-}
-
 .pre-bill {
-  width: 100%;
   max-width: 420px;
-  max-height: 90svh;
-  overflow-y: auto;
-  background: var(--panel);
-  border-radius: 12px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
 }
 
 .pre-bill-table {
-  margin: -0.5rem 0 0;
+  margin: calc(-1 * var(--space-2)) 0 0;
   color: var(--muted);
 }
 
 .pre-bill-notice {
   margin: 0;
-  padding: 0.6rem 0.8rem;
+  padding: var(--space-2) var(--space-3);
   border: 1px solid var(--brasa);
-  border-radius: 8px;
+  border-radius: var(--radius-md);
   color: var(--ink);
   font-weight: 700;
-  font-size: 0.8rem;
+  font-size: var(--text-caption);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
@@ -953,8 +719,8 @@ main {
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.35rem;
-  font-size: 0.85rem;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
 }
 
 .pre-bill-vat-row {
@@ -971,72 +737,29 @@ main {
 .pre-bill-generated {
   margin: 0;
   color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.pre-bill button {
-  padding: 0.75rem;
-  border: none;
-  border-radius: 8px;
-  background: var(--brasa);
-  color: #fff;
-  font-weight: 600;
+  font-size: var(--text-caption);
 }
 
 /* Transfer table picker (ORD-12) */
 
-.transfer-picker-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(36, 28, 21, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 1rem;
-  z-index: 10;
-}
-
 .transfer-picker {
-  width: 100%;
   max-width: 420px;
-  max-height: 90svh;
-  overflow-y: auto;
-  background: var(--panel);
-  border-radius: 12px;
-  padding: 1.5rem;
 }
 
 .transfer-picker-room {
-  margin-top: 1rem;
+  margin-top: var(--space-4);
 }
 
 .transfer-picker-room h3 {
-  margin: 0 0 0.5rem;
-  font-size: 0.9rem;
+  margin: 0 0 var(--space-2);
+  font-size: var(--text-body);
   color: var(--muted);
 }
 
 .transfer-picker-tables {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.transfer-picker-tables button {
-  padding: 0.6rem 0.9rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--paper);
-  font-weight: 600;
-}
-
-.transfer-picker > button:last-child {
-  margin-top: 1.5rem;
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: none;
+  gap: var(--space-2);
 }
 
 /* Crash fallback (OPS-14) — replaces the whole app, so it styles itself

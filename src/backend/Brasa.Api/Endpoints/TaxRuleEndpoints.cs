@@ -95,11 +95,17 @@ public static class TaxRuleEndpoints
     private static async Task<IResult> GetTaxRulesAsync(CatalogDbContext db, CancellationToken cancellationToken)
     {
         var rules = await db.TaxRules
-            .OrderBy(r => r.IsAlcoholic).ThenBy(r => r.IsTakeaway).ThenBy(r => r.Region).ThenBy(r => r.EffectiveFromUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return Results.Ok(rules.Select(r => r.ToDto()).ToList());
+        // Sorted client-side: SQLite's EF Core provider (ADR 0012) cannot
+        // translate an ORDER BY over DateTimeOffset (EffectiveFromUtc).
+        // Small, tenant-scoped table — client-side ordering costs nothing
+        // measurable either way.
+        var ordered = rules
+            .OrderBy(r => r.IsAlcoholic).ThenBy(r => r.IsTakeaway).ThenBy(r => r.Region).ThenBy(r => r.EffectiveFromUtc);
+
+        return Results.Ok(ordered.Select(r => r.ToDto()).ToList());
     }
 
     private static async Task<IResult> ResolveTaxRuleAsync(

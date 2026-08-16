@@ -1,0 +1,220 @@
+/**
+ * Shared component styles (WEB-02, beta UI refresh). Plain CSS, same
+ * convention pos/admin's own App.css already use — no CSS-in-JS, no
+ * modules. Class names are prefixed "brasa-" so they can't collide with
+ * either app's existing App.css while both are restyled incrementally.
+ */
+
+/* ── Button ─────────────────────────────────────────────────────────── */
+
+.brasa-btn {
+  appearance: none;
+  border: none;
+  font: inherit;
+  font-weight: 600;
+  font-size: var(--text-body);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-5);
+  min-height: var(--touch-target);
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease), transform var(--duration-fast) var(--ease);
+}
+.brasa-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.brasa-btn:focus-visible {
+  outline: 2px solid var(--brasa-dark);
+  outline-offset: 2px;
+}
+.brasa-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.brasa-btn-primary {
+  background: var(--brasa);
+  color: #fff;
+  box-shadow: var(--shadow-1);
+}
+.brasa-btn-primary:hover:not(:disabled) {
+  background: var(--brasa-dark);
+  box-shadow: var(--shadow-2);
+}
+
+.brasa-btn-secondary {
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--border);
+}
+.brasa-btn-secondary:hover:not(:disabled) {
+  border-color: var(--brasa);
+  color: var(--brasa-dark);
+}
+
+.brasa-btn-ghost {
+  background: transparent;
+  color: var(--muted);
+}
+.brasa-btn-ghost:hover:not(:disabled) {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.brasa-btn-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+.brasa-btn-danger:hover:not(:disabled) {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* ── Card ───────────────────────────────────────────────────────────── */
+
+.brasa-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
+  padding: var(--space-5);
+}
+
+/* ── Badge ──────────────────────────────────────────────────────────── */
+
+.brasa-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
+  font-weight: 600;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+.brasa-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+.brasa-badge-success {
+  background: var(--success-bg);
+  color: var(--success);
+}
+.brasa-badge-brand {
+  background: var(--brasa-tint);
+  color: var(--brasa-dark);
+}
+.brasa-badge-warning {
+  background: var(--warning-bg);
+  color: var(--warning);
+}
+.brasa-badge-neutral {
+  background: #efe9e2;
+  color: var(--muted);
+}
+.brasa-badge-danger {
+  background: var(--danger-bg);
+  color: var(--danger);
+}
+
+/* ── Field (Input / Select) ────────────────────────────────────────── */
+
+.brasa-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.brasa-field-label {
+  font-size: var(--text-caption);
+  font-weight: 600;
+  color: var(--muted);
+}
+.brasa-field-control {
+  font: inherit;
+  font-size: var(--text-body);
+  padding: 0 var(--space-4);
+  min-height: var(--touch-target);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--paper);
+  color: var(--ink);
+  transition: border-color var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease);
+}
+.brasa-field-control:focus-visible {
+  outline: none;
+  border-color: var(--brasa);
+  box-shadow: 0 0 0 3px var(--brasa-tint);
+}
+.brasa-field-control:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+select.brasa-field-control {
+  /* Custom chevron — the platform default doesn't line up with the
+     44px-tall, brand-radiused control around it. */
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%236b5f52' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--space-3) center;
+  background-size: 16px;
+  padding-right: var(--space-6);
+}
+
+/* ── Modal ──────────────────────────────────────────────────────────── */
+
+.brasa-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(36, 28, 21, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  z-index: 20;
+}
+.brasa-modal {
+  width: 100%;
+  max-width: 24rem;
+  max-height: 85vh;
+  overflow-y: auto;
+  background: var(--panel);
+  color: var(--ink);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-modal);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.brasa-modal-title {
+  font-size: var(--text-heading-sm);
+  font-weight: 700;
+  margin: 0;
+}
+.brasa-modal-actions {
+  display: flex;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  margin-top: var(--space-2);
+}
+
+/* ── Icon ───────────────────────────────────────────────────────────── */
+
+.brasa-icon {
+  width: 1.1em;
+  height: 1.1em;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  flex-shrink: 0;
+}

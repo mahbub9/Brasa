@@ -1,6 +1,8 @@
 import { formatMoney } from '@brasa/ui/lib/money';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@brasa/ui/components/Button';
+import { Modal, ModalActions } from '@brasa/ui/components/Modal';
 import type { MenuItemDto, ModifierGroupDto } from '../api/types';
 
 interface ModifierPickerProps {
@@ -67,57 +69,48 @@ export function ModifierPicker({ item, busy, onConfirm, onCancel }: ModifierPick
   }
 
   return (
-    <div className="modifier-picker-backdrop" role="dialog" aria-modal="true" aria-label={item.name}>
-      <div className="modifier-picker">
-        <h2>{item.name}</h2>
+    <Modal title={item.name} className="modifier-picker">
+      {item.modifierGroups.map((group) => (
+        <fieldset key={group.id} className="modifier-group">
+          <legend>
+            {group.name}
+            {group.isRequired && <span className="modifier-required">{t('modifiers.required')}</span>}
+            <span className="modifier-hint">{selectionHint(group)}</span>
+          </legend>
+          <div className="modifier-choices">
+            {group.modifiers.map((modifier) => {
+              const isSelected = selected.has(modifier.id);
+              return (
+                <button
+                  key={modifier.id}
+                  type="button"
+                  data-testid={`modifier-${modifier.name}`}
+                  className={isSelected ? 'modifier-choice active' : 'modifier-choice'}
+                  aria-pressed={isSelected}
+                  onClick={() => toggle(group, modifier.id)}
+                >
+                  <span>{modifier.name}</span>
+                  {modifier.priceDelta.amount !== 0 && (
+                    <span className="modifier-price">
+                      {modifier.priceDelta.amount > 0 ? '+' : ''}
+                      {formatMoney(modifier.priceDelta)}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </fieldset>
+      ))}
 
-        {item.modifierGroups.map((group) => (
-          <fieldset key={group.id} className="modifier-group">
-            <legend>
-              {group.name}
-              {group.isRequired && <span className="modifier-required">{t('modifiers.required')}</span>}
-              <span className="modifier-hint">{selectionHint(group)}</span>
-            </legend>
-            <div className="modifier-choices">
-              {group.modifiers.map((modifier) => {
-                const isSelected = selected.has(modifier.id);
-                return (
-                  <button
-                    key={modifier.id}
-                    type="button"
-                    data-testid={`modifier-${modifier.name}`}
-                    className={isSelected ? 'modifier-choice active' : 'modifier-choice'}
-                    aria-pressed={isSelected}
-                    onClick={() => toggle(group, modifier.id)}
-                  >
-                    <span>{modifier.name}</span>
-                    {modifier.priceDelta.amount !== 0 && (
-                      <span className="modifier-price">
-                        {modifier.priceDelta.amount > 0 ? '+' : ''}
-                        {formatMoney(modifier.priceDelta)}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
-        ))}
-
-        <div className="modifier-picker-actions">
-          <button type="button" onClick={onCancel} disabled={busy}>
-            {t('modifiers.cancel')}
-          </button>
-          <button
-            type="button"
-            data-testid="confirm-modifiers"
-            disabled={busy || !isValid}
-            onClick={() => onConfirm([...selected])}
-          >
-            {t('modifiers.add')}
-          </button>
-        </div>
-      </div>
-    </div>
+      <ModalActions>
+        <Button variant="ghost" onClick={onCancel} disabled={busy}>
+          {t('modifiers.cancel')}
+        </Button>
+        <Button data-testid="confirm-modifiers" disabled={busy || !isValid} onClick={() => onConfirm([...selected])}>
+          {t('modifiers.add')}
+        </Button>
+      </ModalActions>
+    </Modal>
   );
 }

@@ -1,5 +1,6 @@
 import { formatMoney } from '@brasa/ui/lib/money';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@brasa/ui/components/Button';
 import type { CloseOrderResponse } from '../api/types';
 import { formatTableLabel } from '../lib/tableLabel';
 
@@ -45,9 +46,7 @@ export function Receipt({ result, onNewTable }: ReceiptProps) {
         <code>docs/architecture/decisions/0002-own-fiscal-engine.md</code>.
       </p>
 
-      <button type="button" onClick={onNewTable}>
-        {t('receipt.newTable')}
-      </button>
+      <Button onClick={onNewTable}>{t('receipt.newTable')}</Button>
     </div>
   );
 }

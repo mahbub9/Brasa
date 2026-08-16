@@ -114,11 +114,14 @@ public static class IdentityEndpoints
     private static async Task<IResult> GetOrganizationsAsync(IdentityDbContext db, CancellationToken cancellationToken)
     {
         var organizations = await db.Organizations
-            .OrderBy(o => o.CreatedAtUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return Results.Ok(organizations.Select(o => o.ToDto()).ToList());
+        // Sorted client-side: SQLite's EF Core provider (ADR 0012) cannot
+        // translate an ORDER BY over DateTimeOffset. This table is
+        // tenant-scoped and small, so client-side ordering costs nothing
+        // measurable on either provider.
+        return Results.Ok(organizations.OrderBy(o => o.CreatedAtUtc).Select(o => o.ToDto()).ToList());
     }
 
     private static async Task<IResult> CreateSiteAsync(
@@ -170,11 +173,11 @@ public static class IdentityEndpoints
 
         var sites = await db.Sites
             .Where(s => s.OrganizationId == organizationId)
-            .OrderBy(s => s.CreatedAtUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return Results.Ok(sites.Select(s => s.ToDto()).ToList());
+        // Sorted client-side — see GetOrganizationsAsync's own remarks.
+        return Results.Ok(sites.OrderBy(s => s.CreatedAtUtc).Select(s => s.ToDto()).ToList());
     }
 
     private static async Task<IResult> CreateTerminalAsync(
@@ -217,11 +220,11 @@ public static class IdentityEndpoints
 
         var terminals = await db.Terminals
             .Where(t => t.SiteId == siteId)
-            .OrderBy(t => t.CreatedAtUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return Results.Ok(terminals.Select(t => t.ToDto()).ToList());
+        // Sorted client-side — see GetOrganizationsAsync's own remarks.
+        return Results.Ok(terminals.OrderBy(t => t.CreatedAtUtc).Select(t => t.ToDto()).ToList());
     }
 
     private static async Task<IResult> CreateStaffAsync(
@@ -274,11 +277,11 @@ public static class IdentityEndpoints
 
         var staff = await db.Staff
             .Where(s => s.SiteId == siteId)
-            .OrderBy(s => s.CreatedAtUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return Results.Ok(staff.Select(s => s.ToDto(clock.UtcNow)).ToList());
+        // Sorted client-side — see GetOrganizationsAsync's own remarks.
+        return Results.Ok(staff.OrderBy(s => s.CreatedAtUtc).Select(s => s.ToDto(clock.UtcNow)).ToList());
     }
 
     private static async Task<IResult> VerifyStaffPinAsync(

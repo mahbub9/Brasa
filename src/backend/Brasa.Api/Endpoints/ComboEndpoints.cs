@@ -70,11 +70,13 @@ public static class ComboEndpoints
     {
         var combos = await db.Combos
             .Include(c => c.Components)
-            .OrderBy(c => c.CreatedAtUtc)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
 
-        return Results.Ok(combos.Select(c => c.ToDto()).ToList());
+        // Sorted client-side: SQLite's EF Core provider (ADR 0012) cannot
+        // translate an ORDER BY over DateTimeOffset. Small, tenant-scoped
+        // table — client-side ordering costs nothing measurable either way.
+        return Results.Ok(combos.OrderBy(c => c.CreatedAtUtc).Select(c => c.ToDto()).ToList());
     }
 
     private static async Task<IResult> GetComboAsync(Guid comboId, CatalogDbContext db, CancellationToken cancellationToken)

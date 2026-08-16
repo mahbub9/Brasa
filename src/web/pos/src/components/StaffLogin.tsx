@@ -1,5 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@brasa/ui/components/Button';
+import { Modal, ModalActions } from '@brasa/ui/components/Modal';
+import { TextField } from '@brasa/ui/components/TextField';
 import { api, ApiError } from '../api/client';
 import type { StaffDto } from '../api/types';
 
@@ -101,61 +104,61 @@ function StaffLoginModal({ staff, onSignedIn, onCancel }: StaffLoginModalProps) 
   }
 
   return (
-    <div className="staff-login-backdrop" role="dialog" aria-modal="true" aria-label={t('staff.signIn')}>
-      <div className="staff-login-modal" data-testid="staff-login-modal">
-        <h2>{t('staff.signIn')}</h2>
-
-        {!selected ? (
-          <ul className="staff-login-list">
-            {staff.length === 0 && <p className="empty-state">{t('staff.empty')}</p>}
-            {staff.map((member) => (
-              <li key={member.id}>
-                <button
-                  type="button"
-                  data-testid={`staff-login-option-${member.name}`}
-                  disabled={member.isLocked}
-                  title={member.isLocked ? t('staff.locked') : undefined}
-                  onClick={() => setSelected(member)}
-                >
-                  {member.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <div className="staff-login-pin-form">
-            <p>{selected.name}</p>
-            <input
-              type="password"
-              inputMode="numeric"
-              autoFocus
-              value={pin}
-              placeholder={t('staff.pinPlaceholder')}
-              data-testid="staff-login-pin"
-              disabled={busy}
-              onChange={(e) => setPin(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && pin !== '') void submit();
-              }}
-            />
-            {error && (
-              <p className="staff-login-error" data-testid="staff-login-error">
-                {error}
-              </p>
-            )}
-            <button type="button" data-testid="staff-login-submit" disabled={busy || pin === ''} onClick={() => void submit()}>
-              {t('staff.signIn')}
-            </button>
-            <button type="button" disabled={busy} onClick={reset}>
+    <Modal title={t('staff.signIn')} data-testid="staff-login-modal">
+      {!selected ? (
+        <ul className="staff-login-list">
+          {staff.length === 0 && <p className="empty-state">{t('staff.empty')}</p>}
+          {staff.map((member) => (
+            <li key={member.id}>
+              <Button
+                variant="secondary"
+                data-testid={`staff-login-option-${member.name}`}
+                disabled={member.isLocked}
+                title={member.isLocked ? t('staff.locked') : undefined}
+                onClick={() => setSelected(member)}
+              >
+                {member.name}
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="staff-login-pin-form">
+          <p>{selected.name}</p>
+          <TextField
+            type="password"
+            inputMode="numeric"
+            autoFocus
+            value={pin}
+            placeholder={t('staff.pinPlaceholder')}
+            data-testid="staff-login-pin"
+            disabled={busy}
+            onChange={(e) => setPin(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && pin !== '') void submit();
+            }}
+          />
+          {error && (
+            <p className="staff-login-error" data-testid="staff-login-error">
+              {error}
+            </p>
+          )}
+          <ModalActions>
+            <Button variant="secondary" disabled={busy} onClick={reset}>
               {t('staff.back')}
-            </button>
-          </div>
-        )}
+            </Button>
+            <Button variant="primary" data-testid="staff-login-submit" disabled={busy || pin === ''} onClick={() => void submit()}>
+              {t('staff.signIn')}
+            </Button>
+          </ModalActions>
+        </div>
+      )}
 
-        <button type="button" data-testid="staff-login-cancel" onClick={onCancel}>
+      <ModalActions>
+        <Button variant="ghost" data-testid="staff-login-cancel" onClick={onCancel}>
           {t('staff.cancel')}
-        </button>
-      </div>
-    </div>
+        </Button>
+      </ModalActions>
+    </Modal>
   );
 }

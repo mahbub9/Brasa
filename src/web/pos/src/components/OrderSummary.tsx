@@ -1,6 +1,10 @@
 import { formatMoney } from '@brasa/ui/lib/money';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Badge } from '@brasa/ui/components/Badge';
+import { Button } from '@brasa/ui/components/Button';
+import { Icon } from '@brasa/ui/components/Icon';
+import { TextField } from '@brasa/ui/components/TextField';
 import type { MoneyDto, OrderDto, OrderLineDto } from '../api/types';
 import { formatTableLabel } from '../lib/tableLabel';
 
@@ -50,28 +54,28 @@ export function OrderSummary({
     <aside className="order-summary">
       <div className="order-summary-heading">
         <h2>{formatTableLabel(order.tableLabel, t)}</h2>
-        <button type="button" className="transfer-table-trigger" data-testid="transfer-table-button" onClick={onTransferTable} disabled={busy}>
+        <Button variant="secondary" data-testid="transfer-table-button" onClick={onTransferTable} disabled={busy}>
           {t('order.transferTable')}
-        </button>
+        </Button>
       </div>
       {!order.isTakeaway && <p className="covers">{t('order.covers', { count: order.coverCount })}</p>}
 
       {hasUnfiredLines && (
         <div className="fire-controls" data-testid="fire-controls">
           {unfiredCourses.map((course) => (
-            <button
+            <Button
               key={course}
-              type="button"
+              variant="secondary"
               data-testid={`fire-course-${course}`}
               disabled={busy}
               onClick={() => onFireLines(course)}
             >
               {t('order.fireCourse', { course: t(`order.course.${course}`) })}
-            </button>
+            </Button>
           ))}
-          <button type="button" data-testid="fire-all-button" disabled={busy} onClick={() => onFireLines(null)}>
+          <Button data-testid="fire-all-button" disabled={busy} onClick={() => onFireLines(null)}>
             {t('order.fireAll')}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -108,9 +112,9 @@ export function OrderSummary({
                 <span className="order-line-name">
                   {line.itemName}
                   {line.isFired && (
-                    <span className="order-line-fired-badge" data-testid={`line-fired-${line.id}`}>
+                    <Badge tone="brand" data-testid={`line-fired-${line.id}`}>
                       {t('order.fired')}
-                    </span>
+                    </Badge>
                   )}
                 </span>
                 <span className="order-line-total">{formatMoney(line.lineTotal)}</span>
@@ -139,7 +143,7 @@ export function OrderSummary({
       <div className="split-preview">
         <label>
           {t('order.split')}
-          <input
+          <TextField
             type="number"
             min={1}
             data-testid="split-parts-input"
@@ -148,14 +152,14 @@ export function OrderSummary({
           />
           {t('order.splitWays')}
         </label>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
           data-testid="preview-split-button"
           onClick={onPreviewSplit}
           disabled={busy || order.lines.length === 0}
         >
           {t('order.previewSplit')}
-        </button>
+        </Button>
         {splitAmounts && (
           <ul className="split-amounts" data-testid="split-amounts">
             {splitAmounts.map((amount, index) => (
@@ -165,37 +169,19 @@ export function OrderSummary({
         )}
       </div>
 
-      <button
-        type="button"
-        className="pre-bill-trigger"
-        data-testid="pre-bill-button"
-        onClick={onPreBill}
-        disabled={busy || order.lines.length === 0}
-      >
+      <Button variant="secondary" data-testid="pre-bill-button" onClick={onPreBill} disabled={busy || order.lines.length === 0}>
         {t('order.preBill')}
-      </button>
+      </Button>
 
       {!order.isTakeaway && (
-        <button
-          type="button"
-          className="request-bill-trigger"
-          data-testid="request-bill-button"
-          onClick={onRequestBill}
-          disabled={busy}
-        >
+        <Button variant="secondary" data-testid="request-bill-button" onClick={onRequestBill} disabled={busy}>
           {t('order.requestBill')}
-        </button>
+        </Button>
       )}
 
-      <button
-        type="button"
-        className="close-order"
-        data-testid="close-order-button"
-        onClick={onClose}
-        disabled={busy || order.lines.length === 0}
-      >
+      <Button data-testid="close-order-button" onClick={onClose} disabled={busy || order.lines.length === 0}>
         {busy ? t('order.closing') : t('order.close')}
-      </button>
+      </Button>
     </aside>
   );
 }
@@ -226,7 +212,7 @@ function OrderLineNotes({ line, busy, onSave }: OrderLineNotesProps) {
   if (editing) {
     return (
       <div className="order-line-notes-edit">
-        <input
+        <TextField
           type="text"
           value={draft}
           maxLength={300}
@@ -234,28 +220,23 @@ function OrderLineNotes({ line, busy, onSave }: OrderLineNotesProps) {
           data-testid={`line-notes-input-${line.id}`}
           onChange={(e) => setDraft(e.target.value)}
         />
-        <button type="button" data-testid={`line-notes-save-${line.id}`} disabled={busy} onClick={save}>
+        <Button variant="secondary" data-testid={`line-notes-save-${line.id}`} disabled={busy} onClick={save}>
           {t('order.notesSave')}
-        </button>
-        <button type="button" disabled={busy} onClick={() => setEditing(false)}>
+        </Button>
+        <Button variant="ghost" disabled={busy} onClick={() => setEditing(false)}>
           {t('order.notesCancel')}
-        </button>
+        </Button>
       </div>
     );
   }
 
   return line.notes ? (
-    <button
-      type="button"
-      className="order-line-notes-display"
-      data-testid={`line-notes-${line.id}`}
-      onClick={startEditing}
-    >
+    <Button variant="ghost" className="order-line-notes-display" data-testid={`line-notes-${line.id}`} onClick={startEditing}>
       {t('order.notesLabel')}: {line.notes}
-    </button>
+    </Button>
   ) : (
-    <button type="button" className="order-line-notes-add" data-testid={`add-note-${line.id}`} onClick={startEditing}>
-      + {t('order.addNote')}
-    </button>
+    <Button variant="ghost" className="order-line-notes-add" data-testid={`add-note-${line.id}`} onClick={startEditing}>
+      <Icon name="add" /> {t('order.addNote')}
+    </Button>
   );
 }
