@@ -72,6 +72,7 @@ export const en = {
     noTables: 'No tables in this room.',
     seatsCount: '{{count}} seats',
     addTable: 'Add table',
+    tableLabel: 'Table {{number}}',
     tableLabelPlaceholder: 'Table label, e.g. "Mesa 7"',
     positionX: 'X position',
     positionY: 'Y position',

@@ -3,6 +3,7 @@ import type { PointerEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from '../api/client';
 import type { RoomDto, StaffDto, TableDto, TableShape } from '../api/types';
+import { formatTableLabel } from '../lib/tableLabel';
 
 interface FloorManagerProps {
   rooms: RoomDto[];
@@ -199,7 +200,7 @@ function FloorCanvas({ room, onReload, onErrorChange }: FloorCanvasProps) {
               onPointerMove={handlePointerMove}
               onPointerUp={(e) => handlePointerUp(e, table)}
             >
-              {table.label}
+              {formatTableLabel(table.label, t)}
             </div>
           );
         })}
@@ -576,7 +577,7 @@ function FloorManagerTable({ table, onReload, onErrorChange }: FloorManagerTable
             disabled={busy}
             onClick={startEditing}
           >
-            {table.label}
+            {formatTableLabel(table.label, t)}
           </button>
           <span className="floor-manager-table-detail">{t('floor.seatsCount', { count: table.seats })}</span>
           <span className="floor-manager-table-detail">{t(`floor.shapeOption.${table.shape}`)}</span>

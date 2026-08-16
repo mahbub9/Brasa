@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { createRoom, createTable, deleteRoomResponse, deleteTableResponse } from './support/api';
 
 // WEB-09's i18n toggle. Mirrors pos's language-toggle.spec.ts — same
 // cookie name (brasa.lang), same pt-default/en-toggle shape (ADR 0011).
@@ -47,5 +48,30 @@ test.describe('admin language toggle', () => {
 
     await page.reload();
     await expect(page.getByRole('heading', { name: 'Overview' })).toBeVisible();
+  });
+
+  test('floor plan table labels read "Table N" in English, not the seeded "Mesa N"', async ({ page, request }) => {
+    // Mirrors pos's own "table labels read Table N" case in
+    // language-toggle.spec.ts (src/lib/tableLabel.ts) — admin's FloorManager
+    // renders the exact same seeded "Mesa N" shape and needs the same
+    // display-only translation, on both the table list row and the
+    // drag-and-drop canvas chip. Isolated room+table, not a shared seeded
+    // one, same reasoning as floor-drag-drop.spec.ts.
+    const room = await createRoom(request, { name: `Lang Test Room ${Date.now()}`, displayOrder: 99 });
+    const label = `Mesa ${Date.now() % 100000}`;
+    const table = await createTable(request, room.id, { label, seats: 2, positionX: 0, positionY: 0, shape: 'Round' });
+
+    await page.goto(adminBaseUrl);
+    await page.getByTestId('lang-en').click();
+    await page.getByTestId('nav-floor').click();
+    await page.waitForSelector('.floor-manager');
+
+    // The testid is still built from the raw seeded label — only the
+    // rendered text changes.
+    await expect(page.getByTestId(`table-edit-${label}`)).toHaveText(/^Table \d+$/);
+    await expect(page.getByTestId(`canvas-table-${label}`)).toHaveText(/^Table \d+$/);
+
+    await deleteTableResponse(request, table.id);
+    await deleteRoomResponse(request, room.id);
   });
 });

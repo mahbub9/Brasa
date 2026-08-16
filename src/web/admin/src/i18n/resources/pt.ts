@@ -69,6 +69,7 @@ export const pt = {
     noTables: 'Sem mesas nesta sala.',
     seatsCount: '{{count}} lugares',
     addTable: 'Adicionar mesa',
+    tableLabel: 'Mesa {{number}}',
     tableLabelPlaceholder: 'Nome da mesa, ex.: "Mesa 7"',
     positionX: 'Posição X',
     positionY: 'Posição Y',
