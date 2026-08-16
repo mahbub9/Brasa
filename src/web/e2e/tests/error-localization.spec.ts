@@ -47,7 +47,7 @@ test.describe('server error messages are localized by error code', () => {
 
     const errorBanner = page.getByRole('alert');
     await expect(errorBanner).toBeVisible();
-    await expect(errorBanner).toHaveText('Este item está indisponível de momento.×');
+    await expect(errorBanner).toHaveText('Este item está indisponível de momento.');
     await errorBanner.getByRole('button').click();
     await expect(errorBanner).toBeHidden();
 
@@ -55,7 +55,7 @@ test.describe('server error messages are localized by error code', () => {
     await itemButton.click();
 
     await expect(errorBanner).toBeVisible();
-    await expect(errorBanner).toHaveText('This item is currently unavailable.×');
+    await expect(errorBanner).toHaveText('This item is currently unavailable.');
 
     // Cleanup: bring the item back, ring up a real one so the order can
     // close, then remove the test item so it doesn't linger on the menu.
