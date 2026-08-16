@@ -27,21 +27,28 @@ rest of what CI checks) locally:
 ```powershell
 dotnet run --project src/backend/Brasa.Api
 # in another terminal, once the API is up:
-$doc = Invoke-RestMethod http://localhost:5216/openapi/v1.json
-$doc.PSObject.Properties.Remove('servers')
-$json = $doc | ConvertTo-Json -Depth 100
-[System.IO.File]::WriteAllText(
-  "$PWD/docs/openapi/v1.json", $json, (New-Object System.Text.UTF8Encoding $false))
+node infra/scripts/regenerate-openapi.mjs
 ```
 
-Write with `[System.IO.File]::WriteAllText` and an explicit
-no-BOM `UTF8Encoding`, not `Set-Content -Encoding utf8` — Windows
-PowerShell 5.1 (this project's shell) writes a UTF-8 BOM for that
-encoding name, unlike every other JSON file already in this repo; PowerShell
-Core's `-Encoding utf8` doesn't, so the mistake is easy to make once and not
-notice (see the trap in `docs/ai/README.md`). `servers` is removed via
-`.PSObject.Properties.Remove` before serialising, per the note above —
-simpler than editing it out of the JSON string afterward.
+**Node writes the file, not PowerShell — this is not a style choice.**
+Windows PowerShell 5.1's `ConvertTo-Json` has no standard-indent option: it
+produces a "staircase" format where each nesting level's indent grows by
+the *accumulated length of every enclosing key*, not a fixed 2 spaces per
+level. For a document this deeply nested that bloated a semantically
+unchanged ~120KB document to ~540KB — and its indentation never matched
+CI's own regeneration step (`jq 'del(.servers)'` in
+`.github/workflows/ci.yml`, which uses jq's ordinary 2-space pretty-print).
+The practical effect: every PowerShell-regenerated commit failed the
+`openapi-drift` CI job even when the API contract hadn't changed at all —
+confirmed by deep-sorting both documents' keys and diffing the result,
+which showed zero semantic difference on a run that CI still flagged as
+drifted. `infra/scripts/regenerate-openapi.mjs` fetches the live document,
+deletes `servers`, and writes it with `JSON.stringify(doc, null, 2)` —
+which matches jq's own default formatting, because both converge on the
+same ordinary 2-space convention .NET's own OpenApi middleware already
+emits. No BOM either: Node's `fs.writeFile` with `'utf8'` never writes
+one, sidestepping the separate BOM trap the old PowerShell command needed
+an explicit workaround for (see `docs/ai/README.md`).
 
 After regenerating, also re-run `web/sdk`'s generator so the TypeScript
 types stay in sync (`npm run generate` in `src/web/sdk`, then

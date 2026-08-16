@@ -98,11 +98,15 @@ try {
                 $failed = $true
             }
             else {
-                $doc = Invoke-RestMethod http://localhost:5216/openapi/v1.json
-                $doc.PSObject.Properties.Remove('servers')
-                $liveJson = $doc | ConvertTo-Json -Depth 100
+                # Node writes the comparison copy, not PowerShell's own
+                # ConvertTo-Json -- see regenerate-openapi.mjs's own remarks
+                # for why that matters here, not just style: PowerShell's
+                # staircase indentation never matches what this same script
+                # (or CI's jq) produces, so a ConvertTo-Json-based compare
+                # here would report drift on every single run regardless of
+                # whether the API contract actually changed.
                 $tempFile = Join-Path $env:TEMP 'brasa-openapi-live.json'
-                [System.IO.File]::WriteAllText($tempFile, $liveJson, (New-Object System.Text.UTF8Encoding $false))
+                node infra/scripts/regenerate-openapi.mjs 'http://localhost:5216' $tempFile
 
                 $committed = Get-Content 'docs/openapi/v1.json' -Raw
                 $live = Get-Content $tempFile -Raw

@@ -98,10 +98,17 @@ a service actually survives a Saturday night.**
 - **CI** — a `.github/workflows/ci.yml` job (`e2e`) starts Postgres via
   `infra/docker-compose.yml`, builds the API in Debug (what `--no-build`
   picks up), installs both npm projects and Chromium, and runs the suite.
-  **This job has not actually been run in CI** — no push has triggered it
-  yet. It mirrors what was verified locally (warm-server and cold-start, both
-  green) but treat it as reviewed, not proven, until it has gone green in an
-  actual GitHub Actions run.
+  Now genuinely run on every push, and it has caught two real, CI-only
+  problems local runs never could: `IdempotencyMiddleware` crashing the
+  API process on any `204` response (fixed, reconfirmed live — see the
+  trap in `docs/ai/README.md`), and `vite@8`'s new `rolldown` dependency
+  hitting a real npm bug installing its Linux native binding
+  (`npm/cli#4828`) that crashed `pos`'s own Playwright `webServer` before
+  a single test could run — fixed with an explicit npm upgrade step, not
+  yet reconfirmed by an actual run since this repository's own working
+  environment cannot push. Neither failure mode is reproducible on a
+  Windows dev machine, which is exactly why both went unnoticed locally
+  for a while.
 
 Verified locally from a warm state, from a cold start (both dev processes
 killed first, so `webServer` launching them from nothing is actually

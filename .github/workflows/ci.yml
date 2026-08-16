@@ -68,6 +68,18 @@ jobs:
         with:
           node-version: '24.x'
 
+      # Vite 8 made rolldown a hard dependency, not an opt-in variant --
+      # rolldown ships its native bundler binary as one of fourteen
+      # per-platform optionalDependencies (@rolldown/binding-linux-x64-gnu
+      # for this runner). The npm version actions/setup-node's node-version
+      # happens to bundle has repeatedly failed to install the right one of
+      # those for the current platform even though package-lock.json
+      # correctly lists it -- a long-standing, still-recurring npm bug
+      # (https://github.com/npm/cli/issues/4828), not anything wrong with
+      # this repo's own lockfiles. A newer npm resolves it reliably.
+      - name: Upgrade npm
+        run: npm install -g npm@latest
+
       # postgres has a healthcheck (pg_isready); --wait blocks until it passes.
       # seq has none, so --wait only waits for it to reach "running".
       - name: Start local infrastructure
