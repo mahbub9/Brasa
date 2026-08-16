@@ -152,7 +152,16 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      # fetch-depth 2, not the default 1 -- the breaking-change check below
+      # needs HEAD^'s own committed docs/openapi/v1.json to diff against, and
+      # a depth-1 checkout has no parent commit to find it in.
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 2
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '24.x'
 
       - name: Set up .NET
         uses: actions/setup-dotnet@v5
@@ -168,13 +177,10 @@ jobs:
       # API-14. docs/openapi/README.md documents regenerating
       # docs/openapi/v1.json by hand after any endpoint change — this job
       # is what actually enforces that step isn't forgotten, instead of
-      # relying on remembering to run it. Not true breaking-change
-      # detection (it doesn't distinguish an additive change from a
-      # removed field) — that's a real gap, not implied away — but it
-      # catches every drift a hand-regeneration step could silently miss,
-      # which is exactly what happened earlier in this project's own
-      # history (FLR-04/CAT-01/13/17/19 all shipped before the committed
-      # document caught up).
+      # relying on remembering to run it. Catches every drift a
+      # hand-regeneration step could silently miss, which is exactly what
+      # happened earlier in this project's own history (FLR-04/CAT-01/13/17/19
+      # all shipped before the committed document caught up).
       - name: Regenerate and diff the OpenAPI document
         env:
           ASPNETCORE_ENVIRONMENT: Development
@@ -203,6 +209,28 @@ jobs:
           if ! diff -u docs/openapi/v1.json /tmp/openapi-live.json; then
             echo "::error::docs/openapi/v1.json is out of date. Regenerate it (see docs/openapi/README.md) and commit the result in the same PR as the endpoint change that caused this drift."
             exit 1
+          fi
+
+      # The other half of API-14: not "is the committed file stale" (above)
+      # but "compared to the previous commit's own released contract, did
+      # anything just become a breaking change." check-breaking-changes.mjs
+      # is a conservative, high-confidence subset (see its own header for
+      # exactly what it does and doesn't catch) -- calibrated against this
+      # repo's own real commit history, where it correctly flagged IDN-11's
+      # manager-authorisation gate (a newly-required field on three
+      # already-shipped endpoints) and correctly stayed silent on every
+      # purely-additive commit. A report, not a blocker: a breaking change is
+      # sometimes the intended one, exactly what IDN-11 legitimately did --
+      # see api-contract.md's own versioning story for how this codebase
+      # expects to actually handle one when it's real, not accidental.
+      - name: Check for breaking changes against the previous commit (API-14)
+        if: always() && !cancelled()
+        run: |
+          if git cat-file -e HEAD^:docs/openapi/v1.json 2>/dev/null; then
+            git show HEAD^:docs/openapi/v1.json > /tmp/openapi-previous.json
+            node infra/scripts/check-breaking-changes.mjs /tmp/openapi-previous.json docs/openapi/v1.json || true
+          else
+            echo "No docs/openapi/v1.json at HEAD^ to compare against -- skipping."
           fi
 
   vulnerable-packages:

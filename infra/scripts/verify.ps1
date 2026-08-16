@@ -118,6 +118,37 @@ try {
                 else {
                     Write-Host "OK: docs/openapi/v1.json matches the live API." -ForegroundColor Green
                 }
+
+                # API-14's other half: not "is the committed file stale" (above)
+                # but "compared to the last released contract, did anything in
+                # the live API just become a breaking change." Deliberately
+                # diffs against the last COMMIT's own docs/openapi/v1.json, not
+                # the working-tree copy -- this answers "what would committing
+                # right now actually change," which stays meaningful whether or
+                # not the working tree still needs the regeneration above.
+                # check-breaking-changes.mjs is a conservative, high-confidence
+                # subset (see its own header) -- a real report, not silence, is
+                # expected whenever this project's own IDN-11-shaped changes
+                # (a newly-required field on an already-shipped endpoint) land.
+                #
+                # Deliberately does NOT set $failed -- unlike drift (always a
+                # bug to fix) a breaking change is sometimes the intended
+                # change itself, exactly what IDN-11's own manager-
+                # authorisation gate legitimately did to three endpoints. This
+                # is a "read it and make a conscious call" report, the same
+                # spirit as api-contract.md's own versioning story, not a
+                # blocker -- forcing every intentional breaking change through
+                # a bypass flag would just train the habit of ignoring it.
+                Write-Host ""
+                Write-Host "=== Breaking-change check (API-14) ===" -ForegroundColor Cyan
+                $previousDocPath = Join-Path $env:TEMP 'brasa-openapi-previous.json'
+                git show HEAD:docs/openapi/v1.json > $previousDocPath 2>$null
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "SKIPPED: no committed docs/openapi/v1.json at HEAD to compare against." -ForegroundColor Yellow
+                }
+                else {
+                    node infra/scripts/check-breaking-changes.mjs $previousDocPath $tempFile
+                }
             }
 
             Stop-ApiIfRunning

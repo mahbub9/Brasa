@@ -59,10 +59,18 @@ no consumer and no CI job of its own checking it.
 ## What this feeds later
 
 - **API-14** — built: the `openapi-drift` CI job diffs a freshly generated
-  document against this file and fails the build on any drift. Not true
-  breaking-change detection yet — it can't tell an additive change from a
-  removed field, it just refuses to let the committed document drift from
-  source at all.
+  document against this file and fails the build on any drift. Real
+  breaking-change detection sits alongside it now, not folded in:
+  `infra/scripts/check-breaking-changes.mjs` classifies a conservative,
+  high-confidence subset — a removed operation, a newly-required
+  parameter/request-body property, or a property/status code that
+  disappeared from a success response — comparing the previous commit's own
+  document against the current one. Deliberately non-blocking (unlike
+  drift, a breaking change is sometimes the intended one — see IDN-11's own
+  manager-authorisation gate, a real breaking change to three endpoints
+  this checker correctly identifies when run against that commit). Run it
+  by hand: `node infra/scripts/check-breaking-changes.mjs <old.json> <new.json>`.
+  See that script's own header for exactly what it does and doesn't cover.
 - **API-15** — generating the `web/sdk` TypeScript client from this document
   instead of hand-writing `api/client.ts` in each web app. The generator and
   every request/response type it needs both exist now; still no consumer —
