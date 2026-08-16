@@ -79,16 +79,47 @@ tenant is pushed to the query-filter accessor, so system code is expected to
 query across tenants explicitly rather than rely on an implicit single-tenant
 filter.
 
-> ⚠️ **Status: the flag exists; the privileged connection path does not yet.**
-> Given what [ADR 0010](decisions/0010-rls-runtime-role-split.md) found, the
-> tempting implementation — connect as a superuser or a `BYPASSRLS` role — is
-> exactly the mistake already made once for the ordinary runtime path, just
-> deliberately this time instead of accidentally. When this is built, it needs
-> its own explicit design (a third, narrowly-scoped role is the likely answer),
-> not an assumption that "system context" and "superuser" are the same thing.
+**The privileged connection path (DAT-07)**: exactly the "third, narrowly-scoped
+role" this section once called the likely answer, not the tempting-but-wrong
+shortcut of connecting as a superuser or a `BYPASSRLS` role — see
+[ADR 0010](decisions/0010-rls-runtime-role-split.md) for why that shortcut is a
+mistake this codebase already made once and does not intend to make again.
+`brasa_system` (`infra/initdb/02-system-role.sql`) is an ordinary role: no
+`SUPERUSER`, no `BYPASSRLS`, and read-only by construction — no table's
+migration ever grants it `INSERT`/`UPDATE`/`DELETE`. Every tenant-owned table
+gets a second, role-scoped RLS policy via `RowLevelSecurity.EnableSystemReadFor`
+(`USING (true)`, but only for connections authenticated as `brasa_system` —
+Postgres never evaluates a policy for a role it doesn't name, so this can never
+widen what an ordinary `brasa_app` request sees). `ModulePersistenceExtensions`
+picks a physically separate connection string/pool (`ConnectionStrings:PostgresSystem`)
+whenever a scope's `ITenantContext.IsSystemContext` is set, so a tenant-scoped
+request can never end up running on a connection that still carries
+`brasa_system`'s elevated privileges — a structural guarantee, not one that
+depends on connection-pool reset-on-close behaving correctly.
+
+> **A system-context query must call `IgnoreQueryFilters()` explicitly to
+> actually see more than one tenant.** The RLS policy admitting every row is
+> only half the picture — EF Core's own global query filter
+> (`ApplyTenantQueryFilters`) always compiles to `TenantId == accessor.CurrentTenantId`,
+> and a system-context scope never pushes a tenant into that accessor
+> (`CurrentTenantId` stays `Guid.Empty`, which matches no real tenant). Without
+> `IgnoreQueryFilters()`, a system-context `DbContext` queries a real,
+> unrestricted-by-RLS connection and still gets zero rows back — this is the
+> "expected to query across tenants explicitly, not rely on an implicit
+> single-tenant filter" sentence above, made concrete. Verified live in
+> `SystemContextIntegrationTests.The_real_ResolveAsSystem_path_through_EF_sees_every_tenant_once_the_query_filter_is_lifted`.
 
 > **`ResolveAsSystem()` must never be reachable from an HTTP request path.** It is
 > for background jobs and migrations only.
+
+> **Not meaningfully applicable**: the `InMemory` provider (ADR 0012, the beta
+> pilot's SQLite path) has no RLS and no `brasa_system` role — every module's
+> `DbContext` there shares one connection regardless of `IsSystemContext`, so
+> `IgnoreQueryFilters()` alone already reveals everything in that one store, the
+> same as it would for any tenant. There is no separate cross-tenant boundary to
+> test there, because the beta pilot is single-tenant by deployment design in
+> the first place — the same accepted trade-down `InMemory` already makes for
+> the ordinary RLS boundary.
 
 ## Entities
 

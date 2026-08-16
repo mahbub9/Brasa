@@ -64,10 +64,15 @@ public sealed class TenantContext : ITenantContext
         IsSystemContext = true;
         _resolved = true;
 
-        // The system context bypasses RLS via a privileged database role (see
-        // RowLevelSecurity), so no tenant is set for the query filter either —
-        // system code is expected to query across tenants explicitly, not rely
-        // on an implicit single-tenant filter.
+        // DAT-07: ModulePersistenceExtensions reads IsSystemContext when it
+        // constructs a module's DbContext and picks the brasa_system
+        // connection string instead of brasa_app's — a physically separate
+        // Npgsql connection pool, not a role switch on the ordinary one. No
+        // tenant is set for the EF query filter either (TenantId stays
+        // Guid.Empty), so system code is expected to query across tenants
+        // explicitly, not rely on an implicit single-tenant filter. See
+        // RowLevelSecurity.EnableSystemReadFor and
+        // docs/architecture/multi-tenancy.md.
     }
 
     private void EnsureUnresolved()

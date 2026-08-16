@@ -3,7 +3,6 @@ using Brasa.Modules.Ordering.Persistence;
 using Brasa.Shared.Tenancy;
 using Brasa.Shared.Time;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 using Testcontainers.PostgreSql;
 
 namespace Brasa.Api.IntegrationTests;
@@ -39,27 +38,10 @@ public sealed class OrderConcurrencyIntegrationTests : IAsyncLifetime
     {
         await _postgres.StartAsync();
 
-        // The real migrations carry RLS GRANTs to brasa_app (ADR 0010) — the
-        // same role TenantIsolationIntegrationTests creates for the same
-        // reason, mirroring infra/initdb/01-app-role.sql rather than relying
-        // on docker-entrypoint-initdb.d, so this test needs nothing beyond
-        // the stock Testcontainers image.
-        await using (var connection = new NpgsqlConnection(_postgres.GetConnectionString()))
-        {
-            await connection.OpenAsync();
-            await using var command = connection.CreateCommand();
-            command.CommandText = """
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'brasa_app') THEN
-                        CREATE ROLE brasa_app WITH LOGIN PASSWORD 'devonly_app';
-                    END IF;
-                END
-                $$;
-                GRANT CONNECT ON DATABASE brasa TO brasa_app;
-                """;
-            await command.ExecuteNonQueryAsync();
-        }
+        // The real migrations carry RLS GRANTs to both brasa_app (ADR 0010)
+        // and brasa_system (DAT-07) now — see TestRoles's own remarks for
+        // why this is a shared helper, not a copy hand-rolled per test class.
+        await TestRoles.EnsureAppAndSystemRolesExistAsync(_postgres.GetConnectionString());
 
         // Built via OrderingDbContextFactory — the same design-time factory
         // `dotnet ef` itself uses — for the same reason

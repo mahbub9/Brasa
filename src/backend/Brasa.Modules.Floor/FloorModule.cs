@@ -13,10 +13,14 @@ public static class FloorModule
     /// <see cref="ModulePersistenceExtensions.AddModuleDbContext{TContext}"/>.
     /// </summary>
     public static IServiceCollection AddFloorModule(
-        this IServiceCollection services, DatabaseOptions databaseOptions, string? connectionString)
+        this IServiceCollection services,
+        DatabaseOptions databaseOptions,
+        string? connectionString,
+        string? systemConnectionString = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        return services.AddModuleDbContext<FloorDbContext>(databaseOptions, connectionString, "floor");
+        return services.AddModuleDbContext<FloorDbContext>(
+            databaseOptions, connectionString, "floor", systemConnectionString);
     }
 }

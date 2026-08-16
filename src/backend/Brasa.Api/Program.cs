@@ -126,20 +126,27 @@ if (builder.Environment.IsProduction() && databaseOptions.Provider == DatabasePr
 }
 builder.Services.AddSingleton(databaseOptions);
 
-// Two roles, two connection strings — see infra/initdb/01-app-role.sql.
-// "Postgres" (brasa_app) is unprivileged and is what actually serves requests,
-// so row-level security applies to it. "PostgresMigrations" (brasa) is a
-// superuser and is used only to run migrations, never to answer a request.
-// Only needed when Database:Provider is Postgres — InMemory (ADR 0012)
-// needs neither, so both stay empty rather than throwing in that mode.
+// Three roles, three connection strings — see infra/initdb/01-app-role.sql
+// and infra/initdb/02-system-role.sql. "Postgres" (brasa_app) is unprivileged
+// and is what actually serves requests, so row-level security applies to it.
+// "PostgresMigrations" (brasa) is a superuser and is used only to run
+// migrations, never to answer a request. "PostgresSystem" (brasa_system,
+// DAT-07) is read-only and cross-tenant, selected per-DbContext-construction
+// by ModulePersistenceExtensions whenever ITenantContext.IsSystemContext is
+// set — background jobs and migrations only, never a request path. Only
+// needed when Database:Provider is Postgres — InMemory (ADR 0012) needs
+// none of the three, so all stay empty rather than throwing in that mode.
 var connectionString = string.Empty;
 var migrationsConnectionString = string.Empty;
+var systemConnectionString = string.Empty;
 if (databaseOptions.Provider == DatabaseProvider.Postgres)
 {
     connectionString = builder.Configuration.GetConnectionString("Postgres")
         ?? throw new InvalidOperationException("ConnectionStrings:Postgres is not configured.");
     migrationsConnectionString = builder.Configuration.GetConnectionString("PostgresMigrations")
         ?? throw new InvalidOperationException("ConnectionStrings:PostgresMigrations is not configured.");
+    systemConnectionString = builder.Configuration.GetConnectionString("PostgresSystem")
+        ?? throw new InvalidOperationException("ConnectionStrings:PostgresSystem is not configured.");
 }
 
 // ── Shared kernel ───────────────────────────────────────────────────────────
@@ -216,10 +223,10 @@ builder.Services.AddRateLimiter(limiterOptions =>
 });
 
 // ── Modules ──────────────────────────────────────────────────────────────────
-builder.Services.AddCatalogModule(databaseOptions, connectionString);
-builder.Services.AddOrderingModule(databaseOptions, connectionString);
-builder.Services.AddFloorModule(databaseOptions, connectionString);
-builder.Services.AddIdentityModule(databaseOptions, connectionString);
+builder.Services.AddCatalogModule(databaseOptions, connectionString, systemConnectionString);
+builder.Services.AddOrderingModule(databaseOptions, connectionString, systemConnectionString);
+builder.Services.AddFloorModule(databaseOptions, connectionString, systemConnectionString);
+builder.Services.AddIdentityModule(databaseOptions, connectionString, systemConnectionString);
 
 // Fiscal.Portugal (the real, AT-certifiable engine) is I7 work — see
 // docs/architecture/decisions/0002-own-fiscal-engine.md. Until it exists, there

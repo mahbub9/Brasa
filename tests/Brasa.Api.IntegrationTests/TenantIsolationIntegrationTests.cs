@@ -41,26 +41,14 @@ public sealed class TenantIsolationIntegrationTests : IAsyncLifetime
 
         var superuserConnectionString = _postgres.GetConnectionString();
 
-        // Mirrors infra/initdb/01-app-role.sql — the unprivileged runtime
-        // role RLS actually applies to. Run directly against the container
+        // Mirrors infra/initdb/01-app-role.sql and 02-system-role.sql — the
+        // real migrations grant to brasa_system too now (DAT-07), so both
+        // roles must exist before MigrateAsync runs, not just the one this
+        // test class itself cares about. Run directly against the container
         // instead of relying on docker-entrypoint-initdb.d, so this test
-        // needs nothing beyond the stock Testcontainers image.
-        await using (var connection = new NpgsqlConnection(superuserConnectionString))
-        {
-            await connection.OpenAsync();
-            await using var command = connection.CreateCommand();
-            command.CommandText = """
-                DO $$
-                BEGIN
-                    IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'brasa_app') THEN
-                        CREATE ROLE brasa_app WITH LOGIN PASSWORD 'devonly_app';
-                    END IF;
-                END
-                $$;
-                GRANT CONNECT ON DATABASE brasa TO brasa_app;
-                """;
-            await command.ExecuteNonQueryAsync();
-        }
+        // needs nothing beyond the stock Testcontainers image. See
+        // TestRoles's own remarks for why this is a shared helper.
+        await TestRoles.EnsureAppAndSystemRolesExistAsync(superuserConnectionString);
 
         // Built via CatalogDbContextFactory — the same design-time factory
         // `dotnet ef` itself uses — rather than a hand-rolled

@@ -13,10 +13,14 @@ public static class IdentityModule
     /// <see cref="ModulePersistenceExtensions.AddModuleDbContext{TContext}"/>.
     /// </summary>
     public static IServiceCollection AddIdentityModule(
-        this IServiceCollection services, DatabaseOptions databaseOptions, string? connectionString)
+        this IServiceCollection services,
+        DatabaseOptions databaseOptions,
+        string? connectionString,
+        string? systemConnectionString = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        return services.AddModuleDbContext<IdentityDbContext>(databaseOptions, connectionString, "identity");
+        return services.AddModuleDbContext<IdentityDbContext>(
+            databaseOptions, connectionString, "identity", systemConnectionString);
     }
 }

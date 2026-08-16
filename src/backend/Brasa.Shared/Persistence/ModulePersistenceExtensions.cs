@@ -1,3 +1,4 @@
+using Brasa.Shared.Tenancy;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,11 +25,20 @@ public static class ModulePersistenceExtensions
     /// per-module partition key so each module still gets its own isolated
     /// store, mirroring separate schemas.
     /// </param>
+    /// <param name="systemConnectionString">
+    /// The <c>brasa_system</c> connection string (DAT-07). Required when
+    /// <see cref="DatabaseOptions.Provider"/> is
+    /// <see cref="DatabaseProvider.Postgres"/>; ignored otherwise — InMemory
+    /// has no RLS-backed system role to connect as, the same accepted
+    /// trade-down <see cref="DatabaseProvider.InMemory"/>'s own remarks
+    /// already make for the ordinary tenant RLS boundary.
+    /// </param>
     public static IServiceCollection AddModuleDbContext<TContext>(
         this IServiceCollection services,
         DatabaseOptions databaseOptions,
         string? connectionString,
-        string schema)
+        string schema,
+        string? systemConnectionString = null)
         where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(services);
@@ -57,9 +67,33 @@ public static class ModulePersistenceExtensions
         else
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
+            ArgumentException.ThrowIfNullOrWhiteSpace(systemConnectionString);
+
             services.AddDbContext<TContext>((sp, options) =>
-                options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", schema))
-                    .AddInterceptors(sp.GetRequiredService<TenantSessionInterceptor>()));
+            {
+                // The setupAction overload of AddDbContext receives the
+                // request/scope-local IServiceProvider, not the root one — so
+                // resolving the scoped ITenantContext here picks up whatever
+                // this specific scope actually resolved to (an ordinary
+                // tenant, or ResolveAsSystem() for a background job), not
+                // whichever scope happened to build the model first. DAT-07:
+                // a system-context scope gets its own connection string,
+                // authenticated as brasa_system — a physically separate
+                // Npgsql connection pool (Npgsql pools per exact connection
+                // string), so an ordinary tenant-scoped request can never
+                // end up running on a connection still carrying brasa_system's
+                // elevated, cross-tenant privileges, regardless of how
+                // connection-pool reset-on-close behaves.
+                var tenantContext = sp.GetRequiredService<ITenantContext>();
+                var effectiveConnectionString = tenantContext.IsSystemContext
+                    ? systemConnectionString
+                    : connectionString;
+
+                options.UseNpgsql(
+                        effectiveConnectionString,
+                        npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", schema))
+                    .AddInterceptors(sp.GetRequiredService<TenantSessionInterceptor>());
+            });
         }
 
         return services;

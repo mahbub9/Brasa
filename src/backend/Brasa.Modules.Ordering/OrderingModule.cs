@@ -13,10 +13,14 @@ public static class OrderingModule
     /// <see cref="ModulePersistenceExtensions.AddModuleDbContext{TContext}"/>.
     /// </summary>
     public static IServiceCollection AddOrderingModule(
-        this IServiceCollection services, DatabaseOptions databaseOptions, string? connectionString)
+        this IServiceCollection services,
+        DatabaseOptions databaseOptions,
+        string? connectionString,
+        string? systemConnectionString = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        return services.AddModuleDbContext<OrderingDbContext>(databaseOptions, connectionString, "ordering");
+        return services.AddModuleDbContext<OrderingDbContext>(
+            databaseOptions, connectionString, "ordering", systemConnectionString);
     }
 }

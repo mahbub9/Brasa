@@ -13,10 +13,14 @@ public static class CatalogModule
     /// <see cref="ModulePersistenceExtensions.AddModuleDbContext{TContext}"/>.
     /// </summary>
     public static IServiceCollection AddCatalogModule(
-        this IServiceCollection services, DatabaseOptions databaseOptions, string? connectionString)
+        this IServiceCollection services,
+        DatabaseOptions databaseOptions,
+        string? connectionString,
+        string? systemConnectionString = null)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        return services.AddModuleDbContext<CatalogDbContext>(databaseOptions, connectionString, "catalog");
+        return services.AddModuleDbContext<CatalogDbContext>(
+            databaseOptions, connectionString, "catalog", systemConnectionString);
     }
 }
