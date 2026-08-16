@@ -76,7 +76,7 @@ jobs:
       # those for the current platform even though package-lock.json
       # correctly lists it -- a long-standing, still-recurring npm bug
       # (https://github.com/npm/cli/issues/4828), not anything wrong with
-      # this repo's own lockfiles. A newer npm resolves it reliably.
+      # this repo's own lockfiles.
       - name: Upgrade npm
         run: npm install -g npm@latest
 
@@ -102,6 +102,27 @@ jobs:
       - name: Install admin dependencies
         run: npm install
         working-directory: src/web/admin
+
+      # Upgrading npm (above) did not stop this crash on a real run --
+      # #4828 (and its still-open sibling npm/cli#8320) is reported as
+      # recurring even on current npm, root-caused to package-lock.json
+      # having been generated on a different OS (this repo's lockfiles are
+      # all generated on the maintainer's Windows machine) confusing npm's
+      # optional-dependency install step for the *other* platform --
+      # silently, rather than with a failed exit code, which is why the
+      # "Install pos/admin dependencies" steps above report success right
+      # before pos's or admin's own dev server crashes on startup. The
+      # workaround that holds up across reports is to stop depending on
+      # npm's optional-dependency resolution for the platform binary at
+      # all: explicitly install the exact binding version each project's
+      # own lockfile already pins rolldown to. --no-save keeps this
+      # CI-only and out of the committed lockfiles.
+      - name: Work around npm's optional-dependency bug for rolldown's native binding
+        run: |
+          for project in pos admin; do
+            version=$(node -p "require('./src/web/$project/node_modules/rolldown/package.json').version")
+            npm install --no-save --prefix "src/web/$project" "@rolldown/binding-linux-x64-gnu@$version"
+          done
 
       - name: Install e2e dependencies
         run: npm install

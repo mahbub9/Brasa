@@ -1000,21 +1000,36 @@ there is actually met.
   repeatedly failed to install the right one for the Linux runner, even
   though `package-lock.json` correctly lists it under
   `optionalDependencies`.** This is a real, documented, still-recurring
-  npm bug (`npm/cli#4828`), not a mistake in this repo's own lockfiles —
+  npm bug (`npm/cli#4828`, still-open sibling `npm/cli#8320`), not a
+  mistake in this repo's own lockfiles —
   confirmed by inspecting `pos/package-lock.json` directly: every
   platform's binding, including `@rolldown/binding-linux-x64-gnu`, is
-  correctly declared. The failure mode is blunt: `pos`'s own Playwright
-  `webServer` never starts (`Cannot find native binding`), which aborts
-  the entire `e2e` CI job before a single test runs — not a flaky test,
-  a dead job. Fixed by adding an explicit `npm install -g npm@latest`
-  step in the `e2e` job before any dependency install, the standard
-  remediation for this exact class of npm bug. Watch for this again if
-  `admin`'s or a future client's own `package.json` starts depending on
-  another bundler that ships per-platform native binaries the same way
-  (esbuild, swc, lightningcss, sharp all use the identical
-  `optionalDependencies`-per-platform pattern and are all capable of
-  hitting the same npm bug) — the fix is the same regardless of which
-  package triggers it.
+  correctly declared. The failure mode is blunt: `pos`'s (and `admin`'s)
+  own Playwright `webServer` never starts (`Cannot find native binding`),
+  which aborts the entire `e2e` CI job before a single test runs — not a
+  flaky test, a dead job. An explicit `npm install -g npm@latest` step
+  alone did **not** hold up on a real run — this class of npm bug is
+  reported as recurring even on current npm, root-caused to
+  `package-lock.json` having been generated on a different OS (every
+  lockfile in this repo is generated on the maintainer's Windows machine)
+  confusing npm's optional-dependency install step for Linux, *silently*
+  rather than with a failed exit code — which is why `Install pos/admin
+  dependencies` reports success right before the dev server it just
+  "installed" crashes. Fixed by no longer trusting npm's
+  optional-dependency resolution for the platform binary at all: an
+  explicit CI-only step installs the exact `@rolldown/binding-linux-x64-gnu`
+  version each project's own lockfile already pins rolldown to (`npm
+  install --no-save --prefix src/web/pos
+  @rolldown/binding-linux-x64-gnu@<version>`, version read from
+  `node_modules/rolldown/package.json` so it can't drift out of sync with
+  the lockfile), right after that project's normal `npm install`. Watch
+  for this again if `admin`'s or a future client's own `package.json`
+  starts depending on another bundler that ships per-platform native
+  binaries the same way (esbuild, swc, lightningcss, sharp all use the
+  identical `optionalDependencies`-per-platform pattern and are all
+  capable of hitting the same npm bug) — the fix is the same regardless
+  of which package triggers it: stop trusting npm's optional-dependency
+  resolution in CI and install the platform binary explicitly.
 
 ## 8. Environment
 

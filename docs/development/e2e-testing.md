@@ -103,12 +103,20 @@ a service actually survives a Saturday night.**
   API process on any `204` response (fixed, reconfirmed live — see the
   trap in `docs/ai/README.md`), and `vite@8`'s new `rolldown` dependency
   hitting a real npm bug installing its Linux native binding
-  (`npm/cli#4828`) that crashed `pos`'s own Playwright `webServer` before
-  a single test could run — fixed with an explicit npm upgrade step, not
-  yet reconfirmed by an actual run since this repository's own working
-  environment cannot push. Neither failure mode is reproducible on a
-  Windows dev machine, which is exactly why both went unnoticed locally
-  for a while.
+  (`npm/cli#4828`, still-open sibling `npm/cli#8320`) that crashed both
+  `pos`'s and `admin`'s own Playwright `webServer`s before a single test
+  could run. An explicit `npm install -g npm@latest` step alone did not
+  hold up on a real run — the bug is reported as recurring even on
+  current npm, and root-caused here to `package-lock.json` having been
+  generated on Windows, which confuses npm's optional-dependency install
+  step for Linux *silently* rather than with a failed exit code. Fixed by
+  no longer trusting npm's optional-dependency resolution for the
+  platform binary at all: a CI-only step explicitly installs the exact
+  `@rolldown/binding-linux-x64-gnu` version each project's own lockfile
+  already pins rolldown to, right after each project's normal `npm
+  install` (`--no-save`, so it never touches the committed lockfiles).
+  Neither failure mode is reproducible on a Windows dev machine, which is
+  exactly why both went unnoticed locally for a while.
 
 Verified locally from a warm state, from a cold start (both dev processes
 killed first, so `webServer` launching them from nothing is actually
