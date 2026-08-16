@@ -110,14 +110,37 @@ builder.Services.AddOpenTelemetry()
         }
     });
 
+// ADR 0012 — the beta's swappable-database toggle. Bound before connection
+// strings are read, and guarded here (not just documented) so a
+// misconfigured Production deploy can't silently serve a throwaway store:
+// InMemory has no row-level security boundary and loses everything on
+// restart, the same "structurally impossible in Production" shape
+// AddMockFiscalProvider already uses for the same reason.
+var databaseOptions = builder.Configuration.GetSection(DatabaseOptions.SectionName).Get<DatabaseOptions>() ?? new DatabaseOptions();
+if (builder.Environment.IsProduction() && databaseOptions.Provider == DatabaseProvider.InMemory)
+{
+    throw new InvalidOperationException(
+        "Database:Provider=InMemory must never be used in Production — no row-level " +
+        "security boundary, and all data is lost on restart. " +
+        "See docs/architecture/decisions/0012-beta-in-memory-database.md.");
+}
+builder.Services.AddSingleton(databaseOptions);
+
 // Two roles, two connection strings — see infra/initdb/01-app-role.sql.
 // "Postgres" (brasa_app) is unprivileged and is what actually serves requests,
 // so row-level security applies to it. "PostgresMigrations" (brasa) is a
 // superuser and is used only to run migrations, never to answer a request.
-var connectionString = builder.Configuration.GetConnectionString("Postgres")
-    ?? throw new InvalidOperationException("ConnectionStrings:Postgres is not configured.");
-var migrationsConnectionString = builder.Configuration.GetConnectionString("PostgresMigrations")
-    ?? throw new InvalidOperationException("ConnectionStrings:PostgresMigrations is not configured.");
+// Only needed when Database:Provider is Postgres — InMemory (ADR 0012)
+// needs neither, so both stay empty rather than throwing in that mode.
+var connectionString = string.Empty;
+var migrationsConnectionString = string.Empty;
+if (databaseOptions.Provider == DatabaseProvider.Postgres)
+{
+    connectionString = builder.Configuration.GetConnectionString("Postgres")
+        ?? throw new InvalidOperationException("ConnectionStrings:Postgres is not configured.");
+    migrationsConnectionString = builder.Configuration.GetConnectionString("PostgresMigrations")
+        ?? throw new InvalidOperationException("ConnectionStrings:PostgresMigrations is not configured.");
+}
 
 // ── Shared kernel ───────────────────────────────────────────────────────────
 // TestableClock (QA-04) replaces the plain SystemClock registration so
@@ -193,10 +216,10 @@ builder.Services.AddRateLimiter(limiterOptions =>
 });
 
 // ── Modules ──────────────────────────────────────────────────────────────────
-builder.Services.AddCatalogModule(connectionString);
-builder.Services.AddOrderingModule(connectionString);
-builder.Services.AddFloorModule(connectionString);
-builder.Services.AddIdentityModule(connectionString);
+builder.Services.AddCatalogModule(databaseOptions, connectionString);
+builder.Services.AddOrderingModule(databaseOptions, connectionString);
+builder.Services.AddFloorModule(databaseOptions, connectionString);
+builder.Services.AddIdentityModule(databaseOptions, connectionString);
 
 // Fiscal.Portugal (the real, AT-certifiable engine) is I7 work — see
 // docs/architecture/decisions/0002-own-fiscal-engine.md. Until it exists, there
@@ -211,12 +234,24 @@ builder.Services.AddMockFiscalProvider(builder.Environment);
 // MigrateAsync below — Hangfire's own storage schema needs DDL rights the
 // unprivileged runtime role doesn't have. DatabaseBackupJob (Jobs/) wraps
 // the already-verified backup/restore-drill scripts; this is what closes
-// OPS-12's own "nothing schedules it yet" gap.
-builder.Services.AddHangfire(config => config
-    .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
-    .UseSimpleAssemblyNameTypeSerializer()
-    .UseRecommendedSerializerSettings()
-    .UsePostgreSqlStorage(options => options.UseNpgsqlConnection(migrationsConnectionString)));
+// OPS-12's own "nothing schedules it yet" gap. InMemory (ADR 0012) has
+// nothing for DatabaseBackupJob to back up — see the recurring-job guard
+// below — so Hangfire's own storage just needs to not require Postgres.
+builder.Services.AddHangfire(config =>
+{
+    config.SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
+        .UseSimpleAssemblyNameTypeSerializer()
+        .UseRecommendedSerializerSettings();
+
+    if (databaseOptions.Provider == DatabaseProvider.InMemory)
+    {
+        config.UseInMemoryStorage();
+    }
+    else
+    {
+        config.UsePostgreSqlStorage(options => options.UseNpgsqlConnection(migrationsConnectionString));
+    }
+});
 builder.Services.AddHangfireServer();
 
 // ── API platform ─────────────────────────────────────────────────────────────
@@ -242,9 +277,17 @@ builder.Services.AddResponseCompression(options =>
 
 // "ready" is tagged separately from the untagged liveness checks (there are
 // none) so /health stays a pure "is the process up" probe and /health/ready
-// is the one that actually depends on PostgreSQL — see the mapping below.
+// is the one that actually depends on the database — see the mapping below.
+// InMemory (ADR 0012) has nothing to probe, so InMemoryDatabaseHealthCheck
+// swaps in and always reports healthy, keeping /health/ready's shape
+// (one check, tagged "ready") the same either way.
 builder.Services.AddHealthChecks()
-    .AddCheck("postgres", new DatabaseHealthCheck(connectionString), tags: ["ready"]);
+    .AddCheck(
+        "database",
+        databaseOptions.Provider == DatabaseProvider.InMemory
+            ? new InMemoryDatabaseHealthCheck()
+            : new DatabaseHealthCheck(connectionString),
+        tags: ["ready"]);
 
 builder.Services.AddApiVersioning(options =>
 {
@@ -284,10 +327,27 @@ var app = builder.Build();
 // ── Startup: migrate and seed (never in Production — see the guards above) ──
 if (!app.Environment.IsProduction())
 {
-    await MigrateAsync(migrationsConnectionString, CancellationToken.None).ConfigureAwait(false);
-    await DevCatalogSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
-    await DevFloorSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
-    await DevIdentitySeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
+    // InMemory (ADR 0012, SQLite :memory:) has no migrations — EnsureCreatedAsync
+    // builds each module's schema straight from the model instead.
+    if (databaseOptions.Provider == DatabaseProvider.Postgres)
+    {
+        await MigrateAsync(migrationsConnectionString, CancellationToken.None).ConfigureAwait(false);
+    }
+    else
+    {
+        await EnsureCreatedAsync(app.Services, CancellationToken.None).ConfigureAwait(false);
+    }
+
+    // Database:SeedOnStartup (default true, matching today's behavior) is
+    // flipped off for a beta pilot once real menu/floor/staff data has been
+    // entered — InMemory is wiped on every restart, so leaving this on
+    // forever would silently reseed demo placeholders over live data.
+    if (databaseOptions.SeedOnStartup)
+    {
+        await DevCatalogSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
+        await DevFloorSeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
+        await DevIdentitySeeder.SeedAsync(app.Services, app.Environment, CancellationToken.None).ConfigureAwait(false);
+    }
 }
 
 // Must be one of the first middlewares in the pipeline — anything that
@@ -460,7 +520,9 @@ app.MapHub<FloorHub>("/hubs/floor");
 // Times are UTC (Hangfire's Cron default) -- an unattended backup job has
 // no reason to care about Europe/Lisbon vs Azores, unlike fiscal daily
 // close. Never in Production -- see DatabaseBackupJob's own remarks.
-if (!app.Environment.IsProduction())
+// Postgres-only: DatabaseBackupJob wraps real pg_dump/pg_restore, meaningless
+// against InMemory (ADR 0012).
+if (!app.Environment.IsProduction() && databaseOptions.Provider == DatabaseProvider.Postgres)
 {
     RecurringJob.AddOrUpdate<DatabaseBackupJob>(
         "nightly-database-backup", job => job.RunBackupAsync(CancellationToken.None), Cron.Daily(3));
@@ -518,6 +580,26 @@ static async Task MigrateAsync(string migrationsConnectionString, CancellationTo
     {
         await identityDb.Database.MigrateAsync(cancellationToken).ConfigureAwait(false);
     }
+}
+
+/// <summary>
+/// Builds every module's schema straight from the EF model — the InMemory
+/// (ADR 0012, SQLite <c>:memory:</c>) equivalent of <see cref="MigrateAsync"/>.
+/// </summary>
+/// <remarks>
+/// Unlike <see cref="MigrateAsync"/>, this resolves the already
+/// DI-registered contexts rather than building throwaway ones: SQLite
+/// in-memory has no elevated-vs-runtime role split (ADR 0010 is a
+/// PostgreSQL-only concern), so there is nothing a hand-built context would
+/// need that the registered one doesn't already have.
+/// </remarks>
+static async Task EnsureCreatedAsync(IServiceProvider services, CancellationToken cancellationToken)
+{
+    await using var scope = services.CreateAsyncScope();
+    await scope.ServiceProvider.GetRequiredService<CatalogDbContext>().Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+    await scope.ServiceProvider.GetRequiredService<OrderingDbContext>().Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+    await scope.ServiceProvider.GetRequiredService<FloorDbContext>().Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
+    await scope.ServiceProvider.GetRequiredService<IdentityDbContext>().Database.EnsureCreatedAsync(cancellationToken).ConfigureAwait(false);
 }
 
 /// <summary>

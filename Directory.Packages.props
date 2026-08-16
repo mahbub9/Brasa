@@ -30,6 +30,12 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.10" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.10" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
+    <!-- Was pinned for the Site Agent's planned local store; also now the
+         beta's in-memory provider (ADR 0012, SQLite's `:memory:` mode) —
+         EF Core's own InMemory provider does not reliably support this
+         codebase's required ComplexProperty Money mapping (confirmed via a
+         real KeyNotFoundException on MenuItem.Price), so a real relational
+         engine is used instead of EF's InMemory package. -->
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.10" />
     <!--
       Transitively pinned. EF Core 10 pulls SQLitePCLRaw 2.1.11, whose bundled
@@ -65,6 +71,8 @@
   <ItemGroup Label="Background jobs">
     <PackageVersion Include="Hangfire.AspNetCore" Version="1.8.24" />
     <PackageVersion Include="Hangfire.PostgreSql" Version="1.21.1" />
+    <!-- Beta-only (ADR 0012) — replaces Hangfire's Postgres storage when Database:Provider is InMemory. -->
+    <PackageVersion Include="Hangfire.InMemory" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup Label="Testing">

@@ -12,6 +12,14 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <!-- Both referenced here (not just in each module) because
+         ModulePersistenceExtensions.AddModuleDbContext — the one place the
+         Postgres/InMemory branch lives (ADR 0012) — calls UseNpgsql and
+         UseSqlite directly; every module already references this project,
+         so both flow through transitively the same way Relational already
+         does. -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
   </ItemGroup>

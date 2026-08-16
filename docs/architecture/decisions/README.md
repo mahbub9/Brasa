@@ -24,6 +24,7 @@ it feels wrong.
 | [0009](0009-incremental-delivery.md) | Incremental delivery, walking skeleton first | Accepted | Vertical slices with a demo script as the definition of done; certification stays binary regardless |
 | [0010](0010-rls-runtime-role-split.md) | Split the DB role: unprivileged at runtime, superuser only for migrations | Accepted | The bootstrap Postgres role is a superuser, and superusers bypass RLS unconditionally — found via I0's first live test |
 | [0011](0011-i18n.md) | i18next, pt default, cookie preference behind a storage seam | Accepted | Retrofitting i18n later costs weeks; the storage interface is what keeps mobile a swap, not a rewrite |
+| [0012](0012-beta-in-memory-database.md) | A config-flag in-memory database for the pilot beta | Accepted | A single-tenant pilot needs nothing installed on-site; RLS-drop is safe only because there's no second tenant to protect against yet |
 
 ## Writing a new one
 

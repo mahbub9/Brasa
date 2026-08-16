@@ -32,5 +32,21 @@ public sealed class FloorDbContext(
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(FloorDbContext).Assembly);
         base.OnModelCreating(modelBuilder);
+
+        if (!Database.IsNpgsql())
+        {
+            // TableConfiguration maps Table's optimistic-concurrency token to
+            // "xmin" — Postgres's built-in row-version system column, which
+            // exists on every row with no migration and no app-side write
+            // ever needed. SQLite (the beta's provider, ADR 0012) has no
+            // such column and no way to generate one, which fails every
+            // insert with a NOT NULL violation. Dropped here for any
+            // non-Postgres provider: a documented trade-down, the same
+            // class of decision as ADR 0012's RLS drop — a single-restaurant
+            // pilot has far lower concurrent-occupy pressure than production
+            // multi-terminal use, so losing the compare-and-swap guard on
+            // Table.Occupy() is acceptable there, not on Postgres.
+            modelBuilder.Entity<Table>().Ignore("xmin");
+        }
     }
 }

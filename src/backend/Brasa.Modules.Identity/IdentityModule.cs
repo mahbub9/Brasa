@@ -1,6 +1,5 @@
 using Brasa.Modules.Identity.Persistence;
 using Brasa.Shared.Persistence;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Brasa.Modules.Identity;
@@ -9,19 +8,15 @@ namespace Brasa.Modules.Identity;
 public static class IdentityModule
 {
     /// <summary>
-    /// Adds <see cref="IdentityDbContext"/>, wired with the shared
-    /// <see cref="TenantSessionInterceptor"/> so its connections carry the
-    /// current tenant into PostgreSQL's row-level security policies.
+    /// Adds <see cref="IdentityDbContext"/> against whichever provider
+    /// <paramref name="databaseOptions"/> selects — see
+    /// <see cref="ModulePersistenceExtensions.AddModuleDbContext{TContext}"/>.
     /// </summary>
-    public static IServiceCollection AddIdentityModule(this IServiceCollection services, string connectionString)
+    public static IServiceCollection AddIdentityModule(
+        this IServiceCollection services, DatabaseOptions databaseOptions, string? connectionString)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
-        services.AddDbContext<IdentityDbContext>((sp, options) =>
-            options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "identity"))
-                .AddInterceptors(sp.GetRequiredService<TenantSessionInterceptor>()));
-
-        return services;
+        return services.AddModuleDbContext<IdentityDbContext>(databaseOptions, connectionString, "identity");
     }
 }

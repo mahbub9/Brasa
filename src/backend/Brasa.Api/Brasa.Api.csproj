@@ -27,6 +27,8 @@
     <PackageReference Include="Serilog.Sinks.Seq" />
     <PackageReference Include="Hangfire.AspNetCore" />
     <PackageReference Include="Hangfire.PostgreSql" />
+    <!-- Beta-only (ADR 0012) — Database:Provider=InMemory swaps Hangfire's storage to this. -->
+    <PackageReference Include="Hangfire.InMemory" />
     <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
     <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     <PackageReference Include="OpenTelemetry.Instrumentation.Http" />

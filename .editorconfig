@@ -110,3 +110,15 @@ dotnet_diagnostic.IDE0161.severity = none
 dotnet_diagnostic.CA1707.severity = none    # underscores in test method names
 dotnet_diagnostic.CA2007.severity = none
 dotnet_diagnostic.CA1861.severity = none    # constant arrays as test data
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  ADR 0012 — the beta's SQLite `:memory:` connection is deliberately never
+#  disposed: closing it would wipe the store, and it must outlive the method
+#  that opens it (kept alive via closure for the app's process lifetime, by
+#  design, not by oversight). CA2000 has no way to express "intentionally
+#  process-lifetime", so it's suppressed for this one file rather than
+#  weakened for the rest of Brasa.Shared, where it still catches real leaks.
+# ─────────────────────────────────────────────────────────────────────────────
+
+[**/ModulePersistenceExtensions.cs]
+dotnet_diagnostic.CA2000.severity = none

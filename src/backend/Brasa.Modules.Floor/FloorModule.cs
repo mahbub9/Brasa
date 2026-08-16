@@ -1,6 +1,5 @@
 using Brasa.Modules.Floor.Persistence;
 using Brasa.Shared.Persistence;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Brasa.Modules.Floor;
@@ -9,19 +8,15 @@ namespace Brasa.Modules.Floor;
 public static class FloorModule
 {
     /// <summary>
-    /// Adds <see cref="FloorDbContext"/>, wired with the shared
-    /// <see cref="TenantSessionInterceptor"/> so its connections carry the
-    /// current tenant into PostgreSQL's row-level security policies.
+    /// Adds <see cref="FloorDbContext"/> against whichever provider
+    /// <paramref name="databaseOptions"/> selects — see
+    /// <see cref="ModulePersistenceExtensions.AddModuleDbContext{TContext}"/>.
     /// </summary>
-    public static IServiceCollection AddFloorModule(this IServiceCollection services, string connectionString)
+    public static IServiceCollection AddFloorModule(
+        this IServiceCollection services, DatabaseOptions databaseOptions, string? connectionString)
     {
         ArgumentNullException.ThrowIfNull(services);
-        ArgumentException.ThrowIfNullOrWhiteSpace(connectionString);
 
-        services.AddDbContext<FloorDbContext>((sp, options) =>
-            options.UseNpgsql(connectionString, npgsql => npgsql.MigrationsHistoryTable("__ef_migrations_history", "floor"))
-                .AddInterceptors(sp.GetRequiredService<TenantSessionInterceptor>()));
-
-        return services;
+        return services.AddModuleDbContext<FloorDbContext>(databaseOptions, connectionString, "floor");
     }
 }
