@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Brasa.Api.Endpoints;
 
 /// <summary>
-/// Cash-tender endpoints (PAY-01/02). Composes <see cref="PaymentsDbContext"/>
+/// Cash-tender endpoints (PAY-01/02/05). Composes <see cref="PaymentsDbContext"/>
 /// (this module's own table) and <see cref="OrderingDbContext"/> (to read an
 /// order's current total, never trusting a client-sent one) at the API
 /// layer, the same shape <c>PriceListEndpoints</c> already uses for
@@ -31,7 +31,7 @@ public static class PaymentEndpoints
 
         group.MapPost("/orders/{orderId:guid}/payments", RecordPaymentAsync)
             .WithName("RecordPayment")
-            .WithSummary("Records a cash tender against an order, computing change (PAY-01/02). Full payment only — no partial tender yet (PAY-05).")
+            .WithSummary("Records a cash tender against an order's remaining balance, computing change (PAY-01/02). A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04.")
             .Produces<PaymentDto>(StatusCodes.Status201Created);
 
         group.MapGet("/orders/{orderId:guid}/payments", GetPaymentsAsync)
@@ -73,17 +73,25 @@ public static class PaymentEndpoints
             return Error.NotFound("order.not_found", $"Order {orderId} was not found.").ToProblem();
         }
 
-        var amountDue = order.Total;
-        var amountTendered = Money.FromDecimal(request.AmountTendered);
+        // The remaining balance, not always the order's full total (PAY-05)
+        // — every prior payment's own AmountApplied is already off the
+        // guest's tab, so a second (or third) tender only needs to cover
+        // what's left, never the whole order again.
+        var priorPayments = await paymentsDb.Payments
+            .Where(p => p.OrderId == orderId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var amountAlreadyApplied = Money.Sum(priorPayments.Select(p => p.AmountApplied));
+        var amountDue = order.Total - amountAlreadyApplied;
 
-        if (amountTendered < amountDue)
+        if (!amountDue.IsPositive)
         {
             return Error.Validation(
-                "payment.insufficient_tender",
-                $"Amount tendered ({amountTendered}) is less than the amount due ({amountDue}). " +
-                "Partial payment is not supported yet.").ToProblem();
+                "payment.already_settled",
+                $"Order {orderId} is already fully paid — nothing remains to tender against.").ToProblem();
         }
 
+        var amountTendered = Money.FromDecimal(request.AmountTendered);
         var payment = new Payment(orderId, method, amountDue, amountTendered, clock.UtcNow);
         paymentsDb.Payments.Add(payment);
         await paymentsDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);

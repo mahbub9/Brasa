@@ -245,7 +245,9 @@ export interface PaymentDto {
   method: 'Cash';
   amountDue: MoneyDto;
   amountTendered: MoneyDto;
+  amountApplied: MoneyDto;
   change: MoneyDto;
+  remainingBalance: MoneyDto;
   paidAtUtc: string;
 }
 

@@ -1,11 +1,11 @@
-# Cash payments — a tender recorded against an order, with change
+# Cash payments — a tender recorded against an order's remaining balance
 
-> **Status:** ✅ done — cash only. Card/MB WAY (PAY-03), split/partial tender
-> (PAY-04/05), and cash-session/blind-count reconciliation (PAY-08/10/11) are
-> all deliberately out of scope.
+> **Status:** ✅ done — cash only, partial tenders supported. Card/MB WAY
+> (PAY-03) and split-across-methods (PAY-04) and cash-session/blind-count
+> reconciliation (PAY-08/10/11) are all deliberately out of scope.
 > **Module:** Payments (new module this task), composed with Ordering at the
 > API layer
-> **Roadmap:** I3/I4 (`PAY-01`, `PAY-02`)
+> **Roadmap:** I3/I4 (`PAY-01`, `PAY-02`, `PAY-05`)
 
 ## What it is
 
@@ -13,9 +13,12 @@ Real service closes an order (issues the fiscal document) without ever
 recording how the guest actually paid — nothing in the codebase before this
 tracked a tender or computed change. `Payment` is a new record, in a new
 `Brasa.Modules.Payments` module, that captures one cash tender against one
-order: what was due, what was handed over, and the change owed back.
-`POST /orders/{orderId}/payments` records it; `GET /orders/{orderId}/payments`
-lists every payment recorded against an order.
+order's remaining balance: what was still owed, what was handed over, and
+the change owed back. `POST /orders/{orderId}/payments` records it;
+`GET /orders/{orderId}/payments` lists every payment recorded against an
+order. An order can be settled in one tender or several — a tender smaller
+than what's owed is a valid partial payment, and the balance tracks across
+however many it takes to reach zero.
 
 ## Why it works this way
 
@@ -43,37 +46,54 @@ A payment can be recorded before or after `Close()`; the endpoint doesn't
 care which, and `payments.spec.ts`'s own test proves the "after" case
 explicitly.
 
-**Full payment only — no partial tender.** `Payment`'s constructor throws if
-`amountTendered < amountDue`; there is no way to persist a partial payment.
-Splitting a bill across several payments or several methods is PAY-04/05,
-not this — `SplitByItemResponse` (ORD-15-ish) already computes *how much*
-each group owes, but nothing today records that a specific group actually
-paid it.
+**`AmountDue` is a remaining balance, not always the order's full total
+(PAY-05).** `RecordPaymentAsync` sums every prior payment's own
+`AmountApplied` for the order and subtracts that from `order.Total` before
+constructing the new `Payment` — so a second or third tender only needs to
+cover what's left, never the whole order again. `Payment.AmountApplied` is
+the smaller of what was tendered and what was due, `Change` is whatever's
+left over (`AmountTendered - AmountApplied`, always zero unless this tender
+overpaid), and `RemainingBalance` is `AmountDue - AmountApplied` — zero once
+the order is fully settled. A tender for less than what's owed is not an
+error: it's a partial payment, recorded exactly as-is, with `RemainingBalance`
+staying positive. Once the balance reaches zero, a further payment is
+rejected with `payment.already_settled` rather than silently accepted —
+closing the "nothing stops a double payment" gap this page originally left
+open as a known trade-off.
+
+**Splitting one tender across several *methods* is still a separate task
+(PAY-04).** Every `Payment` row here is exactly one method — PAY-05 lets a
+guest pay in several cash tenders, not in one payment split across cash and
+card at once. `PaymentMethod` has exactly one case (`Cash`) today regardless.
 
 **The server reads the amount due — the client never sends one.** The
 request body carries only `method` and `amountTendered`; `RecordPaymentAsync`
-loads the order itself and reads `order.Total` as `amountDue`. A client-sent
-due amount would let a stale or manipulated screen record a payment against
-the wrong total.
+loads the order and every prior payment itself and computes the remaining
+balance server-side. A client-sent due amount would let a stale or
+manipulated screen record a payment against the wrong balance.
 
-**`Money.ToString()`, not culture-formatted, in the error message.** The
-`payment.insufficient_tender` message embeds the two amounts via `Money`'s
-plain invariant form (`"300 EUR"`), not `Money.Format(CultureInfo)` — an
-earlier draft used the latter and rendered a bare "¤" currency symbol with no
-code, which is worse than the plain diagnostic form for an API error string
-nobody localizes.
+**`Money.ToString()`, not culture-formatted, in error messages.** An earlier
+draft embedded amounts via `Money.Format(CultureInfo.InvariantCulture)` in
+the (since-removed) `payment.insufficient_tender` message and rendered a bare
+"¤" currency symbol with no code — worse than the plain invariant diagnostic
+form (`"300 EUR"`) for an API error string nobody localizes. The convention
+carried forward to every message this endpoint builds.
 
 ## Behaviour
 
 1. Staff closes an order (or not — see above) and reaches the receipt
    screen, which now always shows a "Cash payment" panel with the amount
-   due.
+   currently due.
 2. Staff enters what the guest handed over and submits.
-3. The API re-reads the order's own total server-side, validates the method
-   and the amount, and — if the tender covers the total — persists a
-   `Payment` and returns it, including the computed `change`.
-4. The receipt screen replaces the form with a confirmation showing the
-   change due. There is no edit or void path for a recorded payment yet.
+3. The API computes the order's own remaining balance server-side, validates
+   the method and the amount, and persists a `Payment`, returning the
+   computed `change` and `remainingBalance`.
+4. If `remainingBalance` is still positive, the receipt screen's form stays
+   open — showing the updated balance and a running list of tenders already
+   recorded — so staff can record another one.
+5. Once a tender brings the balance to zero, the form is replaced with a
+   confirmation showing the change due from whichever tender settled it.
+   There is no edit or void path for a recorded payment yet.
 
 ## Offline behaviour
 
@@ -84,41 +104,40 @@ other mutating endpoint in this codebase before the eventual SYN work.
 
 | What goes wrong | What the system does | What the user sees |
 |---|---|---|
-| Tendered amount is less than the order's total | Rejected before any row is written | `400 payment.insufficient_tender` |
 | Tendered amount is zero or negative | Rejected before the order is even loaded | `400 payment.invalid_amount_tendered` |
 | Method is anything other than `Cash` | Rejected — only `PaymentMethod.Cash` exists today | `400 payment.unsupported_method` |
 | Order id doesn't exist | No payment written | `404 order.not_found` (both on record and on list) |
-| Two terminals record a payment for the same order at once | Both succeed independently — `Payment` carries no concurrency token and there is no "already paid" check | Two `Payment` rows persist; nothing here stops a double-tender being recorded, since there's no policy yet for what "already paid" even means without PAY-04/05's split model |
-
-That last row is a known, accepted gap for this increment — see Open
-questions.
+| A tender is smaller than the remaining balance | Not an error — recorded as a partial payment, `remainingBalance` stays positive | `201` with `change: 0` and a positive `remainingBalance` |
+| A payment is recorded against an order whose balance is already zero | Rejected before any row is written | `400 payment.already_settled` |
+| Two terminals record a payment for the same order at once | Both succeed independently — `Payment` carries no concurrency token, and each reads "prior payments" from its own snapshot in time | Both tenders persist; if both read the balance before either wrote, the order can be over-settled (e.g. two terminals each independently see the full balance still owed). A known, accepted gap — see Open questions |
 
 ## Data
 
 New `payments` schema, one table (`payments.payments`): `Id`, `OrderId`
 (indexed, unindexed foreign reference — see module-boundaries note above),
-`Method` (int enum), `AmountDue`/`AmountTendered` (mapped via
-`MapMoney`, the same convention every other `Money` column in this codebase
-uses), `PaidAtUtc`. `Change` is a computed property (`AmountTendered -
-AmountDue`), not a column — `PaymentConfiguration` ignores it, the same
-pattern `Order.Total` uses. RLS is enabled the standard way
-(`EnableFor`/`EnableSystemReadFor` in the migration's `Up()`, hand-added
-since the EF Core scaffolder never emits these calls — see
+`Method` (int enum), `AmountDue`/`AmountTendered` (mapped via `MapMoney`,
+the same convention every other `Money` column in this codebase uses),
+`PaidAtUtc`. `AmountApplied`/`Change`/`RemainingBalance` are all computed
+properties, not columns — `PaymentConfiguration` ignores all three, the same
+"never store a derived total" rule `Order.Total` follows. RLS is enabled the
+standard way (`EnableFor`/`EnableSystemReadFor` in the migration's `Up()`,
+hand-added since the EF Core scaffolder never emits these calls — see
 [multi-tenancy.md](../architecture/multi-tenancy.md)).
 
 ## API
 
 - `POST /orders/{orderId}/payments` — body `{ method, amountTendered }`,
-  returns `201` with a `PaymentDto` (`amountDue`, `amountTendered`, `change`
-  all as `MoneyDto`).
+  returns `201` with a `PaymentDto` (`amountDue`, `amountTendered`,
+  `amountApplied`, `change`, `remainingBalance`, all as `MoneyDto`).
 - `GET /orders/{orderId}/payments` — returns every payment recorded against
   the order, oldest first (sorted client-side in the endpoint — SQLite,
   [ADR 0012](../architecture/decisions/0012-beta-in-memory-database.md),
   can't translate `ORDER BY` over `DateTimeOffset`, the same limitation
   `TaxRuleEndpoints.GetTaxRulesAsync` already works around).
 
-Both documented in `docs/openapi/v1.json` (regenerated as part of this
-task) and typed in `src/web/sdk/src/schema.ts`.
+Both documented in `docs/openapi/v1.json` and typed in
+`src/web/sdk/src/schema.ts` (regenerated when `PaymentDto` grew its two new
+fields for PAY-05).
 
 ## Integration events
 
@@ -140,31 +159,38 @@ same as every other ordering endpoint today. Cash-handling accountability
 ## Testing
 
 **Backend:** covered indirectly through the endpoint's own validation logic
-(method parsing, amount checks, order lookup) — no dedicated
-`Brasa.Api.IntegrationTests` class yet; the full backend suite (101 tests)
-and `verify.ps1` (build, tests, OpenAPI drift, breaking-change check,
-vulnerable-package scan) all pass with the new module wired in.
+(method parsing, amount checks, balance computation, order lookup) — no
+dedicated `Brasa.Api.IntegrationTests` class yet; the full backend suite
+(101 tests) and `verify.ps1` (build, tests, OpenAPI drift, breaking-change
+check, vulnerable-package scan) all pass with the module wired in.
 
-**`src/web/e2e/tests/payments.spec.ts`** — 6 tests: a tender covering the
-total with correct change; a tender below the total rejected with
-`payment.insufficient_tender`; zero/negative amounts, an unsupported method,
-and an unknown order each rejected with the right code; listing payments
-(empty, then populated, then 404 for an unknown order); recording a payment
-*after* close to prove close isn't a precondition; and a full real-browser
-UI test through the receipt screen's new cash-payment panel. All pass
-alongside the full 194-spec suite (the one incidental failure seen in a full
-run, `transfer-table.spec.ts`'s UI test, is the pre-existing QA-02
-table-pool-exhaustion flake — confirmed clean in isolation, unrelated to this
-change).
+**`src/web/e2e/tests/payments.spec.ts`** — 7 tests: a tender covering the
+total with correct change; a tender smaller than the total recorded as a
+valid partial payment, tracked correctly across a settling second tender
+that itself overpays (proving `AmountApplied`/`Change`/`RemainingBalance`
+compose correctly, not just in isolation), and a further tender against the
+now-settled order rejected with `payment.already_settled`; zero/negative
+amounts, an unsupported method, and an unknown order each rejected with the
+right code; listing payments across a partial-then-settling pair (empty,
+then two rows, then 404 for an unknown order); recording a payment *after*
+close to prove close isn't a precondition; and two real-browser UI tests —
+one full tender, one two-tender partial-then-settle flow through the
+receipt screen's cash-payment panel, including its running balance and
+payment-history list.
 
 ## Open questions
 
-- **Nothing stops a second payment being recorded against an already-settled
-  order.** There's no "order is paid" state anywhere yet — `GET
-  /orders/{id}/payments` lets a caller check what's already been recorded,
-  but the record endpoint doesn't consult it. Revisit once PAY-04/05 (split
-  tender) defines what "fully paid" actually means for an order that can
-  have several payments by design.
+- **Two terminals racing the same order's balance can over-settle it.**
+  `RecordPaymentAsync` reads "prior payments" and writes the new one in two
+  separate steps with no concurrency token guarding the order's aggregate
+  balance — unlike `Order` itself (ORD-21's `xmin` token), a `Payment` row's
+  own save can never conflict, because each terminal is inserting a *new*
+  row, not updating a shared one. Two terminals that both read the balance
+  as "still owed" before either write lands can each successfully record a
+  payment, together exceeding the total. Low real-world likelihood (cash
+  payments happen at a till, rarely two-at-once against the same order) but
+  a real, unclosed gap — revisit if PAY-08's cash session work ever needs a
+  stronger guarantee than "extremely unlikely in practice."
 - **No UI or API path to void or correct a recorded payment.** A mis-entered
   tender amount has no correction path today beyond direct database access —
   same class of gap as `Order`'s own void-a-line design solves for order
@@ -172,4 +198,6 @@ change).
 - **`PaymentMethod` has exactly one case (`Cash`).** Adding `Card`/`MBWay`
   (PAY-03) is additive to the enum and the endpoint's validation, not a
   redesign — but nothing about routing a card payment to an actual payment
-  processor exists yet.
+  processor exists yet. Splitting one settlement across several methods at
+  once (PAY-04) is a separate, larger change: today's model only lets a
+  guest pay in several tenders of the *same* method.

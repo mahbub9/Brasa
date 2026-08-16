@@ -1195,7 +1195,7 @@ export interface paths {
         /** Lists every payment recorded against an order, oldest first. */
         get: operations["GetPayments"];
         put?: never;
-        /** Records a cash tender against an order, computing change (PAY-01/02). Full payment only — no partial tender yet (PAY-05). */
+        /** Records a cash tender against an order's remaining balance, computing change (PAY-01/02). A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. */
         post: operations["RecordPayment"];
         delete?: never;
         options?: never;
@@ -1533,7 +1533,9 @@ export interface components {
             method: string;
             amountDue: components["schemas"]["MoneyDto"];
             amountTendered: components["schemas"]["MoneyDto"];
+            amountApplied: components["schemas"]["MoneyDto"];
             change: components["schemas"]["MoneyDto"];
+            remainingBalance: components["schemas"]["MoneyDto"];
             paidAtUtc: string;
         };
         PreBillDto: {

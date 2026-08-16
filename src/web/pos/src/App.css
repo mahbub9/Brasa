@@ -646,6 +646,27 @@ main {
   color: var(--muted);
 }
 
+.cash-payment-history {
+  margin: 0 0 var(--space-3);
+}
+
+.cash-payment-history-title {
+  margin: 0 0 var(--space-1);
+  color: var(--muted);
+  font-size: var(--text-caption);
+}
+
+.cash-payment-history ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--text-caption);
+  font-variant-numeric: tabular-nums;
+}
+
 .cash-payment-form {
   display: flex;
   align-items: center;

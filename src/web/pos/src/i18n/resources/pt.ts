@@ -120,6 +120,8 @@ export const pt = {
     record: 'Registar pagamento',
     recorded: 'Pagamento registado.',
     changeDue: 'Troco: {{amount}}',
+    historyTitle: 'Pagamentos já registados',
+    historyEntry: '{{amount}} entregue',
   },
   staff: {
     signIn: 'Iniciar sessão',
@@ -178,9 +180,9 @@ export const pt = {
         no_lines: 'Não é possível emitir o recibo: não há itens para faturar.',
       },
       payment: {
-        insufficient_tender: 'Esse valor é inferior ao valor em dívida.',
         invalid_amount_tendered: 'Indique um valor válido.',
         unsupported_method: 'Esse método de pagamento ainda não é suportado.',
+        already_settled: 'Este pedido já está totalmente pago.',
       },
       request: {
         idempotency_key_required: 'Ocorreu um erro. Tente novamente.',

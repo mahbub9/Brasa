@@ -115,6 +115,8 @@ export const en = {
     record: 'Record payment',
     recorded: 'Payment recorded.',
     changeDue: 'Change due: {{amount}}',
+    historyTitle: 'Payments recorded so far',
+    historyEntry: '{{amount}} tendered',
   },
   staff: {
     signIn: 'Sign in',
@@ -168,9 +170,9 @@ export const en = {
         no_lines: "Can't issue the receipt: there's nothing left to bill.",
       },
       payment: {
-        insufficient_tender: 'That amount is less than what is owed.',
         invalid_amount_tendered: 'Enter a valid amount.',
         unsupported_method: 'That payment method is not supported yet.',
+        already_settled: 'This order is already fully paid.',
       },
       request: {
         idempotency_key_required: 'Something went wrong. Please try again.',

@@ -13,22 +13,30 @@ interface CashPaymentProps {
 }
 
 /**
- * PAY-01/02's own UI — records a cash tender against an already-closed
- * order and shows the change due. Self-contained, the same "own local
- * busy/error state, not App.tsx's global one" shape <c>StaffLogin</c>
- * already uses: by the time <c>Receipt</c> renders, the order-mutation flow
- * that owns App.tsx's shared <c>busy</c> flag is already over, and a
- * payment failure here shouldn't disable buttons elsewhere on the screen.
- * Full payment only — no partial tender (PAY-05) — so once one succeeds,
- * this replaces its own form with the confirmed change rather than
- * offering to record a second one.
+ * PAY-01/02/05's own UI — records one or more cash tenders against an
+ * already-closed order and shows the change due once fully settled.
+ * Self-contained, the same "own local busy/error state, not App.tsx's
+ * global one" shape <c>StaffLogin</c> already uses: by the time
+ * <c>Receipt</c> renders, the order-mutation flow that owns App.tsx's
+ * shared <c>busy</c> flag is already over, and a payment failure here
+ * shouldn't disable buttons elsewhere on the screen.
+ *
+ * A tender smaller than what's owed is a valid partial payment (PAY-05):
+ * the form stays open, showing the running remaining balance and the
+ * tenders recorded so far, until a payment brings the balance to zero —
+ * only then does this replace itself with the confirmed change (from
+ * whichever tender actually settled it).
  */
 export function CashPayment({ orderId, amountDue }: CashPaymentProps) {
   const { t } = useTranslation();
   const [amountTendered, setAmountTendered] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [payment, setPayment] = useState<PaymentDto | null>(null);
+  const [payments, setPayments] = useState<PaymentDto[]>([]);
+
+  const lastPayment = payments.length > 0 ? payments[payments.length - 1] : null;
+  const remaining = lastPayment ? lastPayment.remainingBalance : amountDue;
+  const isSettled = lastPayment !== null && remaining.amount <= 0;
 
   async function submit() {
     const parsed = Number(amountTendered);
@@ -39,7 +47,9 @@ export function CashPayment({ orderId, amountDue }: CashPaymentProps) {
     setBusy(true);
     setError(null);
     try {
-      setPayment(await api.recordPayment(orderId, { method: 'Cash', amountTendered: parsed }));
+      const recorded = await api.recordPayment(orderId, { method: 'Cash', amountTendered: parsed });
+      setPayments((prev) => [...prev, recorded]);
+      setAmountTendered('');
     } catch (err) {
       setError(describeError(err));
     } finally {
@@ -47,12 +57,12 @@ export function CashPayment({ orderId, amountDue }: CashPaymentProps) {
     }
   }
 
-  if (payment) {
+  if (isSettled) {
     return (
       <div className="cash-payment cash-payment-done" data-testid="cash-payment-done">
         <p>{t('payment.recorded')}</p>
         <p className="cash-payment-change" data-testid="cash-payment-change">
-          {t('payment.changeDue', { amount: formatMoney(payment.change) })}
+          {t('payment.changeDue', { amount: formatMoney(lastPayment.change) })}
         </p>
       </div>
     );
@@ -61,7 +71,19 @@ export function CashPayment({ orderId, amountDue }: CashPaymentProps) {
   return (
     <div className="cash-payment">
       <h2>{t('payment.title')}</h2>
-      <p className="cash-payment-due">{t('payment.amountDue', { amount: formatMoney(amountDue) })}</p>
+      <p className="cash-payment-due" data-testid="cash-payment-remaining">
+        {t('payment.amountDue', { amount: formatMoney(remaining) })}
+      </p>
+      {payments.length > 0 && (
+        <div className="cash-payment-history" data-testid="cash-payment-history">
+          <p className="cash-payment-history-title">{t('payment.historyTitle')}</p>
+          <ul>
+            {payments.map((recorded) => (
+              <li key={recorded.id}>{t('payment.historyEntry', { amount: formatMoney(recorded.amountTendered) })}</li>
+            ))}
+          </ul>
+        </div>
+      )}
       <div className="cash-payment-form">
         <TextField
           type="number"

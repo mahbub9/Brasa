@@ -151,14 +151,22 @@ export interface CloseOrderResponse {
   document: FiscalDocumentDto;
 }
 
-/** A tender recorded against an order (PAY-01/02). Only `'Cash'` exists today. */
+/**
+ * A tender recorded against an order (PAY-01/02/05). Only `'Cash'` exists
+ * today. `amountDue` is what was still owed at the moment of this payment,
+ * not always the order's full total — a partial tender is valid
+ * (`amountApplied` equals `amountTendered`, `remainingBalance` stays above
+ * zero); an overpaying tender settles the balance and returns `change`.
+ */
 export interface PaymentDto {
   id: string;
   orderId: string;
   method: 'Cash';
   amountDue: MoneyDto;
   amountTendered: MoneyDto;
+  amountApplied: MoneyDto;
   change: MoneyDto;
+  remainingBalance: MoneyDto;
   paidAtUtc: string;
 }
 
