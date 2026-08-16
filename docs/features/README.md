@@ -49,3 +49,4 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | [Manager authorisation for voids and discounts](manager-authorization.md) | IDN-11 | Identity + Ordering |
 | [Feature flags](feature-flags.md) | IDN-16 | Identity |
 | [Order concurrency — a lost-update guard for the order aggregate](order-concurrency.md) | ORD-21 | Ordering |
+| [Privileged system-context role for background jobs](system-context-role.md) | DAT-07 | Shared kernel |

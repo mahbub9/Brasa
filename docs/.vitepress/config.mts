@@ -162,6 +162,7 @@ export default defineConfig({
           { text: 'Manager authorisation', link: '/features/manager-authorization' },
           { text: 'Feature flags', link: '/features/feature-flags' },
           { text: 'Order concurrency', link: '/features/order-concurrency' },
+          { text: 'Privileged system-context role', link: '/features/system-context-role' },
         ],
       },
     ],
