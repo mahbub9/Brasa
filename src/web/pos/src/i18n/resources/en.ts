@@ -146,6 +146,9 @@ export const en = {
         empty: 'Add at least one item before continuing.',
         already_closed: 'This order has already been closed.',
         invalid_course: 'That course is not recognised.',
+        concurrently_modified: 'This order was changed by someone else. Reload and try again.',
+        close_conflict_after_fiscal_issuance:
+          "This order's receipt was already issued, but the order changed again right after. Check with a manager before trying again.",
       },
       catalog: {
         item_not_found: 'Menu item not found.',

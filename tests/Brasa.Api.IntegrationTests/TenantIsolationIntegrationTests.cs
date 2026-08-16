@@ -24,6 +24,7 @@ namespace Brasa.Api.IntegrationTests;
 /// ever silently disabled again, the EF filter alone would mask exactly the
 /// failure this test exists to catch.
 /// </remarks>
+[Collection("Migrations env var")]
 public sealed class TenantIsolationIntegrationTests : IAsyncLifetime
 {
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder("postgres:18-alpine")

@@ -48,3 +48,4 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | [Staff PIN accounts](staff-pin-accounts.md) | IDN-08, IDN-09, WEB-07 | Identity |
 | [Manager authorisation for voids and discounts](manager-authorization.md) | IDN-11 | Identity + Ordering |
 | [Feature flags](feature-flags.md) | IDN-16 | Identity |
+| [Order concurrency — a lost-update guard for the order aggregate](order-concurrency.md) | ORD-21 | Ordering |

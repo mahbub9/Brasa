@@ -156,6 +156,9 @@ export const pt = {
         empty: 'Adicione pelo menos um item antes de continuar.',
         already_closed: 'Este pedido já foi fechado.',
         invalid_course: 'Esse prato não é reconhecido.',
+        concurrently_modified: 'Este pedido foi alterado por outra pessoa. Atualize e tente novamente.',
+        close_conflict_after_fiscal_issuance:
+          'O recibo deste pedido já foi emitido, mas o pedido foi alterado logo a seguir. Verifique com um gerente antes de tentar novamente.',
       },
       catalog: {
         item_not_found: 'Item de menu não encontrado.',

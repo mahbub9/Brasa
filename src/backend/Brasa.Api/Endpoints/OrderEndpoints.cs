@@ -392,7 +392,12 @@ public static class OrderEndpoints
             return addResult.Error.ToProblem();
         }
 
-        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var saveResult = await TrySaveOrderAsync(orderingDb, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(order.ToDto());
     }
 
@@ -484,7 +489,12 @@ public static class OrderEndpoints
             }
         }
 
-        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var saveResult = await TrySaveOrderAsync(orderingDb, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(order.ToDto());
     }
 
@@ -507,7 +517,12 @@ public static class OrderEndpoints
             return result.Error.ToProblem();
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var saveResult = await TrySaveOrderAsync(db, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(order.ToDto());
     }
 
@@ -530,7 +545,12 @@ public static class OrderEndpoints
             return result.Error.ToProblem();
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var saveResult = await TrySaveOrderAsync(db, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(order.ToDto());
     }
 
@@ -568,7 +588,12 @@ public static class OrderEndpoints
             return result.Error.ToProblem();
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var saveResult = await TrySaveOrderAsync(db, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(order.ToDto());
     }
 
@@ -600,7 +625,12 @@ public static class OrderEndpoints
             return result.Error.ToProblem();
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var saveResult = await TrySaveOrderAsync(db, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(order.ToDto());
     }
 
@@ -637,7 +667,12 @@ public static class OrderEndpoints
             return result.Error.ToProblem();
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var saveResult = await TrySaveOrderAsync(db, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(order.ToDto());
     }
 
@@ -674,7 +709,12 @@ public static class OrderEndpoints
             return result.Error.ToProblem();
         }
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var saveResult = await TrySaveOrderAsync(db, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(order.ToDto());
     }
 
@@ -834,7 +874,12 @@ public static class OrderEndpoints
             return transferResult.Error.ToProblem();
         }
 
-        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        var saveResult = await TrySaveOrderAsync(orderingDb, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(order.ToDto());
     }
 
@@ -894,7 +939,14 @@ public static class OrderEndpoints
         // cannot fail in practice — see ReceiveLine's own remarks.
         destinationOrder.ReceiveLine(detachResult.Value);
 
-        await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        // Either order's own xmin can lose the race here (ORD-21) — the
+        // shared helper's message stays generic rather than naming just one.
+        var saveResult = await TrySaveOrderAsync(db, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(new TransferLineResponse(sourceOrder.ToDto(), destinationOrder.ToDto()));
     }
 
@@ -980,7 +1032,15 @@ public static class OrderEndpoints
             }
         }
 
-        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        // Either order's own xmin can lose the race here (ORD-21) — same
+        // shared helper and generic message as TransferLineAsync, for the
+        // same two-order reason.
+        var saveResult = await TrySaveOrderAsync(orderingDb, cancellationToken).ConfigureAwait(false);
+        if (saveResult is not null)
+        {
+            return saveResult;
+        }
+
         return Results.Ok(new MergeOrdersResponse(primary.ToDto(), secondary.ToDto()));
     }
 
@@ -1153,7 +1213,37 @@ public static class OrderEndpoints
             return fiscalResult.Error.ToProblem();
         }
 
-        await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        // Deliberately NOT TrySaveOrderAsync (ORD-21) — every other call site
+        // using that helper is safe to retry because nothing external has
+        // happened yet. Here, IssueSimplifiedInvoiceAsync above already
+        // issued a real fiscal document (hard rule 3: it can never be
+        // un-issued). If this save now loses the xmin race — some other
+        // request changed this same order between our read and here — a
+        // generic "reload and try again" would invite a naive retry that
+        // calls IssueSimplifiedInvoiceAsync a second time for what the
+        // caller believes is still one close attempt. So this gets its own
+        // distinct, non-generic code instead: the fiscal document is real
+        // and already on file, but this order's own row failed to persist
+        // as Closed and needs a human to reconcile it, not an automatic
+        // retry. A durable two-phase guarantee across Ordering and Fiscal is
+        // outbox-based work for I5+ (see the comment above) — this is that
+        // same "I0's correctness floor" boundary, just surfaced loudly
+        // instead of silently, which is what ORD-21 actually improves here:
+        // before it, this exact race silently overwrote the concurrent
+        // change with no error and no fiscal/order mismatch signal at all.
+        try
+        {
+            await orderingDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Error.Conflict(
+                "order.close_conflict_after_fiscal_issuance",
+                $"Order for table {order.TableLabel} was already fiscally closed as document " +
+                $"{fiscalResult.Value.DocumentNumber}, but changed again by someone else before that could be " +
+                "saved. Do not retry this close — it would issue a second document. Check the order and the " +
+                "fiscal document, then reconcile by hand.").ToProblem();
+        }
 
         // The order is now closed and fiscally issued — the part that must not
         // fail silently already succeeded. Marking the table dirty is
@@ -1191,6 +1281,36 @@ public static class OrderEndpoints
 
     private static Error OrderNotFound(Guid orderId)
         => Error.NotFound("order.not_found", $"Order {orderId} was not found.");
+
+    /// <summary>
+    /// Saves Ordering's own changes for a mutation against an already-loaded
+    /// <see cref="Order"/>, translating a lost <c>xmin</c> race
+    /// (OrderConfiguration.cs — the same optimistic-concurrency mechanism
+    /// TableConfiguration.cs already uses) into a clean, distinct conflict
+    /// (ORD-21) instead of either a silent last-write-wins overwrite or an
+    /// uncaught 500. Two terminals reading, then both writing, the same
+    /// order now lose the race the exact same way two terminals occupying
+    /// the same table already did — safe to retry from every call site that
+    /// uses this helper, since nothing external (a fiscal document, a table
+    /// state change) has happened yet by the time any of them calls this.
+    /// <see cref="CloseOrderAsync"/> deliberately does not use this helper —
+    /// see its own remarks for why a lost race there needs a different,
+    /// non-generic response instead of "reload and try again."
+    /// </summary>
+    private static async Task<IResult?> TrySaveOrderAsync(OrderingDbContext db, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await db.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+            return null;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Error.Conflict(
+                "order.concurrently_modified",
+                "This order was changed by someone else. Reload and try again.").ToProblem();
+        }
+    }
 
     /// <summary>
     /// Builds the per-line fiscal figures for an order — shared by the

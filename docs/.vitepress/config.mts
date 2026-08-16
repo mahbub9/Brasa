@@ -161,6 +161,7 @@ export default defineConfig({
           { text: 'Staff PIN accounts', link: '/features/staff-pin-accounts' },
           { text: 'Manager authorisation', link: '/features/manager-authorization' },
           { text: 'Feature flags', link: '/features/feature-flags' },
+          { text: 'Order concurrency', link: '/features/order-concurrency' },
         ],
       },
     ],
