@@ -6,7 +6,7 @@ import { TextField } from '@brasa/ui/components/TextField';
 import { SelectField } from '@brasa/ui/components/SelectField';
 import { describeError } from '../lib/describeError';
 import { api } from '../api/client';
-import type { MoneyDto, PaymentDto, PaymentMethod, StaffDto } from '../api/types';
+import type { MoneyDto, PaymentDto, PaymentMethod, SplitTenderRequest, StaffDto } from '../api/types';
 
 interface CashPaymentProps {
   orderId: string;
@@ -16,13 +16,14 @@ interface CashPaymentProps {
 }
 
 /**
- * PAY-01/02/03/05/06's own UI — records one or more tenders (cash or card)
- * against an already-closed order and shows the change due once fully
- * settled. Self-contained, the same "own local busy/error state, not
- * App.tsx's global one" shape <c>StaffLogin</c> already uses: by the time
- * <c>Receipt</c> renders, the order-mutation flow that owns App.tsx's
- * shared <c>busy</c> flag is already over, and a payment failure here
- * shouldn't disable buttons elsewhere on the screen.
+ * PAY-01/02/03/04/05/06's own UI — records one or more tenders (cash or
+ * card, optionally split across both at once) against an already-closed
+ * order and shows the change due once fully settled. Self-contained, the
+ * same "own local busy/error state, not App.tsx's global one" shape
+ * <c>StaffLogin</c> already uses: by the time <c>Receipt</c> renders, the
+ * order-mutation flow that owns App.tsx's shared <c>busy</c> flag is
+ * already over, and a payment failure here shouldn't disable buttons
+ * elsewhere on the screen.
  *
  * A tender smaller than what's owed is a valid partial payment (PAY-05):
  * the form stays open, showing the running remaining balance and the
@@ -33,17 +34,28 @@ interface CashPaymentProps {
  * give back — so nothing client-side needs to special-case that; the same
  * error banner used for every other rejection handles it.
  *
- * A tip is optional on every tender, not just the settling one, and is
- * separate from the balance entirely (PAY-06). Attribution is automatic —
- * whoever is signed in when the tip is recorded — since there is no
- * staff-picker here; an unattributed tip (nobody signed in) still records,
- * just with no `staffId`.
+ * A tip is optional on every single tender, not just the settling one, and
+ * is separate from the balance entirely (PAY-06). Attribution is
+ * automatic — whoever is signed in when the tip is recorded — since there
+ * is no staff-picker here; an unattributed tip (nobody signed in) still
+ * records, just with no `staffId`.
+ *
+ * "Split by method" (PAY-04) swaps the single-tender form for two linked
+ * amount fields (Cash/Card) that submit together as one atomic
+ * `POST .../payments/split` — editing one auto-fills the other with
+ * whatever's left of the balance, since that's the entire point of a split
+ * helper (no mental math for staff). No tip field here — a tip on one
+ * portion of a split is ambiguous, so a tip stays a single-tender-only
+ * concept.
  */
 export function CashPayment({ orderId, amountDue, currentStaff }: CashPaymentProps) {
   const { t } = useTranslation();
   const [method, setMethod] = useState<PaymentMethod>('Cash');
   const [amountTendered, setAmountTendered] = useState('');
   const [tipAmount, setTipAmount] = useState('');
+  const [splitMode, setSplitMode] = useState(false);
+  const [splitCash, setSplitCash] = useState('');
+  const [splitCard, setSplitCard] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [payments, setPayments] = useState<PaymentDto[]>([]);
@@ -75,6 +87,53 @@ export function CashPayment({ orderId, amountDue, currentStaff }: CashPaymentPro
       setPayments((prev) => [...prev, recorded]);
       setAmountTendered('');
       setTipAmount('');
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Typing in one split field auto-fills the other with whatever's left of the remaining balance. */
+  function updateSplitCash(value: string) {
+    setSplitCash(value);
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed) && parsed >= 0) {
+      setSplitCard(Math.max(0, remaining.amount - parsed).toFixed(2));
+    }
+  }
+
+  function updateSplitCard(value: string) {
+    setSplitCard(value);
+    const parsed = Number(value);
+    if (!Number.isNaN(parsed) && parsed >= 0) {
+      setSplitCash(Math.max(0, remaining.amount - parsed).toFixed(2));
+    }
+  }
+
+  function exitSplitMode() {
+    setSplitMode(false);
+    setSplitCash('');
+    setSplitCard('');
+  }
+
+  async function submitSplit() {
+    const cashAmount = splitCash === '' ? 0 : Number(splitCash);
+    const cardAmount = splitCard === '' ? 0 : Number(splitCard);
+    if (Number.isNaN(cashAmount) || Number.isNaN(cardAmount) || (cashAmount <= 0 && cardAmount <= 0)) {
+      return;
+    }
+
+    const tenders: SplitTenderRequest[] = [];
+    if (cashAmount > 0) tenders.push({ method: 'Cash', amountTendered: cashAmount });
+    if (cardAmount > 0) tenders.push({ method: 'Card', amountTendered: cardAmount });
+
+    setBusy(true);
+    setError(null);
+    try {
+      const recorded = await api.recordSplitPayment(orderId, { tenders });
+      setPayments((prev) => [...prev, ...recorded]);
+      exitSplitMode();
     } catch (err) {
       setError(describeError(err));
     } finally {
@@ -121,51 +180,106 @@ export function CashPayment({ orderId, amountDue, currentStaff }: CashPaymentPro
           </ul>
         </div>
       )}
-      <div className="cash-payment-form">
-        <SelectField
-          aria-label={t('payment.methodLabel')}
-          className="cash-payment-method"
-          value={method}
-          data-testid="cash-payment-method"
+      {!splitMode ? (
+        <div className="cash-payment-form">
+          <SelectField
+            aria-label={t('payment.methodLabel')}
+            className="cash-payment-method"
+            value={method}
+            data-testid="cash-payment-method"
+            disabled={busy}
+            onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+          >
+            <option value="Cash">{t('payment.method.cash')}</option>
+            <option value="Card">{t('payment.method.card')}</option>
+          </SelectField>
+          <TextField
+            type="number"
+            step="0.01"
+            min="0"
+            inputMode="decimal"
+            placeholder={t('payment.tenderedPlaceholder')}
+            value={amountTendered}
+            data-testid="cash-payment-tendered"
+            disabled={busy}
+            onChange={(e) => setAmountTendered(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && amountTendered !== '') void submit();
+            }}
+          />
+          <TextField
+            type="number"
+            step="0.01"
+            min="0"
+            inputMode="decimal"
+            placeholder={t('payment.tipPlaceholder')}
+            value={tipAmount}
+            data-testid="cash-payment-tip"
+            disabled={busy}
+            onChange={(e) => setTipAmount(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && amountTendered !== '') void submit();
+            }}
+          />
+          <Button data-testid="cash-payment-submit" disabled={busy || amountTendered === ''} onClick={() => void submit()}>
+            {t('payment.record')}
+          </Button>
+        </div>
+      ) : (
+        <div className="cash-payment-split-form" data-testid="cash-payment-split-form">
+          <TextField
+            type="number"
+            step="0.01"
+            min="0"
+            inputMode="decimal"
+            aria-label={t('payment.method.cash')}
+            placeholder={t('payment.method.cash')}
+            value={splitCash}
+            data-testid="cash-payment-split-cash"
+            disabled={busy}
+            onChange={(e) => updateSplitCash(e.target.value)}
+          />
+          <TextField
+            type="number"
+            step="0.01"
+            min="0"
+            inputMode="decimal"
+            aria-label={t('payment.method.card')}
+            placeholder={t('payment.method.card')}
+            value={splitCard}
+            data-testid="cash-payment-split-card"
+            disabled={busy}
+            onChange={(e) => updateSplitCard(e.target.value)}
+          />
+          <Button
+            data-testid="cash-payment-split-submit"
+            disabled={busy || (splitCash === '' && splitCard === '')}
+            onClick={() => void submitSplit()}
+          >
+            {t('payment.splitSubmit')}
+          </Button>
+          <Button
+            variant="ghost"
+            data-testid="cash-payment-split-cancel"
+            disabled={busy}
+            onClick={exitSplitMode}
+          >
+            {t('payment.splitCancel')}
+          </Button>
+        </div>
+      )}
+      {!splitMode && (
+        <Button
+          variant="ghost"
+          className="cash-payment-split-toggle"
+          data-testid="cash-payment-split-toggle"
           disabled={busy}
-          onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+          onClick={() => setSplitMode(true)}
         >
-          <option value="Cash">{t('payment.method.cash')}</option>
-          <option value="Card">{t('payment.method.card')}</option>
-        </SelectField>
-        <TextField
-          type="number"
-          step="0.01"
-          min="0"
-          inputMode="decimal"
-          placeholder={t('payment.tenderedPlaceholder')}
-          value={amountTendered}
-          data-testid="cash-payment-tendered"
-          disabled={busy}
-          onChange={(e) => setAmountTendered(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && amountTendered !== '') void submit();
-          }}
-        />
-        <TextField
-          type="number"
-          step="0.01"
-          min="0"
-          inputMode="decimal"
-          placeholder={t('payment.tipPlaceholder')}
-          value={tipAmount}
-          data-testid="cash-payment-tip"
-          disabled={busy}
-          onChange={(e) => setTipAmount(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && amountTendered !== '') void submit();
-          }}
-        />
-        <Button data-testid="cash-payment-submit" disabled={busy || amountTendered === ''} onClick={() => void submit()}>
-          {t('payment.record')}
+          {t('payment.splitToggle')}
         </Button>
-      </div>
-      {currentStaff && (
+      )}
+      {!splitMode && currentStaff && (
         <p className="cash-payment-tip-attribution">{t('payment.tipAttributedTo', { name: currentStaff.name })}</p>
       )}
       {error && (

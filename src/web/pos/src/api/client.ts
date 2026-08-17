@@ -11,6 +11,7 @@ import type {
   PreBillDto,
   ProblemDetails,
   RecordPaymentRequest,
+  RecordSplitPaymentRequest,
   RoomDto,
   SetLineNotesRequest,
   SetLineQuantityRequest,
@@ -129,6 +130,9 @@ export const api = {
 
   recordPayment: (orderId: string, body: RecordPaymentRequest) =>
     post<PaymentDto>(`/orders/${orderId}/payments`, body),
+
+  recordSplitPayment: (orderId: string, body: RecordSplitPaymentRequest) =>
+    post<PaymentDto[]>(`/orders/${orderId}/payments/split`, body),
 
   getPayments: (orderId: string) => request<PaymentDto[]>(`/orders/${orderId}/payments`),
 

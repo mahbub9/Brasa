@@ -41,6 +41,24 @@ public sealed record PaymentDto(
 /// </summary>
 public sealed record RecordPaymentRequest(string Method, decimal AmountTendered, decimal TipAmount = 0, Guid? StaffId = null);
 
+/// <summary>One tender within a split payment (PAY-04) — just a method and an amount, no tip/staff attribution.</summary>
+public sealed record SplitTenderRequest(string Method, decimal AmountTendered);
+
+/// <summary>
+/// Request body for PAY-04's atomic split — several tenders, any mix of
+/// methods, applied together as one unit against an order's remaining
+/// balance. Each entry in <c>Tenders</c> applies in order against what's
+/// still owed after the ones before it in the same batch; if any entry is
+/// rejected, nothing in the batch is persisted (see
+/// <c>PaymentEndpoints.RecordSplitPaymentAsync</c>'s own remarks for why
+/// that's true by construction, not an explicit transaction). Deliberately
+/// no tip/staff fields — a tip attributed to one portion of a split
+/// introduces an ambiguity ("which tender earned it?") this feature doesn't
+/// need to resolve; attribute a tip on an ordinary single tender instead
+/// (PAY-06).
+/// </summary>
+public sealed record RecordSplitPaymentRequest(IReadOnlyList<SplitTenderRequest> Tenders);
+
 /// <summary>Maps <see cref="Payment"/> to its wire DTO.</summary>
 public static class PaymentDtoMappings
 {

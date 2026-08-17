@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Brasa.Api.Endpoints;
 
 /// <summary>
-/// Tender endpoints (PAY-01/02/03/05/06). Composes <see cref="PaymentsDbContext"/>
+/// Tender endpoints (PAY-01/02/03/04/05/06). Composes <see cref="PaymentsDbContext"/>
 /// (this module's own table), <see cref="OrderingDbContext"/> (to read an
 /// order's current total, never trusting a client-sent one) and, when a tip
 /// is attributed, <see cref="IdentityDbContext"/> — the same three-module
@@ -34,8 +34,13 @@ public static class PaymentEndpoints
 
         group.MapPost("/orders/{orderId:guid}/payments", RecordPaymentAsync)
             .WithName("RecordPayment")
-            .WithSummary("Records a cash or card tender against an order's remaining balance, computing change (PAY-01/02/03) — a card tender cannot exceed the balance, since a TPA has no change to give back. A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06).")
+            .WithSummary("Records a cash or card tender against an order's remaining balance, computing change (PAY-01/02/03) — a card tender cannot exceed the balance, since a TPA has no change to give back. A tender smaller than what's owed is a valid partial payment (PAY-05); recording several tenders across different methods as one atomic action is POST .../payments/split (PAY-04). An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06).")
             .Produces<PaymentDto>(StatusCodes.Status201Created);
+
+        group.MapPost("/orders/{orderId:guid}/payments/split", RecordSplitPaymentAsync)
+            .WithName("RecordSplitPayment")
+            .WithSummary("Records several tenders — any mix of methods — against an order's remaining balance as one atomic action (PAY-04). Each tender applies in order against what's still owed after the ones before it in the same batch; if any tender is rejected, nothing in the batch is persisted. No tip support here — attribute a tip on an ordinary single tender instead (PAY-06).")
+            .Produces<List<PaymentDto>>(StatusCodes.Status201Created);
 
         group.MapGet("/orders/{orderId:guid}/payments", GetPaymentsAsync)
             .WithName("GetPayments")
@@ -54,22 +59,49 @@ public static class PaymentEndpoints
         IClock clock,
         CancellationToken cancellationToken)
     {
-        if (!Enum.TryParse<PaymentMethod>(request.Method, ignoreCase: true, out var method))
+        var order = await orderingDb.Orders
+            .Include(o => o.Lines)
+            .ThenInclude(l => l.Modifiers)
+            .FirstOrDefaultAsync(o => o.Id == orderId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (order is null)
         {
-            return Error.Validation(
-                "payment.unsupported_method", $"\"{request.Method}\" is not a supported payment method yet.").ToProblem();
+            return Error.NotFound("order.not_found", $"Order {orderId} was not found.").ToProblem();
         }
 
-        if (request.AmountTendered <= 0)
+        var amountDue = await RemainingBalanceAsync(orderId, order.Total, paymentsDb, cancellationToken).ConfigureAwait(false);
+
+        var built = await BuildTenderAsync(
+            orderId, request.Method, request.AmountTendered, request.TipAmount, request.StaffId,
+            amountDue, identityDb, clock, cancellationToken).ConfigureAwait(false);
+
+        if (built.IsFailure)
         {
-            return Error.Validation(
-                "payment.invalid_amount_tendered", "Amount tendered must be greater than zero.").ToProblem();
+            return built.Error.ToProblem();
         }
 
-        if (request.TipAmount < 0)
+        paymentsDb.Payments.Add(built.Value.Payment);
+        await paymentsDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Created(
+            $"/api/v1/orders/{orderId}/payments/{built.Value.Payment.Id}",
+            built.Value.Payment.ToDto(built.Value.AttributedStaffName));
+    }
+
+    private static async Task<IResult> RecordSplitPaymentAsync(
+        Guid orderId,
+        RecordSplitPaymentRequest request,
+        PaymentsDbContext paymentsDb,
+        OrderingDbContext orderingDb,
+        IdentityDbContext identityDb,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        if (request.Tenders is null || request.Tenders.Count == 0)
         {
             return Error.Validation(
-                "payment.invalid_tip_amount", "Tip amount must not be negative.").ToProblem();
+                "payment.empty_split", "A split payment needs at least one tender.").ToProblem();
         }
 
         var order = await orderingDb.Orders
@@ -83,22 +115,94 @@ public static class PaymentEndpoints
             return Error.NotFound("order.not_found", $"Order {orderId} was not found.").ToProblem();
         }
 
-        // The remaining balance, not always the order's full total (PAY-05)
-        // — every prior payment's own AmountApplied is already off the
-        // guest's tab, so a second (or third) tender only needs to cover
-        // what's left, never the whole order again.
+        var remaining = await RemainingBalanceAsync(orderId, order.Total, paymentsDb, cancellationToken).ConfigureAwait(false);
+
+        // Nothing is added to paymentsDb until every tender in the batch has
+        // validated successfully — the first failure returns immediately
+        // with nothing persisted, since SaveChangesAsync is never reached.
+        // A single SaveChangesAsync call for the whole batch is already one
+        // implicit EF Core transaction, so this is atomic by construction,
+        // no explicit BeginTransactionAsync needed.
+        var built = new List<(Payment Payment, string? AttributedStaffName)>();
+        foreach (var tender in request.Tenders)
+        {
+            var result = await BuildTenderAsync(
+                orderId, tender.Method, tender.AmountTendered, tipAmountRaw: 0, staffId: null,
+                remaining, identityDb, clock, cancellationToken).ConfigureAwait(false);
+
+            if (result.IsFailure)
+            {
+                return result.Error.ToProblem();
+            }
+
+            built.Add((result.Value.Payment, result.Value.AttributedStaffName));
+            remaining = result.Value.Payment.RemainingBalance;
+        }
+
+        paymentsDb.Payments.AddRange(built.Select(b => b.Payment));
+        await paymentsDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var dtos = built.Select(b => b.Payment.ToDto(b.AttributedStaffName)).ToList();
+        return Results.Created($"/api/v1/orders/{orderId}/payments", dtos);
+    }
+
+    /// <summary>
+    /// The order's own total minus every prior payment's <c>AmountApplied</c>
+    /// (PAY-05) — never the order's full total by itself, since earlier
+    /// tenders are already off the guest's tab.
+    /// </summary>
+    private static async Task<Money> RemainingBalanceAsync(
+        Guid orderId, Money orderTotal, PaymentsDbContext paymentsDb, CancellationToken cancellationToken)
+    {
         var priorPayments = await paymentsDb.Payments
             .Where(p => p.OrderId == orderId)
             .ToListAsync(cancellationToken)
             .ConfigureAwait(false);
-        var amountAlreadyApplied = Money.Sum(priorPayments.Select(p => p.AmountApplied));
-        var amountDue = order.Total - amountAlreadyApplied;
+
+        return orderTotal - Money.Sum(priorPayments.Select(p => p.AmountApplied));
+    }
+
+    /// <summary>
+    /// Validates and constructs one tender against a known remaining
+    /// balance, without touching <see cref="PaymentsDbContext"/> — shared by
+    /// the single-tender and split (PAY-04) endpoints so both apply exactly
+    /// the same rules (method, amount, tip, card no-overpay, staff
+    /// attribution) rather than two hand-maintained copies that could drift.
+    /// </summary>
+    private static async Task<Result<(Payment Payment, string? AttributedStaffName)>> BuildTenderAsync(
+        Guid orderId,
+        string methodRaw,
+        decimal amountTenderedRaw,
+        decimal tipAmountRaw,
+        Guid? staffId,
+        Money amountDue,
+        IdentityDbContext identityDb,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        if (!Enum.TryParse<PaymentMethod>(methodRaw, ignoreCase: true, out var method))
+        {
+            return Result.Failure<(Payment, string?)>(Error.Validation(
+                "payment.unsupported_method", $"\"{methodRaw}\" is not a supported payment method yet."));
+        }
+
+        if (amountTenderedRaw <= 0)
+        {
+            return Result.Failure<(Payment, string?)>(Error.Validation(
+                "payment.invalid_amount_tendered", "Amount tendered must be greater than zero."));
+        }
+
+        if (tipAmountRaw < 0)
+        {
+            return Result.Failure<(Payment, string?)>(Error.Validation(
+                "payment.invalid_tip_amount", "Tip amount must not be negative."));
+        }
 
         if (!amountDue.IsPositive)
         {
-            return Error.Validation(
+            return Result.Failure<(Payment, string?)>(Error.Validation(
                 "payment.already_settled",
-                $"Order {orderId} is already fully paid — nothing remains to tender against.").ToProblem();
+                $"Order {orderId} is already fully paid — nothing remains to tender against."));
         }
 
         // Attribution is optional even when a tip is given (PAY-06) — an
@@ -106,21 +210,22 @@ public static class PaymentEndpoints
         // must be real, the same "confirm before constructing" shape
         // FloorEndpoints.AssignRoomSectionAsync already uses for FLR-06.
         string? attributedStaffName = null;
-        if (request.StaffId is { } staffId)
+        if (staffId is { } id)
         {
             var staff = await identityDb.Staff
-                .FirstOrDefaultAsync(s => s.Id == staffId, cancellationToken)
+                .FirstOrDefaultAsync(s => s.Id == id, cancellationToken)
                 .ConfigureAwait(false);
 
             if (staff is null)
             {
-                return Error.NotFound("identity.staff_not_found", $"Staff member {staffId} was not found.").ToProblem();
+                return Result.Failure<(Payment, string?)>(
+                    Error.NotFound("identity.staff_not_found", $"Staff member {id} was not found."));
             }
 
             attributedStaffName = staff.Name;
         }
 
-        var amountTendered = Money.FromDecimal(request.AmountTendered);
+        var amountTendered = Money.FromDecimal(amountTenderedRaw);
 
         // A standalone TPA (PAY-03) charges exactly the amount keyed in —
         // there is no "change" mechanism a card terminal can hand back the
@@ -129,17 +234,14 @@ public static class PaymentEndpoints
         // (hard rule 5) instead of letting that ArgumentException bubble.
         if (method == PaymentMethod.Card && amountTendered > amountDue)
         {
-            return Error.Validation(
+            return Result.Failure<(Payment, string?)>(Error.Validation(
                 "payment.card_tender_exceeds_balance",
-                "A card tender cannot exceed what's still owed — cards have no change.").ToProblem();
+                "A card tender cannot exceed what's still owed — cards have no change."));
         }
 
-        var tipAmount = Money.FromDecimal(request.TipAmount);
-        var payment = new Payment(orderId, method, amountDue, amountTendered, tipAmount, request.StaffId, clock.UtcNow);
-        paymentsDb.Payments.Add(payment);
-        await paymentsDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
-
-        return Results.Created($"/api/v1/orders/{orderId}/payments/{payment.Id}", payment.ToDto(attributedStaffName));
+        var tipAmount = Money.FromDecimal(tipAmountRaw);
+        var payment = new Payment(orderId, method, amountDue, amountTendered, tipAmount, staffId, clock.UtcNow);
+        return (payment, attributedStaffName);
     }
 
     private static async Task<IResult> GetPaymentsAsync(

@@ -11,10 +11,12 @@ import {
   openOrderOnAnyFreeTable,
   recordPayment,
   recordPaymentResponse,
+  recordSplitPayment,
+  recordSplitPaymentResponse,
 } from './support/api';
 import { openAnyFreeTable } from './support/ui';
 
-// PAY-01/02/03/05/06 — a cash or card tender recorded against an order's
+// PAY-01/02/03/04/05/06 — a cash or card tender recorded against an order's
 // remaining balance, with change calculated server-side. Deliberately does
 // NOT gate Order.Close() — see Payment.cs's own remarks — so these tests
 // record payments both before and after close to prove neither is a
@@ -23,11 +25,14 @@ import { openAnyFreeTable } from './support/ui';
 // across however many Payment rows it takes to reach zero, and a further
 // payment against an already-settled order is rejected. A card tender
 // (PAY-03) is manually captured from a standalone TPA and can never overpay
-// — there's no change mechanism a card terminal can hand back. A tip
-// (PAY-06) rides along on the same payment, separate from the balance
+// — there's no change mechanism a card terminal can hand back. Several
+// tenders across different methods can also be recorded together as one
+// atomic action (PAY-04, POST .../payments/split) — if any tender in the
+// batch is rejected, nothing in the batch is persisted. A tip (PAY-06)
+// rides along on an ordinary single tender, separate from the balance
 // entirely, and is optionally attributed to a real staff member.
 
-test.describe('cash and card payments (PAY-01/02/03/05/06)', () => {
+test.describe('cash and card payments (PAY-01/02/03/04/05/06)', () => {
   test('records a cash tender covering the total and computes change', async ({ request }) => {
     const { order, table } = await openOrderOnAnyFreeTable(request, 2);
     const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
@@ -175,6 +180,57 @@ test.describe('cash and card payments (PAY-01/02/03/05/06)', () => {
     // The exact remaining balance still settles it normally.
     const settling = await recordPayment(request, order.id, 'Card', 4);
     expect(settling.remainingBalance).toEqual({ amount: 0, currency: 'EUR' });
+
+    await closeOrder(request, order.id);
+    await clearTable(request, table.id);
+  });
+
+  test('a split payment settles an order across cash and card as one atomic action', async ({ request }) => {
+    const { order, table } = await openOrderOnAnyFreeTable(request, 2);
+    const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
+    await addLine(request, order.id, item.id, 4); // 10.00 due
+
+    const [cashLeg, cardLeg] = await recordSplitPayment(request, order.id, [
+      { method: 'Cash', amountTendered: 6 },
+      { method: 'Card', amountTendered: 4 },
+    ]);
+    expect(cashLeg.method).toBe('Cash');
+    expect(cashLeg.amountApplied).toEqual({ amount: 6, currency: 'EUR' });
+    expect(cashLeg.remainingBalance).toEqual({ amount: 4, currency: 'EUR' });
+    expect(cardLeg.method).toBe('Card');
+    expect(cardLeg.amountApplied).toEqual({ amount: 4, currency: 'EUR' });
+    expect(cardLeg.remainingBalance).toEqual({ amount: 0, currency: 'EUR' });
+
+    // Both rows really landed — GET /payments confirms it, not just the
+    // response body of the split call itself.
+    const listed = await getPayments(request, order.id);
+    expect(listed).toHaveLength(2);
+    expect(listed.map((p) => p.method).sort()).toEqual(['Card', 'Cash']);
+
+    await closeOrder(request, order.id);
+    await clearTable(request, table.id);
+  });
+
+  test('a split payment is all-or-nothing — one invalid tender in the batch persists none of it', async ({ request }) => {
+    const { order, table } = await openOrderOnAnyFreeTable(request, 2);
+    const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
+    await addLine(request, order.id, item.id, 4); // 10.00 due
+
+    // The second tender (Card 5) would exceed what's left after the first
+    // (Cash 6 leaves 4.00 owed) — a card can't overpay, so the whole batch
+    // is rejected, including the otherwise-valid Cash leg.
+    const rejected = await recordSplitPaymentResponse(request, order.id, [
+      { method: 'Cash', amountTendered: 6 },
+      { method: 'Card', amountTendered: 5 },
+    ]);
+    expect(rejected.status()).toBe(400);
+    expect((await rejected.json()).code).toBe('payment.card_tender_exceeds_balance');
+
+    expect(await getPayments(request, order.id)).toEqual([]);
+
+    const empty = await recordSplitPaymentResponse(request, order.id, []);
+    expect(empty.status()).toBe(400);
+    expect((await empty.json()).code).toBe('payment.empty_split');
 
     await closeOrder(request, order.id);
     await clearTable(request, table.id);
@@ -362,6 +418,41 @@ test.describe('cash and card payments (PAY-01/02/03/05/06)', () => {
     // exact remaining balance, so change stays zero (a card can't overpay).
     await page.getByTestId('cash-payment-tendered').fill('2');
     await page.getByTestId('cash-payment-submit').click();
+    await expect(page.getByTestId('cash-payment-done')).toBeVisible();
+    await expect(page.getByTestId('cash-payment-change')).toHaveText(/0,00/);
+
+    await page.getByRole('button', { name: 'Abrir outra mesa' }).click();
+    await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
+    await page.getByTestId(`table-${tableLabel}`).click();
+  });
+
+  test('the pos UI splits a payment across cash and card as one action', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
+
+    const tableLabel = await openAnyFreeTable(page, 2);
+
+    const bread = page.getByRole('button', { name: 'Pão e Azeitonas' });
+    await expect(bread).toBeVisible();
+    await bread.click();
+    await bread.click();
+    await bread.click();
+    await bread.click();
+    await expect(page.getByTestId('order-total')).toHaveText(/10,00/);
+
+    await page.getByTestId('close-order-button').click();
+    await expect(page.getByRole('heading', { name: 'Recibo emitido' })).toBeVisible();
+
+    await page.getByTestId('cash-payment-split-toggle').click();
+    await expect(page.getByTestId('cash-payment-split-form')).toBeVisible();
+
+    // Typing the cash amount auto-fills the card amount with what's left of
+    // the balance — the entire point of the split helper.
+    await page.getByTestId('cash-payment-split-cash').fill('6');
+    await expect(page.getByTestId('cash-payment-split-card')).toHaveValue('4.00');
+
+    await page.getByTestId('cash-payment-split-submit').click();
+
     await expect(page.getByTestId('cash-payment-done')).toBeVisible();
     await expect(page.getByTestId('cash-payment-change')).toHaveText(/0,00/);
 

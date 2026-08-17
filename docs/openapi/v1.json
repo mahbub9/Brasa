@@ -2845,7 +2845,7 @@
         "tags": [
           "PaymentEndpoints"
         ],
-        "summary": "Records a cash or card tender against an order's remaining balance, computing change (PAY-01/02/03) — a card tender cannot exceed the balance, since a TPA has no change to give back. A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06).",
+        "summary": "Records a cash or card tender against an order's remaining balance, computing change (PAY-01/02/03) — a card tender cannot exceed the balance, since a TPA has no change to give back. A tender smaller than what's owed is a valid partial payment (PAY-05); recording several tenders across different methods as one atomic action is POST .../payments/split (PAY-04). An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06).",
         "operationId": "RecordPayment",
         "parameters": [
           {
@@ -2901,6 +2901,51 @@
         "responses": {
           "200": {
             "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PaymentDto"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/orders/{orderId}/payments/split": {
+      "post": {
+        "tags": [
+          "PaymentEndpoints"
+        ],
+        "summary": "Records several tenders — any mix of methods — against an order's remaining balance as one atomic action (PAY-04). Each tender applies in order against what's still owed after the ones before it in the same batch; if any tender is rejected, nothing in the batch is persisted. No tip support here — attribute a tip on an ordinary single tender instead (PAY-06).",
+        "operationId": "RecordSplitPayment",
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordSplitPaymentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
             "content": {
               "application/json": {
                 "schema": {
@@ -4327,6 +4372,20 @@
           }
         }
       },
+      "RecordSplitPaymentRequest": {
+        "required": [
+          "tenders"
+        ],
+        "type": "object",
+        "properties": {
+          "tenders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SplitTenderRequest"
+            }
+          }
+        }
+      },
       "ResolvedFeatureFlagDto": {
         "required": [
           "key",
@@ -4677,6 +4736,26 @@
             "items": {
               "$ref": "#/components/schemas/SplitByItemGroupDto"
             }
+          }
+        }
+      },
+      "SplitTenderRequest": {
+        "required": [
+          "method",
+          "amountTendered"
+        ],
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string"
+          },
+          "amountTendered": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },

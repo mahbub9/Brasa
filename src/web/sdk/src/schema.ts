@@ -1195,8 +1195,25 @@ export interface paths {
         /** Lists every payment recorded against an order, oldest first. */
         get: operations["GetPayments"];
         put?: never;
-        /** Records a cash or card tender against an order's remaining balance, computing change (PAY-01/02/03) — a card tender cannot exceed the balance, since a TPA has no change to give back. A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06). */
+        /** Records a cash or card tender against an order's remaining balance, computing change (PAY-01/02/03) — a card tender cannot exceed the balance, since a TPA has no change to give back. A tender smaller than what's owed is a valid partial payment (PAY-05); recording several tenders across different methods as one atomic action is POST .../payments/split (PAY-04). An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06). */
         post: operations["RecordPayment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/orders/{orderId}/payments/split": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Records several tenders — any mix of methods — against an order's remaining balance as one atomic action (PAY-04). Each tender applies in order against what's still owed after the ones before it in the same batch; if any tender is rejected, nothing in the batch is persisted. No tip support here — attribute a tip on an ordinary single tender instead (PAY-06). */
+        post: operations["RecordSplitPayment"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1582,6 +1599,9 @@ export interface components {
             /** Format: uuid */
             staffId?: null | string;
         };
+        RecordSplitPaymentRequest: {
+            tenders: components["schemas"]["SplitTenderRequest"][];
+        };
         ResolvedFeatureFlagDto: {
             key: string;
             platform: string;
@@ -1667,6 +1687,11 @@ export interface components {
         };
         SplitByItemResponse: {
             groups: components["schemas"]["SplitByItemGroupDto"][];
+        };
+        SplitTenderRequest: {
+            method: string;
+            /** Format: double */
+            amountTendered: number | string;
         };
         StaffDto: {
             /** Format: uuid */
@@ -3664,6 +3689,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PaymentDto"];
+                };
+            };
+        };
+    };
+    RecordSplitPayment: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                orderId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordSplitPaymentRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentDto"][];
                 };
             };
         };

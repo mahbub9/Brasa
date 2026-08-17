@@ -188,6 +188,23 @@ export interface RecordPaymentRequest {
   staffId?: string | null;
 }
 
+/** One tender within a split payment (PAY-04) — just a method and an amount, no tip/staff attribution. */
+export interface SplitTenderRequest {
+  method: PaymentMethod;
+  amountTendered: number;
+}
+
+/**
+ * Request body for PAY-04's atomic split — several tenders, any mix of
+ * methods, applied together as one unit. If any tender in the batch would
+ * be rejected (an invalid amount, an overpaying card tender, or the balance
+ * reaching zero before every tender is consumed), the whole batch is
+ * rejected and nothing is persisted.
+ */
+export interface RecordSplitPaymentRequest {
+  tenders: SplitTenderRequest[];
+}
+
 /** One VAT band's subtotal on a pre-bill, e.g. the 13% and 23% lines shown separately. */
 export interface VatBreakdownDto {
   vatRateFraction: number;

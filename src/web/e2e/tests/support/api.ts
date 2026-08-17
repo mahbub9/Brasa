@@ -974,6 +974,32 @@ export async function getPayments(request: APIRequestContext, orderId: string): 
   return response.json();
 }
 
+/** One tender within a split payment (PAY-04) — just a method and an amount. */
+export interface SplitTender {
+  method: string;
+  amountTendered: number;
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (PAY-04). */
+export function recordSplitPaymentResponse(request: APIRequestContext, orderId: string, tenders: SplitTender[]) {
+  return request.post(`${apiBaseUrl}/orders/${orderId}/payments/split`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { tenders },
+  });
+}
+
+export async function recordSplitPayment(
+  request: APIRequestContext,
+  orderId: string,
+  tenders: SplitTender[],
+): Promise<PaymentDto[]> {
+  const response = await recordSplitPaymentResponse(request, orderId, tenders);
+  if (!response.ok()) {
+    throw new Error(`POST /orders/${orderId}/payments/split failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
 /** Raw response so callers can assert on status/body for the failure cases too (FLR-04). */
 export function requestBillResponse(request: APIRequestContext, tableId: string) {
   return request.post(`${apiBaseUrl}/tables/${tableId}/request-bill`, {

@@ -131,6 +131,9 @@ export const pt = {
     historyTitle: 'Pagamentos já registados',
     historyEntry: '{{amount}} entregue ({{method}})',
     tipHistoryEntry: '{{amount}} de gorjeta',
+    splitToggle: 'Dividir entre numerário e cartão',
+    splitSubmit: 'Registar pagamento dividido',
+    splitCancel: 'Cancelar divisão',
   },
   staff: {
     signIn: 'Iniciar sessão',
@@ -194,6 +197,7 @@ export const pt = {
         already_settled: 'Este pedido já está totalmente pago.',
         invalid_tip_amount: 'Indique um valor de gorjeta válido.',
         card_tender_exceeds_balance: 'Um pagamento por cartão não pode exceder o valor a pagar.',
+        empty_split: 'Indique pelo menos um valor para dividir o pagamento.',
       },
       request: {
         idempotency_key_required: 'Ocorreu um erro. Tente novamente.',

@@ -126,6 +126,9 @@ export const en = {
     historyTitle: 'Payments recorded so far',
     historyEntry: '{{amount}} tendered ({{method}})',
     tipHistoryEntry: '{{amount}} tip',
+    splitToggle: 'Split between cash and card',
+    splitSubmit: 'Record split payment',
+    splitCancel: 'Cancel split',
   },
   staff: {
     signIn: 'Sign in',
@@ -184,6 +187,7 @@ export const en = {
         already_settled: 'This order is already fully paid.',
         invalid_tip_amount: 'Enter a valid tip amount.',
         card_tender_exceeds_balance: 'A card payment cannot exceed the amount due.',
+        empty_split: 'Enter at least one amount to split the payment.',
       },
       request: {
         idempotency_key_required: 'Something went wrong. Please try again.',

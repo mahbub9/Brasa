@@ -1,13 +1,13 @@
 # Cash and card payments — a tender recorded against an order's remaining balance
 
-> **Status:** ✅ done — cash and card, partial tenders supported, an optional
-> tip attributed to staff. Split-across-methods (PAY-04) and
-> cash-session/blind-count reconciliation (PAY-08/10/11) are still
-> deliberately out of scope. MB WAY/Multibanco (PAY-13) and an integrated TPA
-> (PAY-14) are both deferred past MVP — see `docs/product/backlog.md`.
+> **Status:** ✅ done — cash and card, partial tenders, an atomic split
+> across methods, and an optional tip attributed to staff. Cash-session/
+> blind-count reconciliation (PAY-08/10/11) is still deliberately out of
+> scope. MB WAY/Multibanco (PAY-13) and an integrated TPA (PAY-14) are both
+> deferred past MVP — see `docs/product/backlog.md`.
 > **Module:** Payments (new module this task), composed with Ordering (and,
 > for tip attribution, Identity) at the API layer
-> **Roadmap:** I3/I4 (`PAY-01`, `PAY-02`, `PAY-03`, `PAY-05`, `PAY-06`)
+> **Roadmap:** I3/I4 (`PAY-01`, `PAY-02`, `PAY-03`, `PAY-04`, `PAY-05`, `PAY-06`)
 
 ## What it is
 
@@ -64,10 +64,29 @@ rejected with `payment.already_settled` rather than silently accepted —
 closing the "nothing stops a double payment" gap this page originally left
 open as a known trade-off.
 
-**Splitting one tender across several *methods* is still a separate task
-(PAY-04).** Every `Payment` row here is exactly one method — PAY-05 lets a
-guest pay in several tenders, not in one payment split across cash and card
-at once. `PaymentMethod` has two cases (`Cash`, `Card`) today.
+**Splitting one settlement across several *methods* as one atomic action
+(PAY-04).** Every `Payment` row is still exactly one method — PAY-05's
+sequential tenders already let a guest pay cash-then-card across two
+separate requests, but nothing tied those two requests together, so a
+partial failure between them (say, the network drops after the cash leg
+lands but before the card leg is even sent) could leave a confusing
+half-settled state with no clean way to tell "this is an interrupted split"
+from "the guest genuinely just made a partial cash payment." `POST
+/orders/{id}/payments/split` fixes that: one request, a list of tenders
+(any mix of `Cash`/`Card`), applied in order against what's left after the
+ones before it in the same batch, and if any tender is rejected, *nothing*
+in the batch is persisted — atomic by construction (nothing is added to
+`PaymentsDbContext` until every tender validates, so the endpoint's single
+`SaveChangesAsync` call, already one implicit EF Core transaction, either
+writes every row or none), not an explicit `BeginTransactionAsync`. A
+shared `BuildTenderAsync` helper, extracted from the single-tender
+endpoint's own validation, is the one place both endpoints apply the
+method/amount/tip/card-no-overpay/staff-attribution rules now, so a future
+change to one can't silently drift from the other. Deliberately no tip or
+staff-attribution fields on a split — crediting a tip to one portion of a
+split settlement is ambiguous ("which tender actually earned it?"), so a
+tip stays a single-tender-only concept (PAY-06); attribute one on an
+ordinary tender instead if a split guest also tips.
 
 **A card tender can never overpay (PAY-03).** `Card` is manually captured
 from a standalone TPA — this codebase never talks to a card processor, staff
@@ -129,6 +148,10 @@ carried forward to every message this endpoint builds.
    confirmation showing the change due from whichever tender settled it
    (always zero for a card tender) and any tip just recorded.
    There is no edit or void path for a recorded payment yet.
+6. Staff can tap "Split between cash and card" (PAY-04) instead — two linked
+   amount fields replace the single-tender form; typing one auto-fills the
+   other with whatever's left of the balance, and one submit records both
+   as a single atomic action. No tip field here.
 
 ## Offline behaviour
 
@@ -147,6 +170,8 @@ other mutating endpoint in this codebase before the eventual SYN work.
 | Order id doesn't exist | No payment written | `404 order.not_found` (both on record and on list) |
 | A cash tender is smaller than the remaining balance | Not an error — recorded as a partial payment, `remainingBalance` stays positive | `201` with `change: 0` and a positive `remainingBalance` |
 | A payment is recorded against an order whose balance is already zero | Rejected before any row is written | `400 payment.already_settled` |
+| A split's `tenders` array is missing or empty | Rejected before the order is even loaded | `400 payment.empty_split` |
+| One tender partway through a split batch fails any of the above checks | The whole batch is rejected — nothing in it is persisted, including otherwise-valid tenders earlier in the same batch | Whichever error the failing tender itself would have produced standalone (e.g. `payment.card_tender_exceeds_balance`) |
 | Two terminals record a payment for the same order at once | Both succeed independently — `Payment` carries no concurrency token, and each reads "prior payments" from its own snapshot in time | Both tenders persist; if both read the balance before either wrote, the order can be over-settled (e.g. two terminals each independently see the full balance still owed). A known, accepted gap — see Open questions |
 
 ## Data
@@ -174,6 +199,11 @@ hand-added since the EF Core scaffolder never emits these calls — see
   (`amountDue`, `amountTendered`, `amountApplied`, `change`,
   `remainingBalance`, `tipAmount` as `MoneyDto`; `attributedStaffId`/
   `attributedStaffName`).
+- `POST /orders/{orderId}/payments/split` (PAY-04) — body `{ tenders: [{
+  method, amountTendered }, ...] }`, no tip/staff fields. Returns `201` with
+  a `PaymentDto[]`, one per tender, in the order applied. Atomic: if any
+  tender in the array is rejected, the response is that tender's own error
+  and nothing in the batch is persisted.
 - `GET /orders/{orderId}/payments` — returns every payment recorded against
   the order, oldest first (sorted client-side in the endpoint — SQLite,
   [ADR 0012](../architecture/decisions/0012-beta-in-memory-database.md),
@@ -184,10 +214,11 @@ hand-added since the EF Core scaffolder never emits these calls — see
   `RoomDto.AssignedStaffName`.
 
 Both documented in `docs/openapi/v1.json` and typed in
-`src/web/sdk/src/schema.ts` (regenerated across PAY-05/06/03; `method`
-itself was always a plain `string` in the wire schema, so PAY-03 added
-`Card` support with no schema widening — only the endpoint summary text
-changed).
+`src/web/sdk/src/schema.ts` (regenerated across PAY-03/04/05/06; `method`
+on the single-tender endpoint was always a plain `string` in the wire
+schema, so PAY-03 added `Card` support with no schema widening — only the
+endpoint summary text changed; PAY-04's `/payments/split` is a genuinely
+new route, so that regeneration produced real additive drift).
 
 ## Integration events
 
@@ -214,7 +245,7 @@ dedicated `Brasa.Api.IntegrationTests` class yet; the full backend suite
 (101 tests) and `verify.ps1` (build, tests, OpenAPI drift, breaking-change
 check, vulnerable-package scan) all pass with the module wired in.
 
-**`src/web/e2e/tests/payments.spec.ts`** — 13 tests: a cash tender covering
+**`src/web/e2e/tests/payments.spec.ts`** — 16 tests: a cash tender covering
 the total with correct change; a tender smaller than the total recorded as a
 valid partial payment, tracked correctly across a settling second tender
 that itself overpays (proving `AmountApplied`/`Change`/`RemainingBalance`
@@ -227,15 +258,21 @@ payment *after* close to prove close isn't a precondition; a card tender
 covering the total exactly with zero change; a card partial payment tracked
 the same as cash, then an overpaying card tender rejected with
 `payment.card_tender_exceeds_balance`, then the exact remaining balance
-settling normally; a tip attributed to a real staff member with the name
-resolved both on record and on list; an unattributed tip, a negative tip,
-and an unknown attributed staff id each rejected with their own code; and
-four real-browser UI tests — one full cash tender, one two-tender
+settling normally; a genuine cash+card split settling an order exactly, both
+rows confirmed via a follow-up `GET /payments` (not just the split call's own
+response body); an invalid tender partway through a split batch leaving zero
+rows persisted, proving the all-or-nothing atomicity, plus an empty
+`tenders` array rejected; a tip attributed to a real staff member with the
+name resolved both on record and on list; an unattributed tip, a negative
+tip, and an unknown attributed staff id each rejected with their own code;
+and five real-browser UI tests — one full cash tender, one two-tender
 partial-then-settle flow, one signing in then recording a tip
-auto-attributed to the signed-in staff member, and one switching the
+auto-attributed to the signed-in staff member, one switching the
 payment-method `<select>` to Card and settling across a partial-then-exact
-pair, the history list's own localized method label confirming the selected
-method actually reached the recorded payment.
+pair (the history list's own localized method label confirming the selected
+method actually reached the recorded payment), and one filling the split
+form's cash leg, watching the card leg auto-compute the remainder, and
+settling in one click.
 
 ## Open questions
 
@@ -249,7 +286,12 @@ method actually reached the recorded payment.
   payment, together exceeding the total. Low real-world likelihood (cash
   payments happen at a till, rarely two-at-once against the same order) but
   a real, unclosed gap — revisit if PAY-08's cash session work ever needs a
-  stronger guarantee than "extremely unlikely in practice."
+  stronger guarantee than "extremely unlikely in practice." The split
+  endpoint (PAY-04) doesn't add a *new* exposure — its own tenders apply
+  sequentially within one request against a balance read once at the start,
+  the same single-snapshot shape the single-tender endpoint already has —
+  but a split batch racing a *concurrent, separate* request (single or
+  another split) against the same order is exposed to exactly this same gap.
 - **No UI or API path to void or correct a recorded payment.** A mis-entered
   tender amount has no correction path today beyond direct database access —
   same class of gap as `Order`'s own void-a-line design solves for order
@@ -260,10 +302,12 @@ method actually reached the recorded payment.
   exists, or ever will for this manually-captured case: a standalone TPA is
   a separate physical device staff already ran before keying the amount in
   here. `MBWay`/an integrated TPA (PAY-13/14) are deferred past MVP.
-  Splitting one settlement across several methods at once (PAY-04) is a
-  separate, larger change: today's model only lets a guest pay in several
-  tenders of the *same* method — e.g. two card tenders, not one cash-plus-card
-  settlement recorded as a single action.
+- **A split (PAY-04) carries no tip or staff-attribution fields.** Crediting
+  a tip to one portion of a split settlement is ambiguous — "which tender
+  earned it?" — so PAY-04 deliberately left that unresolved rather than
+  guessing; a guest who splits and tips needs the tip recorded on an
+  ordinary single tender instead (before or after the split, since neither
+  endpoint cares about order).
 - **A card tender's "no overpay" rule trusts what staff key in.** Nothing
   verifies against the real TPA that the amount recorded actually matches
   what was charged — the same trust boundary `Cash` always had (nothing
