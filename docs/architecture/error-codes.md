@@ -108,9 +108,10 @@ as any change to an error code, the same rule as everything else in
 | `order.notes_too_long` | Validation | 400 | `SetLineNotes()`'s `notes` is over 300 characters. |
 | `order.void_reason_required` | Validation | 400 | `POST /orders/{id}/lines/{lineId}/void`'s (ORD-10) `reason` is missing, empty or whitespace. |
 | `payment.invalid_amount_tendered` | Validation | 400 | `POST /orders/{id}/payments`'s `amountTendered` is zero or negative. |
-| `payment.unsupported_method` | Validation | 400 | `POST /orders/{id}/payments`'s `method` isn't a recognised, supported `PaymentMethod` — only `"Cash"` exists today (PAY-02); card/split/voucher tenders are each their own later task (PAY-03/04/12). |
+| `payment.unsupported_method` | Validation | 400 | `POST /orders/{id}/payments`'s `method` isn't a recognised, supported `PaymentMethod` — `"Cash"` (PAY-02) and `"Card"` (PAY-03) exist today; split tender and meal vouchers are each their own later task (PAY-04/12). |
 | `payment.already_settled` | Validation | 400 | `POST /orders/{id}/payments` was called against an order whose recorded payments already sum to (or exceed) its total — there's no remaining balance left to tender against. A tender smaller than the total is a valid partial payment, not this (PAY-05); this only fires once nothing is left owed. |
 | `payment.invalid_tip_amount` | Validation | 400 | `POST /orders/{id}/payments`'s (PAY-06) `tipAmount` is negative. Zero (no tip) and omitting the field entirely are both valid. |
+| `payment.card_tender_exceeds_balance` | Validation | 400 | `POST /orders/{id}/payments`'s (PAY-03) `method` is `"Card"` and `amountTendered` exceeds the order's remaining balance — a standalone TPA has no change to give back, unlike cash. A card tender smaller than the balance is still a valid partial payment (PAY-05); only overpaying by card is rejected. |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |
 | `request.rate_limited` | RateLimited | 429 | The calling `(tenant, X-Brasa-Client client id)` pair exceeded `RateLimiting`'s configured requests-per-window (API-12). The response carries a `Retry-After` header. |
 

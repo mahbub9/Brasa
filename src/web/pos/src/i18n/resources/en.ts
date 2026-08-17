@@ -109,9 +109,14 @@ export const en = {
     newTable: 'Open another table',
   },
   payment: {
-    title: 'Cash payment',
+    title: 'Payment',
+    methodLabel: 'Payment method',
+    method: {
+      cash: 'Cash',
+      card: 'Card',
+    },
     amountDue: 'Amount due: {{amount}}',
-    tenderedPlaceholder: 'Cash tendered',
+    tenderedPlaceholder: 'Amount tendered',
     tipPlaceholder: 'Tip (optional)',
     record: 'Record payment',
     recorded: 'Payment recorded.',
@@ -119,7 +124,7 @@ export const en = {
     tipRecorded: 'Tip: {{amount}}',
     tipAttributedTo: 'Tip credited to {{name}}',
     historyTitle: 'Payments recorded so far',
-    historyEntry: '{{amount}} tendered',
+    historyEntry: '{{amount}} tendered ({{method}})',
     tipHistoryEntry: '{{amount}} tip',
   },
   staff: {
@@ -178,6 +183,7 @@ export const en = {
         unsupported_method: 'That payment method is not supported yet.',
         already_settled: 'This order is already fully paid.',
         invalid_tip_amount: 'Enter a valid tip amount.',
+        card_tender_exceeds_balance: 'A card payment cannot exceed the amount due.',
       },
       request: {
         idempotency_key_required: 'Something went wrong. Please try again.',

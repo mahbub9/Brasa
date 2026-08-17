@@ -1195,7 +1195,7 @@ export interface paths {
         /** Lists every payment recorded against an order, oldest first. */
         get: operations["GetPayments"];
         put?: never;
-        /** Records a cash tender against an order's remaining balance, computing change (PAY-01/02). A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06). */
+        /** Records a cash or card tender against an order's remaining balance, computing change (PAY-01/02/03) — a card tender cannot exceed the balance, since a TPA has no change to give back. A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06). */
         post: operations["RecordPayment"];
         delete?: never;
         options?: never;

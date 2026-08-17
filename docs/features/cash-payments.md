@@ -1,24 +1,27 @@
-# Cash payments — a tender recorded against an order's remaining balance
+# Cash and card payments — a tender recorded against an order's remaining balance
 
-> **Status:** ✅ done — cash only, partial tenders supported. Card/MB WAY
-> (PAY-03) and split-across-methods (PAY-04) and cash-session/blind-count
-> reconciliation (PAY-08/10/11) are all deliberately out of scope.
-> **Module:** Payments (new module this task), composed with Ordering at the
-> API layer
-> **Roadmap:** I3/I4 (`PAY-01`, `PAY-02`, `PAY-05`)
+> **Status:** ✅ done — cash and card, partial tenders supported, an optional
+> tip attributed to staff. Split-across-methods (PAY-04) and
+> cash-session/blind-count reconciliation (PAY-08/10/11) are still
+> deliberately out of scope. MB WAY/Multibanco (PAY-13) and an integrated TPA
+> (PAY-14) are both deferred past MVP — see `docs/product/backlog.md`.
+> **Module:** Payments (new module this task), composed with Ordering (and,
+> for tip attribution, Identity) at the API layer
+> **Roadmap:** I3/I4 (`PAY-01`, `PAY-02`, `PAY-03`, `PAY-05`, `PAY-06`)
 
 ## What it is
 
 Real service closes an order (issues the fiscal document) without ever
 recording how the guest actually paid — nothing in the codebase before this
 tracked a tender or computed change. `Payment` is a new record, in a new
-`Brasa.Modules.Payments` module, that captures one cash tender against one
-order's remaining balance: what was still owed, what was handed over, and
-the change owed back. `POST /orders/{orderId}/payments` records it;
+`Brasa.Modules.Payments` module, that captures one tender (cash or card)
+against one order's remaining balance: what was still owed, what was handed
+over, and the change owed back. `POST /orders/{orderId}/payments` records it;
 `GET /orders/{orderId}/payments` lists every payment recorded against an
 order. An order can be settled in one tender or several — a tender smaller
 than what's owed is a valid partial payment, and the balance tracks across
-however many it takes to reach zero.
+however many it takes to reach zero. A tip can ride along on any tender,
+entirely separate from the balance, optionally credited to a staff member.
 
 ## Why it works this way
 
@@ -63,14 +66,41 @@ open as a known trade-off.
 
 **Splitting one tender across several *methods* is still a separate task
 (PAY-04).** Every `Payment` row here is exactly one method — PAY-05 lets a
-guest pay in several cash tenders, not in one payment split across cash and
-card at once. `PaymentMethod` has exactly one case (`Cash`) today regardless.
+guest pay in several tenders, not in one payment split across cash and card
+at once. `PaymentMethod` has two cases (`Cash`, `Card`) today.
+
+**A card tender can never overpay (PAY-03).** `Card` is manually captured
+from a standalone TPA — this codebase never talks to a card processor, staff
+key in the amount the real terminal already charged, the same "record what
+happened, don't drive the hardware" shape `Cash` already had. A TPA has no
+change mechanism, so tendering more than the balance by card is rejected
+(`400 payment.card_tender_exceeds_balance`) rather than silently producing a
+`change` value nobody could actually hand back. Tendering less is still a
+valid partial payment, identical to cash. The guard is enforced twice, on
+purpose: `Payment`'s own constructor (the domain invariant) and mirrored in
+`RecordPaymentAsync` before ever constructing one, so the API returns a
+proper `Result`/`Error` (hard rule 5) instead of letting the domain
+`ArgumentException` bubble as an unhandled fault.
+
+**A tip is separate from the bill, not its own row (PAY-06).** `TipAmount`
+rides along on the same `Payment` as its tender rather than getting a table
+of its own — never affects `AmountDue`/`AmountApplied`/`RemainingBalance`.
+Attribution (`AttributedStaffId`, a plain opaque reference to Identity's
+`Staff`, the same convention `Room.AssignedStaffId` uses) is optional even
+when a tip is given — an unattributed tip goes to a shared pool — but a
+*named* staff id must resolve to a real `Staff` (`404
+identity.staff_not_found`) before the payment is ever constructed, the same
+"confirm before constructing" shape `FloorEndpoints.AssignRoomSectionAsync`
+already uses for FLR-06's section assignment. `pos` has no staff picker on
+the receipt screen, so attribution is automatic: whoever is signed in
+(WEB-07) when the tip is recorded.
 
 **The server reads the amount due — the client never sends one.** The
-request body carries only `method` and `amountTendered`; `RecordPaymentAsync`
-loads the order and every prior payment itself and computes the remaining
-balance server-side. A client-sent due amount would let a stale or
-manipulated screen record a payment against the wrong balance.
+request body carries `method`, `amountTendered`, and optionally `tipAmount`/
+`staffId`; `RecordPaymentAsync` loads the order and every prior payment
+itself and computes the remaining balance server-side. A client-sent due
+amount would let a stale or manipulated screen record a payment against the
+wrong balance.
 
 **`Money.ToString()`, not culture-formatted, in error messages.** An earlier
 draft embedded amounts via `Money.Format(CultureInfo.InvariantCulture)` in
@@ -82,17 +112,22 @@ carried forward to every message this endpoint builds.
 ## Behaviour
 
 1. Staff closes an order (or not — see above) and reaches the receipt
-   screen, which now always shows a "Cash payment" panel with the amount
-   currently due.
-2. Staff enters what the guest handed over and submits.
+   screen, which now always shows a payment panel with the amount currently
+   due and a Cash/Card method selector (defaulting to Cash).
+2. Staff picks a method, enters what was tendered (and, optionally, a tip),
+   and submits.
 3. The API computes the order's own remaining balance server-side, validates
-   the method and the amount, and persists a `Payment`, returning the
-   computed `change` and `remainingBalance`.
+   the method and the amount (rejecting a card tender that would overpay),
+   and persists a `Payment`, returning the computed `change`,
+   `remainingBalance`, `tipAmount`, and — if attributed — the credited
+   staff member's name.
 4. If `remainingBalance` is still positive, the receipt screen's form stays
    open — showing the updated balance and a running list of tenders already
-   recorded — so staff can record another one.
+   recorded, each labelled with its method — so staff can record another
+   one, in the same or a different method.
 5. Once a tender brings the balance to zero, the form is replaced with a
-   confirmation showing the change due from whichever tender settled it.
+   confirmation showing the change due from whichever tender settled it
+   (always zero for a card tender) and any tip just recorded.
    There is no edit or void path for a recorded payment yet.
 
 ## Offline behaviour
@@ -105,9 +140,12 @@ other mutating endpoint in this codebase before the eventual SYN work.
 | What goes wrong | What the system does | What the user sees |
 |---|---|---|
 | Tendered amount is zero or negative | Rejected before the order is even loaded | `400 payment.invalid_amount_tendered` |
-| Method is anything other than `Cash` | Rejected — only `PaymentMethod.Cash` exists today | `400 payment.unsupported_method` |
+| Method is neither `Cash` nor `Card` | Rejected | `400 payment.unsupported_method` |
+| A card tender would exceed the remaining balance | Rejected — a TPA has no change to give back (PAY-03) | `400 payment.card_tender_exceeds_balance` |
+| Tip amount is negative | Rejected before the order is even loaded | `400 payment.invalid_tip_amount` |
+| A tip is attributed to an unknown staff id | Rejected before any row is written | `404 identity.staff_not_found` |
 | Order id doesn't exist | No payment written | `404 order.not_found` (both on record and on list) |
-| A tender is smaller than the remaining balance | Not an error — recorded as a partial payment, `remainingBalance` stays positive | `201` with `change: 0` and a positive `remainingBalance` |
+| A cash tender is smaller than the remaining balance | Not an error — recorded as a partial payment, `remainingBalance` stays positive | `201` with `change: 0` and a positive `remainingBalance` |
 | A payment is recorded against an order whose balance is already zero | Rejected before any row is written | `400 payment.already_settled` |
 | Two terminals record a payment for the same order at once | Both succeed independently — `Payment` carries no concurrency token, and each reads "prior payments" from its own snapshot in time | Both tenders persist; if both read the balance before either wrote, the order can be over-settled (e.g. two terminals each independently see the full balance still owed). A known, accepted gap — see Open questions |
 
@@ -115,29 +153,41 @@ other mutating endpoint in this codebase before the eventual SYN work.
 
 New `payments` schema, one table (`payments.payments`): `Id`, `OrderId`
 (indexed, unindexed foreign reference — see module-boundaries note above),
-`Method` (int enum), `AmountDue`/`AmountTendered` (mapped via `MapMoney`,
-the same convention every other `Money` column in this codebase uses),
-`PaidAtUtc`. `AmountApplied`/`Change`/`RemainingBalance` are all computed
-properties, not columns — `PaymentConfiguration` ignores all three, the same
-"never store a derived total" rule `Order.Total` follows. RLS is enabled the
+`Method` (int enum, stored as a string), `AmountDue`/`AmountTendered`/
+`TipAmount` (each mapped via `MapMoney`, the same convention every other
+`Money` column in this codebase uses), `AttributedStaffId` (nullable, a
+plain opaque reference to Identity's `Staff`), `PaidAtUtc`.
+`AmountApplied`/`Change`/`RemainingBalance` are all computed properties, not
+columns — `PaymentConfiguration` ignores all three, the same "never store a
+derived total" rule `Order.Total` follows. Adding `Card` to `PaymentMethod`
+needed no migration at all — `Method` was already a plain
+`character varying(20)` string column with room to spare. RLS is enabled the
 standard way (`EnableFor`/`EnableSystemReadFor` in the migration's `Up()`,
 hand-added since the EF Core scaffolder never emits these calls — see
 [multi-tenancy.md](../architecture/multi-tenancy.md)).
 
 ## API
 
-- `POST /orders/{orderId}/payments` — body `{ method, amountTendered }`,
-  returns `201` with a `PaymentDto` (`amountDue`, `amountTendered`,
-  `amountApplied`, `change`, `remainingBalance`, all as `MoneyDto`).
+- `POST /orders/{orderId}/payments` — body `{ method, amountTendered,
+  tipAmount?, staffId? }` (`tipAmount` defaults to zero, `staffId` is
+  optional even when a tip is given), returns `201` with a `PaymentDto`
+  (`amountDue`, `amountTendered`, `amountApplied`, `change`,
+  `remainingBalance`, `tipAmount` as `MoneyDto`; `attributedStaffId`/
+  `attributedStaffName`).
 - `GET /orders/{orderId}/payments` — returns every payment recorded against
   the order, oldest first (sorted client-side in the endpoint — SQLite,
   [ADR 0012](../architecture/decisions/0012-beta-in-memory-database.md),
   can't translate `ORDER BY` over `DateTimeOffset`, the same limitation
-  `TaxRuleEndpoints.GetTaxRulesAsync` already works around).
+  `TaxRuleEndpoints.GetTaxRulesAsync` already works around). Attributed staff
+  names are batch-resolved from Identity in one query per call, never N+1 —
+  the same shape `FloorEndpoints.ResolveStaffNamesAsync` uses for
+  `RoomDto.AssignedStaffName`.
 
 Both documented in `docs/openapi/v1.json` and typed in
-`src/web/sdk/src/schema.ts` (regenerated when `PaymentDto` grew its two new
-fields for PAY-05).
+`src/web/sdk/src/schema.ts` (regenerated across PAY-05/06/03; `method`
+itself was always a plain `string` in the wire schema, so PAY-03 added
+`Card` support with no schema widening — only the endpoint summary text
+changed).
 
 ## Integration events
 
@@ -164,19 +214,28 @@ dedicated `Brasa.Api.IntegrationTests` class yet; the full backend suite
 (101 tests) and `verify.ps1` (build, tests, OpenAPI drift, breaking-change
 check, vulnerable-package scan) all pass with the module wired in.
 
-**`src/web/e2e/tests/payments.spec.ts`** — 7 tests: a tender covering the
-total with correct change; a tender smaller than the total recorded as a
+**`src/web/e2e/tests/payments.spec.ts`** — 13 tests: a cash tender covering
+the total with correct change; a tender smaller than the total recorded as a
 valid partial payment, tracked correctly across a settling second tender
 that itself overpays (proving `AmountApplied`/`Change`/`RemainingBalance`
 compose correctly, not just in isolation), and a further tender against the
 now-settled order rejected with `payment.already_settled`; zero/negative
-amounts, an unsupported method, and an unknown order each rejected with the
-right code; listing payments across a partial-then-settling pair (empty,
-then two rows, then 404 for an unknown order); recording a payment *after*
-close to prove close isn't a precondition; and two real-browser UI tests —
-one full tender, one two-tender partial-then-settle flow through the
-receipt screen's cash-payment panel, including its running balance and
-payment-history list.
+amounts, an unsupported method (`'Voucher'`), and an unknown order each
+rejected with the right code; listing payments across a partial-then-settling
+pair (empty, then two rows, then 404 for an unknown order); recording a
+payment *after* close to prove close isn't a precondition; a card tender
+covering the total exactly with zero change; a card partial payment tracked
+the same as cash, then an overpaying card tender rejected with
+`payment.card_tender_exceeds_balance`, then the exact remaining balance
+settling normally; a tip attributed to a real staff member with the name
+resolved both on record and on list; an unattributed tip, a negative tip,
+and an unknown attributed staff id each rejected with their own code; and
+four real-browser UI tests — one full cash tender, one two-tender
+partial-then-settle flow, one signing in then recording a tip
+auto-attributed to the signed-in staff member, and one switching the
+payment-method `<select>` to Card and settling across a partial-then-exact
+pair, the history list's own localized method label confirming the selected
+method actually reached the recorded payment.
 
 ## Open questions
 
@@ -195,9 +254,19 @@ payment-history list.
   tender amount has no correction path today beyond direct database access —
   same class of gap as `Order`'s own void-a-line design solves for order
   lines, not yet solved here.
-- **`PaymentMethod` has exactly one case (`Cash`).** Adding `Card`/`MBWay`
-  (PAY-03) is additive to the enum and the endpoint's validation, not a
-  redesign — but nothing about routing a card payment to an actual payment
-  processor exists yet. Splitting one settlement across several methods at
-  once (PAY-04) is a separate, larger change: today's model only lets a
-  guest pay in several tenders of the *same* method.
+- **`PaymentMethod` has two cases (`Cash`, `Card`).** Adding `Card` (PAY-03)
+  was additive to the enum and the endpoint's validation, not a redesign —
+  and nothing about routing a card payment to an actual payment processor
+  exists, or ever will for this manually-captured case: a standalone TPA is
+  a separate physical device staff already ran before keying the amount in
+  here. `MBWay`/an integrated TPA (PAY-13/14) are deferred past MVP.
+  Splitting one settlement across several methods at once (PAY-04) is a
+  separate, larger change: today's model only lets a guest pay in several
+  tenders of the *same* method — e.g. two card tenders, not one cash-plus-card
+  settlement recorded as a single action.
+- **A card tender's "no overpay" rule trusts what staff key in.** Nothing
+  verifies against the real TPA that the amount recorded actually matches
+  what was charged — the same trust boundary `Cash` always had (nothing
+  verifies a cash tender was really handed over either). This is a recording
+  system, not a payment processor; reconciliation against a till/TPA total is
+  PAY-08/10/11's *fecho de caixa* territory, not this.

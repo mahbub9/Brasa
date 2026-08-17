@@ -2,7 +2,7 @@ using Brasa.Modules.Payments.Domain;
 
 namespace Brasa.Api.Contracts;
 
-/// <summary>A tender recorded against an order (PAY-01/02/05/06).</summary>
+/// <summary>A tender recorded against an order (PAY-01/02/03/05/06).</summary>
 /// <remarks>
 /// <c>AmountDue</c> is what was still owed at the moment of this payment, not
 /// always the order's full total — see <see cref="Payment"/>'s own remarks.
@@ -33,9 +33,11 @@ public sealed record PaymentDto(
 /// itself — the amount due is never client-supplied, it is computed from the
 /// order's own remaining balance server-side, the same "never trust a
 /// client-sent total" instinct every other money-handling endpoint in this
-/// codebase already follows. <c>TipAmount</c> defaults to zero when omitted;
-/// <c>StaffId</c> is optional even when a tip is given — an unattributed tip
-/// goes to a shared pool (PAY-06).
+/// codebase already follows. <c>Method</c> is <c>"Cash"</c> or <c>"Card"</c>
+/// (PAY-03) — a card tender cannot exceed the balance, since a standalone TPA
+/// has no change to give back. <c>TipAmount</c> defaults to zero when
+/// omitted; <c>StaffId</c> is optional even when a tip is given — an
+/// unattributed tip goes to a shared pool (PAY-06).
 /// </summary>
 public sealed record RecordPaymentRequest(string Method, decimal AmountTendered, decimal TipAmount = 0, Guid? StaffId = null);
 

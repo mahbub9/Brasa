@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import { formatMoney } from '@brasa/ui/lib/money';
 import { Button } from '@brasa/ui/components/Button';
 import { TextField } from '@brasa/ui/components/TextField';
+import { SelectField } from '@brasa/ui/components/SelectField';
 import { describeError } from '../lib/describeError';
 import { api } from '../api/client';
-import type { MoneyDto, PaymentDto, StaffDto } from '../api/types';
+import type { MoneyDto, PaymentDto, PaymentMethod, StaffDto } from '../api/types';
 
 interface CashPaymentProps {
   orderId: string;
@@ -15,10 +16,10 @@ interface CashPaymentProps {
 }
 
 /**
- * PAY-01/02/05/06's own UI — records one or more cash tenders against an
- * already-closed order and shows the change due once fully settled.
- * Self-contained, the same "own local busy/error state, not App.tsx's
- * global one" shape <c>StaffLogin</c> already uses: by the time
+ * PAY-01/02/03/05/06's own UI — records one or more tenders (cash or card)
+ * against an already-closed order and shows the change due once fully
+ * settled. Self-contained, the same "own local busy/error state, not
+ * App.tsx's global one" shape <c>StaffLogin</c> already uses: by the time
  * <c>Receipt</c> renders, the order-mutation flow that owns App.tsx's
  * shared <c>busy</c> flag is already over, and a payment failure here
  * shouldn't disable buttons elsewhere on the screen.
@@ -27,7 +28,10 @@ interface CashPaymentProps {
  * the form stays open, showing the running remaining balance and the
  * tenders recorded so far, until a payment brings the balance to zero —
  * only then does this replace itself with the confirmed change (from
- * whichever tender actually settled it).
+ * whichever tender actually settled it). A card tender (PAY-03) can never
+ * overpay — the server rejects it, since a standalone TPA has no change to
+ * give back — so nothing client-side needs to special-case that; the same
+ * error banner used for every other rejection handles it.
  *
  * A tip is optional on every tender, not just the settling one, and is
  * separate from the balance entirely (PAY-06). Attribution is automatic —
@@ -37,6 +41,7 @@ interface CashPaymentProps {
  */
 export function CashPayment({ orderId, amountDue, currentStaff }: CashPaymentProps) {
   const { t } = useTranslation();
+  const [method, setMethod] = useState<PaymentMethod>('Cash');
   const [amountTendered, setAmountTendered] = useState('');
   const [tipAmount, setTipAmount] = useState('');
   const [busy, setBusy] = useState(false);
@@ -62,7 +67,7 @@ export function CashPayment({ orderId, amountDue, currentStaff }: CashPaymentPro
     setError(null);
     try {
       const recorded = await api.recordPayment(orderId, {
-        method: 'Cash',
+        method,
         amountTendered: parsedTendered,
         tipAmount: parsedTip,
         staffId: parsedTip > 0 ? (currentStaff?.id ?? null) : null,
@@ -105,7 +110,10 @@ export function CashPayment({ orderId, amountDue, currentStaff }: CashPaymentPro
           <ul>
             {payments.map((recorded) => (
               <li key={recorded.id}>
-                {t('payment.historyEntry', { amount: formatMoney(recorded.amountTendered) })}
+                {t('payment.historyEntry', {
+                  amount: formatMoney(recorded.amountTendered),
+                  method: t(`payment.method.${recorded.method.toLowerCase()}`),
+                })}
                 {recorded.tipAmount.amount > 0 &&
                   ` — ${t('payment.tipHistoryEntry', { amount: formatMoney(recorded.tipAmount) })}`}
               </li>
@@ -114,6 +122,17 @@ export function CashPayment({ orderId, amountDue, currentStaff }: CashPaymentPro
         </div>
       )}
       <div className="cash-payment-form">
+        <SelectField
+          aria-label={t('payment.methodLabel')}
+          className="cash-payment-method"
+          value={method}
+          data-testid="cash-payment-method"
+          disabled={busy}
+          onChange={(e) => setMethod(e.target.value as PaymentMethod)}
+        >
+          <option value="Cash">{t('payment.method.cash')}</option>
+          <option value="Card">{t('payment.method.card')}</option>
+        </SelectField>
         <TextField
           type="number"
           step="0.01"

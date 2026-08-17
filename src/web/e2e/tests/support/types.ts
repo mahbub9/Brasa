@@ -242,7 +242,7 @@ export interface CloseOrderResponse {
 export interface PaymentDto {
   id: string;
   orderId: string;
-  method: 'Cash';
+  method: 'Cash' | 'Card';
   amountDue: MoneyDto;
   amountTendered: MoneyDto;
   amountApplied: MoneyDto;

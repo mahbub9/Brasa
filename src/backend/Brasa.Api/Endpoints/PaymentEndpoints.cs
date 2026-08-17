@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Brasa.Api.Endpoints;
 
 /// <summary>
-/// Cash-tender endpoints (PAY-01/02/05/06). Composes <see cref="PaymentsDbContext"/>
+/// Tender endpoints (PAY-01/02/03/05/06). Composes <see cref="PaymentsDbContext"/>
 /// (this module's own table), <see cref="OrderingDbContext"/> (to read an
 /// order's current total, never trusting a client-sent one) and, when a tip
 /// is attributed, <see cref="IdentityDbContext"/> — the same three-module
@@ -34,7 +34,7 @@ public static class PaymentEndpoints
 
         group.MapPost("/orders/{orderId:guid}/payments", RecordPaymentAsync)
             .WithName("RecordPayment")
-            .WithSummary("Records a cash tender against an order's remaining balance, computing change (PAY-01/02). A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06).")
+            .WithSummary("Records a cash or card tender against an order's remaining balance, computing change (PAY-01/02/03) — a card tender cannot exceed the balance, since a TPA has no change to give back. A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06).")
             .Produces<PaymentDto>(StatusCodes.Status201Created);
 
         group.MapGet("/orders/{orderId:guid}/payments", GetPaymentsAsync)
@@ -121,6 +121,19 @@ public static class PaymentEndpoints
         }
 
         var amountTendered = Money.FromDecimal(request.AmountTendered);
+
+        // A standalone TPA (PAY-03) charges exactly the amount keyed in —
+        // there is no "change" mechanism a card terminal can hand back the
+        // way a cash drawer can. Mirrors the same guard Payment's own
+        // constructor enforces, so the API returns a proper Result/Error
+        // (hard rule 5) instead of letting that ArgumentException bubble.
+        if (method == PaymentMethod.Card && amountTendered > amountDue)
+        {
+            return Error.Validation(
+                "payment.card_tender_exceeds_balance",
+                "A card tender cannot exceed what's still owed — cards have no change.").ToProblem();
+        }
+
         var tipAmount = Money.FromDecimal(request.TipAmount);
         var payment = new Payment(orderId, method, amountDue, amountTendered, tipAmount, request.StaffId, clock.UtcNow);
         paymentsDb.Payments.Add(payment);

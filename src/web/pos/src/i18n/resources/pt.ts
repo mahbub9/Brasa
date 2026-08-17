@@ -114,7 +114,12 @@ export const pt = {
     newTable: 'Abrir outra mesa',
   },
   payment: {
-    title: 'Pagamento em numerário',
+    title: 'Pagamento',
+    methodLabel: 'Método de pagamento',
+    method: {
+      cash: 'Numerário',
+      card: 'Cartão',
+    },
     amountDue: 'Valor a pagar: {{amount}}',
     tenderedPlaceholder: 'Valor entregue',
     tipPlaceholder: 'Gorjeta (opcional)',
@@ -124,7 +129,7 @@ export const pt = {
     tipRecorded: 'Gorjeta: {{amount}}',
     tipAttributedTo: 'Gorjeta creditada a {{name}}',
     historyTitle: 'Pagamentos já registados',
-    historyEntry: '{{amount}} entregue',
+    historyEntry: '{{amount}} entregue ({{method}})',
     tipHistoryEntry: '{{amount}} de gorjeta',
   },
   staff: {
@@ -188,6 +193,7 @@ export const pt = {
         unsupported_method: 'Esse método de pagamento ainda não é suportado.',
         already_settled: 'Este pedido já está totalmente pago.',
         invalid_tip_amount: 'Indique um valor de gorjeta válido.',
+        card_tender_exceeds_balance: 'Um pagamento por cartão não pode exceder o valor a pagar.',
       },
       request: {
         idempotency_key_required: 'Ocorreu um erro. Tente novamente.',

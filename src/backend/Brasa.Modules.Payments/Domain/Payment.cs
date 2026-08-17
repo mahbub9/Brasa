@@ -5,7 +5,8 @@ namespace Brasa.Modules.Payments.Domain;
 
 /// <summary>
 /// A tender recorded against an order — PAY-01's model, PAY-02's cash case,
-/// PAY-05's partial-payment support, PAY-06's tip recording and attribution.
+/// PAY-03's card case, PAY-05's partial-payment support, PAY-06's tip
+/// recording and attribution.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -52,6 +53,15 @@ namespace Brasa.Modules.Payments.Domain;
 /// plain opaque reference — Payments never queries Identity directly; the
 /// API layer confirms a given staff id is real before this is constructed.
 /// </para>
+/// <para>
+/// <b>A card tender cannot overpay (PAY-03).</b> A standalone TPA charges
+/// exactly the amount keyed in — there is no "change" mechanism a card
+/// terminal can hand back the way a cash drawer can. Tendering less than
+/// <paramref name="amountDue"/> by card is still a valid partial payment,
+/// the same as cash (PAY-05); tendering more is rejected rather than
+/// silently producing a <see cref="Change"/> value that could never
+/// actually be paid out.
+/// </para>
 /// </remarks>
 public sealed class Payment : Entity
 {
@@ -90,6 +100,13 @@ public sealed class Payment : Entity
         if (!amountTendered.IsPositive)
         {
             throw new ArgumentException("Amount tendered must be positive.", nameof(amountTendered));
+        }
+
+        if (method == PaymentMethod.Card && amountTendered > amountDue)
+        {
+            throw new ArgumentException(
+                "A card tender cannot exceed what's still owed — a card has no change to give back.",
+                nameof(amountTendered));
         }
 
         if (tipAmount.IsNegative)

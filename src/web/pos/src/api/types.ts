@@ -151,20 +151,24 @@ export interface CloseOrderResponse {
   document: FiscalDocumentDto;
 }
 
+/** How a payment was tendered. `'Card'` (PAY-03) is manually captured from a standalone TPA — this codebase never talks to a card processor. */
+export type PaymentMethod = 'Cash' | 'Card';
+
 /**
- * A tender recorded against an order (PAY-01/02/05/06). Only `'Cash'` exists
- * today. `amountDue` is what was still owed at the moment of this payment,
- * not always the order's full total — a partial tender is valid
- * (`amountApplied` equals `amountTendered`, `remainingBalance` stays above
- * zero); an overpaying tender settles the balance and returns `change`.
- * `tipAmount` is separate from all of the above — extra money on top of the
- * bill, never affecting the balance; `attributedStaffName` is resolved
- * server-side, present only when `attributedStaffId` is set.
+ * A tender recorded against an order (PAY-01/02/03/05/06). `amountDue` is
+ * what was still owed at the moment of this payment, not always the order's
+ * full total — a partial tender is valid (`amountApplied` equals
+ * `amountTendered`, `remainingBalance` stays above zero); an overpaying cash
+ * tender settles the balance and returns `change` (a card tender can never
+ * overpay — see `RecordPaymentRequest`). `tipAmount` is separate from all of
+ * the above — extra money on top of the bill, never affecting the balance;
+ * `attributedStaffName` is resolved server-side, present only when
+ * `attributedStaffId` is set.
  */
 export interface PaymentDto {
   id: string;
   orderId: string;
-  method: 'Cash';
+  method: PaymentMethod;
   amountDue: MoneyDto;
   amountTendered: MoneyDto;
   amountApplied: MoneyDto;
@@ -177,7 +181,8 @@ export interface PaymentDto {
 }
 
 export interface RecordPaymentRequest {
-  method: 'Cash';
+  method: PaymentMethod;
+  /** For `'Card'`, must not exceed the remaining balance — a standalone TPA has no change to give back (PAY-03). */
   amountTendered: number;
   tipAmount?: number;
   staffId?: string | null;

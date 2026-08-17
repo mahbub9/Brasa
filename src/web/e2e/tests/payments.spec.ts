@@ -14,18 +14,20 @@ import {
 } from './support/api';
 import { openAnyFreeTable } from './support/ui';
 
-// PAY-01/02/05/06 — a cash tender recorded against an order's remaining
-// balance, with change calculated server-side. Deliberately does NOT gate
-// Order.Close() — see Payment.cs's own remarks — so these tests record
-// payments both before and after close to prove neither is a precondition
-// the endpoint secretly enforces. A tender smaller than what's owed is a
-// valid partial payment (PAY-05): the order's own balance tracks across
-// however many Payment rows it takes to reach zero, and a further payment
-// against an already-settled order is rejected. A tip (PAY-06) rides along
-// on the same payment, separate from the balance entirely, and is optionally
-// attributed to a real staff member.
+// PAY-01/02/03/05/06 — a cash or card tender recorded against an order's
+// remaining balance, with change calculated server-side. Deliberately does
+// NOT gate Order.Close() — see Payment.cs's own remarks — so these tests
+// record payments both before and after close to prove neither is a
+// precondition the endpoint secretly enforces. A tender smaller than what's
+// owed is a valid partial payment (PAY-05): the order's own balance tracks
+// across however many Payment rows it takes to reach zero, and a further
+// payment against an already-settled order is rejected. A card tender
+// (PAY-03) is manually captured from a standalone TPA and can never overpay
+// — there's no change mechanism a card terminal can hand back. A tip
+// (PAY-06) rides along on the same payment, separate from the balance
+// entirely, and is optionally attributed to a real staff member.
 
-test.describe('cash payments (PAY-01/02/05/06)', () => {
+test.describe('cash and card payments (PAY-01/02/03/05/06)', () => {
   test('records a cash tender covering the total and computes change', async ({ request }) => {
     const { order, table } = await openOrderOnAnyFreeTable(request, 2);
     const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
@@ -90,7 +92,7 @@ test.describe('cash payments (PAY-01/02/05/06)', () => {
     expect(negative.status()).toBe(400);
     expect((await negative.json()).code).toBe('payment.invalid_amount_tendered');
 
-    const unsupported = await recordPaymentResponse(request, order.id, 'Card', 100);
+    const unsupported = await recordPaymentResponse(request, order.id, 'Voucher', 100);
     expect(unsupported.status()).toBe(400);
     expect((await unsupported.json()).code).toBe('payment.unsupported_method');
 
@@ -133,6 +135,48 @@ test.describe('cash payments (PAY-01/02/05/06)', () => {
     const payment = await recordPayment(request, order.id, 'Cash', 3);
     expect(payment.orderId).toBe(order.id);
 
+    await clearTable(request, table.id);
+  });
+
+  test('records a card tender covering the total exactly, with zero change', async ({ request }) => {
+    const { order, table } = await openOrderOnAnyFreeTable(request, 2);
+    const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
+    await addLine(request, order.id, item.id, 2); // 5.00 due
+
+    const payment = await recordPayment(request, order.id, 'Card', 5);
+    expect(payment.method).toBe('Card');
+    expect(payment.amountApplied).toEqual({ amount: 5, currency: 'EUR' });
+    expect(payment.change).toEqual({ amount: 0, currency: 'EUR' });
+    expect(payment.remainingBalance).toEqual({ amount: 0, currency: 'EUR' });
+
+    await closeOrder(request, order.id);
+    await clearTable(request, table.id);
+  });
+
+  test('a card tender smaller than the balance is a valid partial payment, but one exceeding it is rejected', async ({
+    request,
+  }) => {
+    const { order, table } = await openOrderOnAnyFreeTable(request, 2);
+    const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
+    await addLine(request, order.id, item.id, 4); // 10.00 due
+
+    const partial = await recordPayment(request, order.id, 'Card', 6);
+    expect(partial.method).toBe('Card');
+    expect(partial.amountApplied).toEqual({ amount: 6, currency: 'EUR' });
+    expect(partial.change).toEqual({ amount: 0, currency: 'EUR' });
+    expect(partial.remainingBalance).toEqual({ amount: 4, currency: 'EUR' });
+
+    // 5.00 tendered against a 4.00 remaining balance — a card has no change
+    // to give back, so this is rejected rather than settling with change.
+    const overpaying = await recordPaymentResponse(request, order.id, 'Card', 5);
+    expect(overpaying.status()).toBe(400);
+    expect((await overpaying.json()).code).toBe('payment.card_tender_exceeds_balance');
+
+    // The exact remaining balance still settles it normally.
+    const settling = await recordPayment(request, order.id, 'Card', 4);
+    expect(settling.remainingBalance).toEqual({ amount: 0, currency: 'EUR' });
+
+    await closeOrder(request, order.id);
     await clearTable(request, table.id);
   });
 
@@ -280,6 +324,46 @@ test.describe('cash payments (PAY-01/02/05/06)', () => {
 
     await expect(page.getByTestId('cash-payment-done')).toBeVisible();
     await expect(page.getByTestId('cash-payment-tip-recorded')).toHaveText(/1,00/);
+
+    await page.getByRole('button', { name: 'Abrir outra mesa' }).click();
+    await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
+    await page.getByTestId(`table-${tableLabel}`).click();
+  });
+
+  test('the pos UI records card tenders selected via the payment method control, with zero change', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
+
+    const tableLabel = await openAnyFreeTable(page, 2);
+
+    const bread = page.getByRole('button', { name: 'Pão e Azeitonas' });
+    await expect(bread).toBeVisible();
+    await bread.click();
+    await bread.click();
+    await expect(page.getByTestId('order-total')).toHaveText(/5,00/);
+
+    await page.getByTestId('close-order-button').click();
+    await expect(page.getByRole('heading', { name: 'Recibo emitido' })).toBeVisible();
+
+    // Defaults to Cash, switched to Card through the real <select>.
+    await expect(page.getByTestId('cash-payment-method')).toHaveValue('Cash');
+    await page.getByTestId('cash-payment-method').selectOption('Card');
+
+    // A partial card tender first — proves the selected method actually
+    // reaches the recorded payment, visible in the history list's own
+    // localized "(Cartão)" label, not just that the form didn't error.
+    await page.getByTestId('cash-payment-tendered').fill('3');
+    await page.getByTestId('cash-payment-submit').click();
+    await expect(page.getByTestId('cash-payment-done')).not.toBeVisible();
+    await expect(page.getByTestId('cash-payment-remaining')).toHaveText(/2,00/);
+    await expect(page.getByTestId('cash-payment-history')).toContainText('Cartão');
+
+    // The method selection persists across tenders — settles with the
+    // exact remaining balance, so change stays zero (a card can't overpay).
+    await page.getByTestId('cash-payment-tendered').fill('2');
+    await page.getByTestId('cash-payment-submit').click();
+    await expect(page.getByTestId('cash-payment-done')).toBeVisible();
+    await expect(page.getByTestId('cash-payment-change')).toHaveText(/0,00/);
 
     await page.getByRole('button', { name: 'Abrir outra mesa' }).click();
     await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
