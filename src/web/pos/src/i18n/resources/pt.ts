@@ -117,11 +117,15 @@ export const pt = {
     title: 'Pagamento em numerário',
     amountDue: 'Valor a pagar: {{amount}}',
     tenderedPlaceholder: 'Valor entregue',
+    tipPlaceholder: 'Gorjeta (opcional)',
     record: 'Registar pagamento',
     recorded: 'Pagamento registado.',
     changeDue: 'Troco: {{amount}}',
+    tipRecorded: 'Gorjeta: {{amount}}',
+    tipAttributedTo: 'Gorjeta creditada a {{name}}',
     historyTitle: 'Pagamentos já registados',
     historyEntry: '{{amount}} entregue',
+    tipHistoryEntry: '{{amount}} de gorjeta',
   },
   staff: {
     signIn: 'Iniciar sessão',
@@ -183,6 +187,7 @@ export const pt = {
         invalid_amount_tendered: 'Indique um valor válido.',
         unsupported_method: 'Esse método de pagamento ainda não é suportado.',
         already_settled: 'Este pedido já está totalmente pago.',
+        invalid_tip_amount: 'Indique um valor de gorjeta válido.',
       },
       request: {
         idempotency_key_required: 'Ocorreu um erro. Tente novamente.',

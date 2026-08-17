@@ -2845,7 +2845,7 @@
         "tags": [
           "PaymentEndpoints"
         ],
-        "summary": "Records a cash tender against an order's remaining balance, computing change (PAY-01/02). A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04.",
+        "summary": "Records a cash tender against an order's remaining balance, computing change (PAY-01/02). A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06).",
         "operationId": "RecordPayment",
         "parameters": [
           {
@@ -4136,6 +4136,9 @@
           "amountApplied",
           "change",
           "remainingBalance",
+          "tipAmount",
+          "attributedStaffId",
+          "attributedStaffName",
           "paidAtUtc"
         ],
         "type": "object",
@@ -4165,6 +4168,22 @@
           },
           "remainingBalance": {
             "$ref": "#/components/schemas/MoneyDto"
+          },
+          "tipAmount": {
+            "$ref": "#/components/schemas/MoneyDto"
+          },
+          "attributedStaffId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "attributedStaffName": {
+            "type": [
+              "null",
+              "string"
+            ]
           },
           "paidAtUtc": {
             "type": "string"
@@ -4289,6 +4308,22 @@
               "string"
             ],
             "format": "double"
+          },
+          "tipAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double",
+            "default": 0
+          },
+          "staffId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },

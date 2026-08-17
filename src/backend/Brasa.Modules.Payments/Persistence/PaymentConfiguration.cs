@@ -27,6 +27,9 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
 
         builder.MapMoney(p => p.AmountDue, "amount_due");
         builder.MapMoney(p => p.AmountTendered, "amount_tendered");
+        builder.MapMoney(p => p.TipAmount, "tip_amount");
+
+        builder.Property(p => p.AttributedStaffId).IsRequired(false);
 
         builder.HasIndex(p => p.OrderId);
     }

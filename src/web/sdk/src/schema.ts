@@ -1195,7 +1195,7 @@ export interface paths {
         /** Lists every payment recorded against an order, oldest first. */
         get: operations["GetPayments"];
         put?: never;
-        /** Records a cash tender against an order's remaining balance, computing change (PAY-01/02). A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. */
+        /** Records a cash tender against an order's remaining balance, computing change (PAY-01/02). A tender smaller than what's owed is a valid partial payment (PAY-05); splitting one payment across several methods at once is still PAY-04. An optional tip, attributed to a staff member or left unattributed, rides along on the same payment (PAY-06). */
         post: operations["RecordPayment"];
         delete?: never;
         options?: never;
@@ -1536,6 +1536,10 @@ export interface components {
             amountApplied: components["schemas"]["MoneyDto"];
             change: components["schemas"]["MoneyDto"];
             remainingBalance: components["schemas"]["MoneyDto"];
+            tipAmount: components["schemas"]["MoneyDto"];
+            /** Format: uuid */
+            attributedStaffId: null | string;
+            attributedStaffName: null | string;
             paidAtUtc: string;
         };
         PreBillDto: {
@@ -1570,6 +1574,13 @@ export interface components {
             method: string;
             /** Format: double */
             amountTendered: number | string;
+            /**
+             * Format: double
+             * @default 0
+             */
+            tipAmount: number | string;
+            /** Format: uuid */
+            staffId?: null | string;
         };
         ResolvedFeatureFlagDto: {
             key: string;

@@ -68,7 +68,7 @@ as any change to an error code, the same rule as everything else in
 | `identity.pin_incorrect` | Validation | 400 | `POST /staff/{id}/verify-pin`'s (IDN-08/09) `pin` doesn't match — advances `FailedPinAttempts`, possibly triggering `identity.staff_locked` on a future attempt. |
 | `identity.site_not_found` | NotFound | 404 | The site id in the request doesn't exist. |
 | `identity.staff_locked` | Conflict | 409 | `POST /staff/{id}/verify-pin`'s (IDN-09) staff member is locked out after 5 consecutive incorrect PINs — retry after the lockout window (15 minutes) elapses, or `PUT /staff/{id}/pin` to reset it immediately. |
-| `identity.staff_not_found` | NotFound | 404 | The staff id in the request doesn't exist (IDN-08/09), or (IDN-11) the `managerStaffId` on a void/discount request names an unknown staff member. |
+| `identity.staff_not_found` | NotFound | 404 | The staff id in the request doesn't exist (IDN-08/09), (IDN-11) the `managerStaffId` on a void/discount request names an unknown staff member, (FLR-06) a room-section `staffId` names an unknown staff member, or (PAY-06) a payment's `staffId` (tip attribution) names an unknown staff member. |
 | `identity.staff_not_manager` | Forbidden | 403 | (IDN-11) A void or discount request's `managerStaffId` names a real staff member whose `role` isn't `Manager` — checked before the PIN is even verified, so it never advances that person's own `FailedPinAttempts`. |
 | `floor.invalid_label` | Validation | 400 | `POST /rooms/{id}/tables` or `PUT /tables/{id}`'s (FLR-03) `label` is missing, empty or whitespace. |
 | `floor.invalid_room_name` | Validation | 400 | `POST /rooms` or `PUT /rooms/{id}`'s (FLR-03) `name` is missing, empty or whitespace. |
@@ -110,6 +110,7 @@ as any change to an error code, the same rule as everything else in
 | `payment.invalid_amount_tendered` | Validation | 400 | `POST /orders/{id}/payments`'s `amountTendered` is zero or negative. |
 | `payment.unsupported_method` | Validation | 400 | `POST /orders/{id}/payments`'s `method` isn't a recognised, supported `PaymentMethod` — only `"Cash"` exists today (PAY-02); card/split/voucher tenders are each their own later task (PAY-03/04/12). |
 | `payment.already_settled` | Validation | 400 | `POST /orders/{id}/payments` was called against an order whose recorded payments already sum to (or exceed) its total — there's no remaining balance left to tender against. A tender smaller than the total is a valid partial payment, not this (PAY-05); this only fires once nothing is left owed. |
+| `payment.invalid_tip_amount` | Validation | 400 | `POST /orders/{id}/payments`'s (PAY-06) `tipAmount` is negative. Zero (no tip) and omitting the field entirely are both valid. |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |
 | `request.rate_limited` | RateLimited | 429 | The calling `(tenant, X-Brasa-Client client id)` pair exceeded `RateLimiting`'s configured requests-per-window (API-12). The response carries a `Retry-After` header. |
 

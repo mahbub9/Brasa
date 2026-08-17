@@ -318,7 +318,7 @@ export default function App() {
 
       <main>
         {closeResult ? (
-          <Receipt result={closeResult} onNewTable={handleNewTable} />
+          <Receipt result={closeResult} onNewTable={handleNewTable} currentStaff={currentStaff} />
         ) : order ? (
           <div className="ordering-layout">
             <div className="menu-column">

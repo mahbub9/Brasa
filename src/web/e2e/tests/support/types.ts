@@ -248,6 +248,9 @@ export interface PaymentDto {
   amountApplied: MoneyDto;
   change: MoneyDto;
   remainingBalance: MoneyDto;
+  tipAmount: MoneyDto;
+  attributedStaffId: string | null;
+  attributedStaffName: string | null;
   paidAtUtc: string;
 }
 

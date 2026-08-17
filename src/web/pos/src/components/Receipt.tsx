@@ -2,15 +2,17 @@ import { formatMoney } from '@brasa/ui/lib/money';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@brasa/ui/components/Button';
 import { CashPayment } from './CashPayment';
-import type { CloseOrderResponse } from '../api/types';
+import type { CloseOrderResponse, StaffDto } from '../api/types';
 import { formatTableLabel } from '../lib/tableLabel';
 
 interface ReceiptProps {
   result: CloseOrderResponse;
   onNewTable: () => void;
+  /** The signed-in staff member (WEB-07), if any — threaded down to CashPayment for tip attribution (PAY-06). */
+  currentStaff: StaffDto | null;
 }
 
-export function Receipt({ result, onNewTable }: ReceiptProps) {
+export function Receipt({ result, onNewTable, currentStaff }: ReceiptProps) {
   const { t } = useTranslation();
   const { order, document } = result;
 
@@ -47,7 +49,7 @@ export function Receipt({ result, onNewTable }: ReceiptProps) {
         <code>docs/architecture/decisions/0002-own-fiscal-engine.md</code>.
       </p>
 
-      <CashPayment orderId={order.id} amountDue={order.total} />
+      <CashPayment orderId={order.id} amountDue={order.total} currentStaff={currentStaff} />
 
       <Button onClick={onNewTable}>{t('receipt.newTable')}</Button>
     </div>

@@ -112,11 +112,15 @@ export const en = {
     title: 'Cash payment',
     amountDue: 'Amount due: {{amount}}',
     tenderedPlaceholder: 'Cash tendered',
+    tipPlaceholder: 'Tip (optional)',
     record: 'Record payment',
     recorded: 'Payment recorded.',
     changeDue: 'Change due: {{amount}}',
+    tipRecorded: 'Tip: {{amount}}',
+    tipAttributedTo: 'Tip credited to {{name}}',
     historyTitle: 'Payments recorded so far',
     historyEntry: '{{amount}} tendered',
+    tipHistoryEntry: '{{amount}} tip',
   },
   staff: {
     signIn: 'Sign in',
@@ -173,6 +177,7 @@ export const en = {
         invalid_amount_tendered: 'Enter a valid amount.',
         unsupported_method: 'That payment method is not supported yet.',
         already_settled: 'This order is already fully paid.',
+        invalid_tip_amount: 'Enter a valid tip amount.',
       },
       request: {
         idempotency_key_required: 'Something went wrong. Please try again.',

@@ -5,15 +5,17 @@ import { Button } from '@brasa/ui/components/Button';
 import { TextField } from '@brasa/ui/components/TextField';
 import { describeError } from '../lib/describeError';
 import { api } from '../api/client';
-import type { MoneyDto, PaymentDto } from '../api/types';
+import type { MoneyDto, PaymentDto, StaffDto } from '../api/types';
 
 interface CashPaymentProps {
   orderId: string;
   amountDue: MoneyDto;
+  /** The signed-in staff member (WEB-07), if any — a tip is auto-credited to them (PAY-06). Not a picker: there is no UI to attribute a tip to anyone else. */
+  currentStaff: StaffDto | null;
 }
 
 /**
- * PAY-01/02/05's own UI — records one or more cash tenders against an
+ * PAY-01/02/05/06's own UI — records one or more cash tenders against an
  * already-closed order and shows the change due once fully settled.
  * Self-contained, the same "own local busy/error state, not App.tsx's
  * global one" shape <c>StaffLogin</c> already uses: by the time
@@ -26,10 +28,17 @@ interface CashPaymentProps {
  * tenders recorded so far, until a payment brings the balance to zero —
  * only then does this replace itself with the confirmed change (from
  * whichever tender actually settled it).
+ *
+ * A tip is optional on every tender, not just the settling one, and is
+ * separate from the balance entirely (PAY-06). Attribution is automatic —
+ * whoever is signed in when the tip is recorded — since there is no
+ * staff-picker here; an unattributed tip (nobody signed in) still records,
+ * just with no `staffId`.
  */
-export function CashPayment({ orderId, amountDue }: CashPaymentProps) {
+export function CashPayment({ orderId, amountDue, currentStaff }: CashPaymentProps) {
   const { t } = useTranslation();
   const [amountTendered, setAmountTendered] = useState('');
+  const [tipAmount, setTipAmount] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [payments, setPayments] = useState<PaymentDto[]>([]);
@@ -39,17 +48,28 @@ export function CashPayment({ orderId, amountDue }: CashPaymentProps) {
   const isSettled = lastPayment !== null && remaining.amount <= 0;
 
   async function submit() {
-    const parsed = Number(amountTendered);
-    if (Number.isNaN(parsed) || parsed <= 0) {
+    const parsedTendered = Number(amountTendered);
+    if (Number.isNaN(parsedTendered) || parsedTendered <= 0) {
+      return;
+    }
+
+    const parsedTip = tipAmount === '' ? 0 : Number(tipAmount);
+    if (Number.isNaN(parsedTip) || parsedTip < 0) {
       return;
     }
 
     setBusy(true);
     setError(null);
     try {
-      const recorded = await api.recordPayment(orderId, { method: 'Cash', amountTendered: parsed });
+      const recorded = await api.recordPayment(orderId, {
+        method: 'Cash',
+        amountTendered: parsedTendered,
+        tipAmount: parsedTip,
+        staffId: parsedTip > 0 ? (currentStaff?.id ?? null) : null,
+      });
       setPayments((prev) => [...prev, recorded]);
       setAmountTendered('');
+      setTipAmount('');
     } catch (err) {
       setError(describeError(err));
     } finally {
@@ -64,6 +84,11 @@ export function CashPayment({ orderId, amountDue }: CashPaymentProps) {
         <p className="cash-payment-change" data-testid="cash-payment-change">
           {t('payment.changeDue', { amount: formatMoney(lastPayment.change) })}
         </p>
+        {lastPayment.tipAmount.amount > 0 && (
+          <p className="cash-payment-tip" data-testid="cash-payment-tip-recorded">
+            {t('payment.tipRecorded', { amount: formatMoney(lastPayment.tipAmount) })}
+          </p>
+        )}
       </div>
     );
   }
@@ -79,7 +104,11 @@ export function CashPayment({ orderId, amountDue }: CashPaymentProps) {
           <p className="cash-payment-history-title">{t('payment.historyTitle')}</p>
           <ul>
             {payments.map((recorded) => (
-              <li key={recorded.id}>{t('payment.historyEntry', { amount: formatMoney(recorded.amountTendered) })}</li>
+              <li key={recorded.id}>
+                {t('payment.historyEntry', { amount: formatMoney(recorded.amountTendered) })}
+                {recorded.tipAmount.amount > 0 &&
+                  ` — ${t('payment.tipHistoryEntry', { amount: formatMoney(recorded.tipAmount) })}`}
+              </li>
             ))}
           </ul>
         </div>
@@ -99,10 +128,27 @@ export function CashPayment({ orderId, amountDue }: CashPaymentProps) {
             if (e.key === 'Enter' && amountTendered !== '') void submit();
           }}
         />
+        <TextField
+          type="number"
+          step="0.01"
+          min="0"
+          inputMode="decimal"
+          placeholder={t('payment.tipPlaceholder')}
+          value={tipAmount}
+          data-testid="cash-payment-tip"
+          disabled={busy}
+          onChange={(e) => setTipAmount(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && amountTendered !== '') void submit();
+          }}
+        />
         <Button data-testid="cash-payment-submit" disabled={busy || amountTendered === ''} onClick={() => void submit()}>
           {t('payment.record')}
         </Button>
       </div>
+      {currentStaff && (
+        <p className="cash-payment-tip-attribution">{t('payment.tipAttributedTo', { name: currentStaff.name })}</p>
+      )}
       {error && (
         <p className="cash-payment-error" data-testid="cash-payment-error">
           {error}

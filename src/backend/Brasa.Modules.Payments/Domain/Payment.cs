@@ -5,7 +5,7 @@ namespace Brasa.Modules.Payments.Domain;
 
 /// <summary>
 /// A tender recorded against an order — PAY-01's model, PAY-02's cash case,
-/// PAY-05's partial-payment support.
+/// PAY-05's partial-payment support, PAY-06's tip recording and attribution.
 /// </summary>
 /// <remarks>
 /// <para>
@@ -41,6 +41,17 @@ namespace Brasa.Modules.Payments.Domain;
 /// the order is real and reads its current total before this is ever
 /// constructed.
 /// </para>
+/// <para>
+/// <b>A tip is separate from the bill (PAY-06).</b> <see cref="TipAmount"/>
+/// never affects <see cref="AmountDue"/>/<see cref="AmountApplied"/>/
+/// <see cref="RemainingBalance"/> — it is extra money on top, recorded
+/// alongside this same tender rather than as its own row, the same "one
+/// tender, one <c>Payment</c> row" shape the rest of this type already has.
+/// <see cref="AttributedStaffId"/> is optional even when a tip is given (an
+/// unattributed tip goes to a shared pool) and, like <c>OrderId</c>, is a
+/// plain opaque reference — Payments never queries Identity directly; the
+/// API layer confirms a given staff id is real before this is constructed.
+/// </para>
 /// </remarks>
 public sealed class Payment : Entity
 {
@@ -54,8 +65,17 @@ public sealed class Payment : Entity
     /// <param name="method">How it was tendered.</param>
     /// <param name="amountDue">What was still owed on the order at the moment of payment — see the class remarks. Snapshotted, never re-read live later.</param>
     /// <param name="amountTendered">What the guest actually handed over. Need not cover <paramref name="amountDue"/> — see <see cref="AmountApplied"/> and <see cref="RemainingBalance"/>.</param>
+    /// <param name="tipAmount">Extra money on top of the bill, in the same currency as <paramref name="amountDue"/>. Zero when there is no tip.</param>
+    /// <param name="attributedStaffId">Which staff member the tip is credited to, if any. Never validated here — see the class remarks.</param>
     /// <param name="paidAtUtc">When the payment was recorded.</param>
-    public Payment(Guid orderId, PaymentMethod method, Money amountDue, Money amountTendered, DateTimeOffset paidAtUtc)
+    public Payment(
+        Guid orderId,
+        PaymentMethod method,
+        Money amountDue,
+        Money amountTendered,
+        Money tipAmount,
+        Guid? attributedStaffId,
+        DateTimeOffset paidAtUtc)
     {
         if (orderId == Guid.Empty)
         {
@@ -72,10 +92,24 @@ public sealed class Payment : Entity
             throw new ArgumentException("Amount tendered must be positive.", nameof(amountTendered));
         }
 
+        if (tipAmount.IsNegative)
+        {
+            throw new ArgumentException("Tip amount must not be negative.", nameof(tipAmount));
+        }
+
+        if (attributedStaffId is not null && !tipAmount.IsPositive)
+        {
+            throw new ArgumentException(
+                "A tip can only be attributed to a staff member when the tip amount is positive.",
+                nameof(attributedStaffId));
+        }
+
         OrderId = orderId;
         Method = method;
         AmountDue = amountDue;
         AmountTendered = amountTendered;
+        TipAmount = tipAmount;
+        AttributedStaffId = attributedStaffId;
         PaidAtUtc = paidAtUtc;
     }
 
@@ -104,6 +138,12 @@ public sealed class Payment : Entity
 
     /// <summary>What's still owed on the order after this payment — zero once fully settled.</summary>
     public Money RemainingBalance => AmountDue - AmountApplied;
+
+    /// <summary>Extra money on top of the bill — zero when there is no tip. Never affects the balance above.</summary>
+    public Money TipAmount { get; private set; }
+
+    /// <summary>Which staff member <see cref="TipAmount"/> is credited to, if any. Always <c>null</c> when there is no tip.</summary>
+    public Guid? AttributedStaffId { get; private set; }
 
     /// <summary>When this payment was recorded.</summary>
     public DateTimeOffset PaidAtUtc { get; private set; }

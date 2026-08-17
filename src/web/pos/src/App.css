@@ -625,7 +625,7 @@ main {
   margin: var(--space-4) 0 var(--space-5);
 }
 
-/* Cash payment (PAY-01/02) */
+/* Cash payment (PAY-01/02/05/06) */
 
 .cash-payment {
   margin: 0 0 var(--space-5);
@@ -693,6 +693,17 @@ main {
   font-size: var(--text-heading-sm);
   font-weight: 700;
   color: var(--brasa-dark);
+}
+
+.cash-payment-tip {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+}
+
+.cash-payment-tip-attribution {
+  margin: var(--space-2) 0 0;
+  color: var(--muted);
+  font-size: var(--text-caption);
 }
 
 /* Modifier picker */

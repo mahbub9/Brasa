@@ -927,16 +927,23 @@ export async function closeOrderAndClearTable(
   await clearTable(request, tableId);
 }
 
-/** Raw response so callers can assert on status/body for the failure cases too (PAY-01/02). */
+/** Optional tip fields (PAY-06) — omitted entirely means no tip, the same as the server-side default. */
+export interface RecordPaymentOptions {
+  tipAmount?: number;
+  staffId?: string | null;
+}
+
+/** Raw response so callers can assert on status/body for the failure cases too (PAY-01/02/06). */
 export function recordPaymentResponse(
   request: APIRequestContext,
   orderId: string,
   method: string,
   amountTendered: number,
+  options: RecordPaymentOptions = {},
 ) {
   return request.post(`${apiBaseUrl}/orders/${orderId}/payments`, {
     headers: { 'Idempotency-Key': idempotencyKey() },
-    data: { method, amountTendered },
+    data: { method, amountTendered, ...options },
   });
 }
 
@@ -945,8 +952,9 @@ export async function recordPayment(
   orderId: string,
   method: string,
   amountTendered: number,
+  options: RecordPaymentOptions = {},
 ): Promise<PaymentDto> {
-  const response = await recordPaymentResponse(request, orderId, method, amountTendered);
+  const response = await recordPaymentResponse(request, orderId, method, amountTendered, options);
   if (!response.ok()) {
     throw new Error(`POST /orders/${orderId}/payments failed: ${response.status()} ${await response.text()}`);
   }

@@ -152,11 +152,14 @@ export interface CloseOrderResponse {
 }
 
 /**
- * A tender recorded against an order (PAY-01/02/05). Only `'Cash'` exists
+ * A tender recorded against an order (PAY-01/02/05/06). Only `'Cash'` exists
  * today. `amountDue` is what was still owed at the moment of this payment,
  * not always the order's full total — a partial tender is valid
  * (`amountApplied` equals `amountTendered`, `remainingBalance` stays above
  * zero); an overpaying tender settles the balance and returns `change`.
+ * `tipAmount` is separate from all of the above — extra money on top of the
+ * bill, never affecting the balance; `attributedStaffName` is resolved
+ * server-side, present only when `attributedStaffId` is set.
  */
 export interface PaymentDto {
   id: string;
@@ -167,12 +170,17 @@ export interface PaymentDto {
   amountApplied: MoneyDto;
   change: MoneyDto;
   remainingBalance: MoneyDto;
+  tipAmount: MoneyDto;
+  attributedStaffId: string | null;
+  attributedStaffName: string | null;
   paidAtUtc: string;
 }
 
 export interface RecordPaymentRequest {
   method: 'Cash';
   amountTendered: number;
+  tipAmount?: number;
+  staffId?: string | null;
 }
 
 /** One VAT band's subtotal on a pre-bill, e.g. the 13% and 23% lines shown separately. */

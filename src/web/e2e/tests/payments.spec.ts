@@ -4,6 +4,7 @@ import {
   closeOrder,
   clearTable,
   findMenuItem,
+  getDemoManagerCredentials,
   getMenu,
   getPayments,
   getPaymentsResponse,
@@ -13,16 +14,18 @@ import {
 } from './support/api';
 import { openAnyFreeTable } from './support/ui';
 
-// PAY-01/02/05 — a cash tender recorded against an order's remaining
+// PAY-01/02/05/06 — a cash tender recorded against an order's remaining
 // balance, with change calculated server-side. Deliberately does NOT gate
 // Order.Close() — see Payment.cs's own remarks — so these tests record
 // payments both before and after close to prove neither is a precondition
 // the endpoint secretly enforces. A tender smaller than what's owed is a
 // valid partial payment (PAY-05): the order's own balance tracks across
 // however many Payment rows it takes to reach zero, and a further payment
-// against an already-settled order is rejected.
+// against an already-settled order is rejected. A tip (PAY-06) rides along
+// on the same payment, separate from the balance entirely, and is optionally
+// attributed to a real staff member.
 
-test.describe('cash payments (PAY-01/02/05)', () => {
+test.describe('cash payments (PAY-01/02/05/06)', () => {
   test('records a cash tender covering the total and computes change', async ({ request }) => {
     const { order, table } = await openOrderOnAnyFreeTable(request, 2);
     const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
@@ -37,6 +40,9 @@ test.describe('cash payments (PAY-01/02/05)', () => {
     expect(payment.amountApplied).toEqual({ amount: 5, currency: 'EUR' });
     expect(payment.change).toEqual({ amount: 5, currency: 'EUR' });
     expect(payment.remainingBalance).toEqual({ amount: 0, currency: 'EUR' });
+    expect(payment.tipAmount).toEqual({ amount: 0, currency: 'EUR' });
+    expect(payment.attributedStaffId).toBeNull();
+    expect(payment.attributedStaffName).toBeNull();
 
     await closeOrder(request, order.id);
     await clearTable(request, table.id);
@@ -130,6 +136,53 @@ test.describe('cash payments (PAY-01/02/05)', () => {
     await clearTable(request, table.id);
   });
 
+  test('records a tip attributed to a real staff member, resolving their name', async ({ request }) => {
+    const { order, table } = await openOrderOnAnyFreeTable(request, 2);
+    const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
+    await addLine(request, order.id, item.id, 2); // 5.00 due
+    const manager = await getDemoManagerCredentials(request);
+
+    const payment = await recordPayment(request, order.id, 'Cash', 5, { tipAmount: 1, staffId: manager.staffId });
+    expect(payment.tipAmount).toEqual({ amount: 1, currency: 'EUR' });
+    expect(payment.attributedStaffId).toBe(manager.staffId);
+    expect(payment.attributedStaffName).toBe('Ana Ferreira');
+
+    const [listed] = await getPayments(request, order.id);
+    expect(listed.attributedStaffName).toBe('Ana Ferreira');
+
+    await closeOrder(request, order.id);
+    await clearTable(request, table.id);
+  });
+
+  test('records a tip with no attribution, and rejects a negative tip or an unknown staff id', async ({ request }) => {
+    const { order, table } = await openOrderOnAnyFreeTable(request, 2);
+    const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
+    await addLine(request, order.id, item.id, 4); // 10.00 due
+
+    // A partial tender on purpose — leaves a remaining balance so the two
+    // rejections below reach their own validation instead of tripping
+    // payment.already_settled first.
+    const unattributed = await recordPayment(request, order.id, 'Cash', 3, { tipAmount: 2 });
+    expect(unattributed.tipAmount).toEqual({ amount: 2, currency: 'EUR' });
+    expect(unattributed.attributedStaffId).toBeNull();
+    expect(unattributed.attributedStaffName).toBeNull();
+    expect(unattributed.remainingBalance).toEqual({ amount: 7, currency: 'EUR' });
+
+    const negativeTip = await recordPaymentResponse(request, order.id, 'Cash', 1, { tipAmount: -1 });
+    expect(negativeTip.status()).toBe(400);
+    expect((await negativeTip.json()).code).toBe('payment.invalid_tip_amount');
+
+    const unknownStaff = await recordPaymentResponse(request, order.id, 'Cash', 1, {
+      tipAmount: 1,
+      staffId: '00000000-0000-0000-0000-000000000000',
+    });
+    expect(unknownStaff.status()).toBe(404);
+    expect((await unknownStaff.json()).code).toBe('identity.staff_not_found');
+
+    await closeOrder(request, order.id);
+    await clearTable(request, table.id);
+  });
+
   test('the pos UI records a cash payment on the receipt screen and shows the change due', async ({ page }) => {
     await page.goto('/');
     await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
@@ -189,6 +242,44 @@ test.describe('cash payments (PAY-01/02/05)', () => {
 
     await expect(page.getByTestId('cash-payment-done')).toBeVisible();
     await expect(page.getByTestId('cash-payment-change')).toHaveText(/0,00/);
+
+    await page.getByRole('button', { name: 'Abrir outra mesa' }).click();
+    await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
+    await page.getByTestId(`table-${tableLabel}`).click();
+  });
+
+  test('the pos UI auto-attributes a tip to the signed-in staff member', async ({ page }) => {
+    await page.goto('/');
+    await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
+
+    // Sign in first (WEB-07) — CashPayment reads the signed-in staff member
+    // straight from App.tsx's own state, the same non-blocking mechanism
+    // staff-login.spec.ts exercises directly.
+    await page.getByTestId('staff-sign-in-open').click();
+    await page.waitForSelector('[data-testid="staff-login-modal"]');
+    await page.getByTestId('staff-login-option-Ana Ferreira').click();
+    await page.getByTestId('staff-login-pin').fill('1234');
+    await page.getByTestId('staff-login-submit').click();
+    await expect(page.getByTestId('staff-signed-in')).toContainText('Ana Ferreira');
+
+    const tableLabel = await openAnyFreeTable(page, 2);
+
+    const bread = page.getByRole('button', { name: 'Pão e Azeitonas' });
+    await expect(bread).toBeVisible();
+    await bread.click();
+    await bread.click();
+    await expect(page.getByTestId('order-total')).toHaveText(/5,00/);
+
+    await page.getByTestId('close-order-button').click();
+    await expect(page.getByRole('heading', { name: 'Recibo emitido' })).toBeVisible();
+
+    await expect(page.getByText('Gorjeta creditada a Ana Ferreira')).toBeVisible();
+    await page.getByTestId('cash-payment-tendered').fill('5');
+    await page.getByTestId('cash-payment-tip').fill('1');
+    await page.getByTestId('cash-payment-submit').click();
+
+    await expect(page.getByTestId('cash-payment-done')).toBeVisible();
+    await expect(page.getByTestId('cash-payment-tip-recorded')).toHaveText(/1,00/);
 
     await page.getByRole('button', { name: 'Abrir outra mesa' }).click();
     await expect(page.getByRole('heading', { name: 'Escolher mesa' })).toBeVisible();
