@@ -193,7 +193,9 @@ export interface TerminalDto {
  * A cash session — *abertura de caixa* (PAY-08) — a staff member's starting
  * float declaration against a terminal. Purely a record; nothing else in
  * this codebase requires one to exist yet. `terminalLabel`/
- * `openedByStaffName` are resolved server-side, never editable here.
+ * `openedByStaffName`/`countedByStaffName` are resolved server-side, never
+ * editable here. The `counted*` fields are all `null` together until a
+ * blind count is recorded (PAY-10).
  */
 export interface CashSessionDto {
   id: string;
@@ -205,12 +207,22 @@ export interface CashSessionDto {
   openedAtUtc: string;
   closedAtUtc: string | null;
   isOpen: boolean;
+  countedAmount: MoneyDto | null;
+  countedByStaffId: string | null;
+  countedByStaffName: string | null;
+  countedAtUtc: string | null;
 }
 
 export interface OpenCashSessionRequest {
   terminalId: string;
   staffId: string;
   openingFloat: number;
+}
+
+/** Records a blind cash count (PAY-10) — no comparison against an expected total, that's PAY-11. */
+export interface RecordCashCountRequest {
+  staffId: string;
+  countedAmount: number;
 }
 
 export type CashMovementDirection = 'PayIn' | 'PayOut';

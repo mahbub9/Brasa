@@ -4,9 +4,12 @@ namespace Brasa.Api.Contracts;
 
 /// <summary>
 /// A cash session — <i>abertura de caixa</i> (PAY-08) — recorded against a
-/// terminal. <c>TerminalLabel</c>/<c>OpenedByStaffName</c> are resolved
-/// fresh from Identity, the same pattern <c>PaymentDto.AttributedStaffName</c>
-/// already uses, never snapshotted onto the session itself.
+/// terminal. <c>TerminalLabel</c>/<c>OpenedByStaffName</c>/
+/// <c>CountedByStaffName</c> are resolved fresh from Identity, the same
+/// pattern <c>PaymentDto.AttributedStaffName</c> already uses, never
+/// snapshotted onto the session itself. The <c>Counted*</c> fields are all
+/// <c>null</c> together until a blind count is recorded (PAY-10) — see
+/// <see cref="CashSession.RecordCount"/>.
 /// </summary>
 public sealed record CashSessionDto(
     Guid Id,
@@ -17,7 +20,11 @@ public sealed record CashSessionDto(
     MoneyDto OpeningFloat,
     string OpenedAtUtc,
     string? ClosedAtUtc,
-    bool IsOpen);
+    bool IsOpen,
+    MoneyDto? CountedAmount,
+    Guid? CountedByStaffId,
+    string? CountedByStaffName,
+    string? CountedAtUtc);
 
 /// <summary>
 /// Request body to open a cash session. Rejected if <c>TerminalId</c>
@@ -26,10 +33,19 @@ public sealed record CashSessionDto(
 /// </summary>
 public sealed record OpenCashSessionRequest(Guid TerminalId, Guid StaffId, decimal OpeningFloat);
 
+/// <summary>
+/// Request body to record a blind cash count (PAY-10) — see
+/// <see cref="CashSession.RecordCount"/> for why "blind" and why at most
+/// once per session.
+/// </summary>
+public sealed record RecordCashCountRequest(Guid StaffId, decimal CountedAmount);
+
 /// <summary>Maps <see cref="CashSession"/> to its wire DTO.</summary>
 public static class CashSessionDtoMappings
 {
-    public static CashSessionDto ToDto(this CashSession session, string terminalLabel, string openedByStaffName) => new(
+    /// <param name="countedByStaffName">Resolved by the caller when <see cref="CashSession.CountedByStaffId"/> is set; omitted (stays <c>null</c>) otherwise.</param>
+    public static CashSessionDto ToDto(
+        this CashSession session, string terminalLabel, string openedByStaffName, string? countedByStaffName = null) => new(
         session.Id,
         session.TerminalId,
         terminalLabel,
@@ -38,5 +54,9 @@ public static class CashSessionDtoMappings
         session.OpeningFloat.ToDto(),
         session.OpenedAtUtc.ToString("O"),
         session.ClosedAtUtc?.ToString("O"),
-        session.IsOpen);
+        session.IsOpen,
+        session.CountedAmount?.ToDto(),
+        session.CountedByStaffId,
+        countedByStaffName,
+        session.CountedAtUtc?.ToString("O"));
 }

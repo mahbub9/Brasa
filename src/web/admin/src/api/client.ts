@@ -12,6 +12,7 @@ import type {
   OpenCashSessionRequest,
   OrganizationDto,
   ProblemDetails,
+  RecordCashCountRequest,
   RecordCashMovementRequest,
   RoomDto,
   SetFeatureFlagRequest,
@@ -200,4 +201,7 @@ export const api = {
 
   recordCashMovement: (cashSessionId: string, body: RecordCashMovementRequest) =>
     post<CashMovementDto>(`/cash-sessions/${cashSessionId}/movements`, body),
+
+  recordCashCount: (cashSessionId: string, body: RecordCashCountRequest) =>
+    post<CashSessionDto>(`/cash-sessions/${cashSessionId}/count`, body),
 };

@@ -1221,6 +1221,36 @@ export async function getCashMovements(request: APIRequestContext, cashSessionId
   return response.json();
 }
 
+// Blind cash count (PAY-10) — at most once per open session, no comparison
+// against an expected total (that's PAY-11).
+
+export function recordCashCountResponse(
+  request: APIRequestContext,
+  cashSessionId: string,
+  staffId: string,
+  countedAmount: number,
+) {
+  return request.post(`${apiBaseUrl}/cash-sessions/${cashSessionId}/count`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { staffId, countedAmount },
+  });
+}
+
+export async function recordCashCount(
+  request: APIRequestContext,
+  cashSessionId: string,
+  staffId: string,
+  countedAmount: number,
+): Promise<CashSessionDto> {
+  const response = await recordCashCountResponse(request, cashSessionId, staffId, countedAmount);
+  if (!response.ok()) {
+    throw new Error(
+      `POST /cash-sessions/${cashSessionId}/count failed: ${response.status()} ${await response.text()}`,
+    );
+  }
+  return response.json();
+}
+
 // Staff PIN accounts (IDN-08/09) — create/list/verify-pin/set-pin only, no
 // delete yet, the same narrow-slice shape IDN-01 itself established. Not
 // wired into any endpoint's own authorization decision (ORD-10/ORD-11 both

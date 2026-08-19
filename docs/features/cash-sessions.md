@@ -2,7 +2,7 @@
 
 > **Status:** ✅ built (mechanism only — see Open questions)
 > **Module:** Payments, composed with Identity at the API layer
-> **Roadmap:** I6 (`PAY-08`, `PAY-09`)
+> **Roadmap:** I6 (`PAY-08`, `PAY-09`, `PAY-10`)
 
 ## What it is
 
@@ -21,6 +21,11 @@ for a reason other than an order payment (a change float top-up, petty
 cash for a delivery, a bank drop). Every movement requires a reason.
 `POST /cash-sessions/{id}/movements` records one; `GET
 /cash-sessions/{id}/movements` lists them.
+
+Before closing out, staff record a blind cash count (PAY-10) — what's
+physically in the drawer, counted without being shown any expected total
+first. `POST /cash-sessions/{id}/count` records it, at most once per
+session, directly on the `CashSession` row itself.
 
 ## Why it works this way
 
@@ -85,6 +90,21 @@ Recording cash movements against an already-closed till would let a
 number silently appear in a session's own history after that session was
 supposedly reconciled and done.
 
+**A blind count (PAY-10) is three nullable fields on `CashSession` itself,
+not a new table.** A session has at most one count, the same "no entity
+where a plain field says the same thing" call `ClosedAtUtc` already made
+for closing — a separate `CashCount` table would need its own
+one-per-session uniqueness constraint to say nothing a nullable
+`CountedAmount` doesn't already say for free. Recorded via
+`CashSession.RecordCount`, a `Result`-returning domain method (not a
+throwing constructor, matching `Close`'s own shape) — this lets the
+endpoint call it directly and translate a `Result.Failure` straight into
+`.ToProblem()`, no API-layer pre-validation duplicating the domain's own
+rules. A second count on the same session is rejected
+(`cash_session.already_counted`) rather than silently overwriting the
+first: the entire value of *blind* is that it wasn't influenced by
+anything, including an earlier attempt at the same count.
+
 ## Behaviour
 
 1. A restaurant registers a terminal once (IDN-01, `POST /sites/{id}/terminals`)
@@ -105,6 +125,11 @@ supposedly reconciled and done.
    required reason, and who recorded it. `admin`'s "Cash sessions" screen
    shows a running list under the open session, with an "Add pay-in /
    pay-out" form.
+7. Before closing, staff count what's physically in the drawer and record
+   it blind (`POST /cash-sessions/{id}/count`) — who counted, and how
+   much. `admin` shows a "Record blind count" action next to the movements
+   panel while the session is open and uncounted; once recorded, it
+   collapses to a read-only line — there's no edit or re-count path.
 
 ## Offline behaviour
 
@@ -129,6 +154,11 @@ other mutating endpoint in this codebase before the eventual SYN work.
 | A movement's `staffId` doesn't exist | No movement written | `404 identity.staff_not_found` |
 | A movement is recorded against a session that's already closed | Rejected | `400 cash_movement.session_closed` |
 | Recording or listing movements against an unknown session id | — | `404 cash_session.not_found` |
+| A count's `countedAmount` is negative | Rejected | `400 cash_session.invalid_counted_amount` |
+| A count is recorded against a session that's already closed | Rejected | `400 cash_session.already_closed` |
+| A second count is recorded against the same session | Rejected — at most once | `400 cash_session.already_counted` |
+| A count's `staffId` doesn't exist | No count recorded | `404 identity.staff_not_found` |
+| Recording a count against an unknown session id | — | `404 cash_session.not_found` |
 
 ## Data
 
@@ -136,10 +166,14 @@ New `cash_sessions` table in the existing `payments` schema (same
 `PaymentsDbContext`, no new module or migration project): `Id`, `TerminalId`
 (indexed, unindexed foreign reference), `OpenedByStaffId`, `OpeningFloat`
 (mapped via `MapMoney`, the same convention every other `Money` column in
-this codebase uses), `OpenedAtUtc`, `ClosedAtUtc` (nullable). `IsOpen` is a
-computed property (`ClosedAtUtc is null`), never a stored column —
-`CashSessionConfiguration` ignores it, the same "never store a derived
-value" rule `Payment.AmountApplied` already follows. RLS enabled the
+this codebase uses), `OpenedAtUtc`, `ClosedAtUtc` (nullable),
+`CountedAmount` (nullable, `MapOptionalMoney` — the same convention
+`MenuItem.TakeawayPrice`, CAT-06, already uses for a `Money` that's
+genuinely absent rather than zero), `CountedByStaffId` (nullable),
+`CountedAtUtc` (nullable). `IsOpen` is a computed property (`ClosedAtUtc is
+null`), never a stored column — `CashSessionConfiguration` ignores it, the
+same "never store a derived value" rule `Payment.AmountApplied` already
+follows. RLS enabled the
 standard way (`EnableFor`/`EnableSystemReadFor` in the migration's `Up()`,
 hand-added since the EF Core scaffolder never emits these calls — see
 [multi-tenancy.md](../architecture/multi-tenancy.md)). Generated via a real
@@ -165,6 +199,11 @@ order right the first time — checked against the actual method signature
 rather than by analogy to another migration, the fix for the exact trap
 `AddCashSession`'s own migration hit.
 
+PAY-10's own migration (`AddCashSessionBlindCount`) added only the three
+nullable `Counted*` columns above to the already-existing `cash_sessions`
+table — no new table, so no `EnableFor`/`EnableSystemReadFor` calls at all;
+RLS was already enabled on that table by `AddCashSession`.
+
 ## API
 
 - `POST /cash-sessions` — body `{ terminalId, staffId, openingFloat }`,
@@ -179,6 +218,11 @@ rather than by analogy to another migration, the fix for the exact trap
   amount, reason, staffId }`, returns `201` with a `CashMovementDto`.
 - `GET /cash-sessions/{cashSessionId}/movements` — returns `200` with every
   `CashMovementDto` recorded against the session, oldest first.
+- `POST /cash-sessions/{cashSessionId}/count` — body `{ staffId,
+  countedAmount }`, returns `200` with the updated `CashSessionDto`
+  (`countedAmount`/`countedByStaffId`/`countedByStaffName`/`countedAtUtc`
+  all populated). Rejected with a `400` if the session is closed or
+  already counted — see Failure modes.
 
 `CashSessionDto` carries `terminalLabel`/`openedByStaffName`, and
 `CashMovementDto` carries `recordedByStaffName`, resolved fresh from
@@ -193,34 +237,38 @@ None. Modules don't publish integration events yet at all — see
 
 ## Fiscal impact
 
-None. A cash session records who opened a till and with how much float, and
-a movement records cash added or removed mid-shift — neither issues,
-references, or corrects a fiscal document.
+None. A cash session records who opened a till and with how much float, a
+movement records cash added or removed mid-shift, and a count records what
+was physically found in the drawer — none of the three issue, reference,
+or correct a fiscal document.
 
 ## Permissions
 
-None — any real staff id can open/close a session or record a movement
-against any terminal, same as every other non-manager-gated mutation in
-this codebase today. Real cash-handling accountability (a supervised blind
-count, a variance report someone signs off on) is PAY-10/11, not this.
+None — any real staff id can open/close a session, record a movement, or
+record a count against any terminal, same as every other non-manager-gated
+mutation in this codebase today. Real cash-handling accountability (a
+supervised blind count sign-off, a variance report someone approves) is
+PAY-11 territory, not this.
 
 ## Testing
 
 **Backend:** covered indirectly through the endpoints' own validation logic
 (terminal/staff lookups, float validation, the one-open-session-per-terminal
-check, the movement direction/amount/reason checks) — no dedicated
+check, the movement direction/amount/reason checks, the count
+amount/already-counted/session-closed checks) — no dedicated
 `Brasa.Api.IntegrationTests` class yet; the full backend suite (101 tests)
 and `verify.ps1` (build, tests, OpenAPI drift, breaking-change check,
 vulnerable-package scan) all pass with the module wired in. Also verified
 by hand against a real Postgres instance before the E2E suite existed for
-either half of this feature — for sessions: open, `GET current`, a
+each slice of this feature — for sessions: open, `GET current`, a
 duplicate open rejected with `409`, close, `GET current` returning `204`,
 reopen (the same pass that caught the `Results.Ok<T>(null)` trap documented
 above); for movements: open a session, record a pay-out, list it, close the
 session, confirm a further movement is rejected, confirm the validation
-rejections.
+rejections; for counts: open a session, record a count, re-count rejected,
+negative amount rejected, count-after-close rejected.
 
-**`src/web/e2e/tests/cash-sessions.spec.ts`** — 10 tests. PAY-08: opening a
+**`src/web/e2e/tests/cash-sessions.spec.ts`** — 14 tests. PAY-08: opening a
 session and confirming `GET current` returns it with the right
 terminal/staff/float; a duplicate open on the same terminal rejected with
 `cash_session.already_open`; closing a session, confirming `GET current`
@@ -235,27 +283,37 @@ oldest-first with names resolved on each; a closed-session/invalid-direction/
 non-positive-amount/empty-reason/unknown-staff rejection sweep; `404`s
 recording or listing movements against an unknown session id; and a real
 `admin` UI test recording a pay-out through the movements panel, confirming
-the reason and amount appear in the list. Every test creates its own fresh
-terminal (`createTerminal`) rather than sharing the seeded demo "Caixa 1,"
-the same "isolated resource, not the shared seeded one" instinct
-`staff-login.spec.ts` already uses for its own locked-out staff member —
-necessary here since only one session can be open per terminal at a time
-and E2E workers run in parallel.
+the reason and amount appear in the list. PAY-10: recording a count and
+confirming both the response and a follow-up `GET` reflect it with the
+counting staff member's name resolved; a four-way rejection sweep (a
+second count, a negative amount, an unknown staff id, a count on a closed
+session — the last two against fresh sessions/terminals so they don't
+collide with the intentional first count); a `404` recording a count
+against an unknown session id; and a real `admin` UI test recording a
+count through the count panel and confirming it collapses to a read-only
+line with no further "record count" trigger visible. Every test creates
+its own fresh terminal (`createTerminal`) rather than sharing the seeded
+demo "Caixa 1," the same "isolated resource, not the shared seeded one"
+instinct `staff-login.spec.ts` already uses for its own locked-out staff
+member — necessary here since only one session can be open per terminal at
+a time and E2E workers run in parallel.
 
 ## Open questions
 
-- **Nothing consumes an open session or its movements yet.** No payment
-  endpoint checks whether a session is open, and closing one doesn't
-  reconcile it against the movements recorded during it. This is deliberate
-  (see "Why it works this way" above) but means the feature today is purely
-  a bookkeeping record with no enforced effect — PAY-10 (blind count) and
-  PAY-11 (*fecho de caixa* with variance reporting) are what give it real
-  teeth, comparing the float plus movements plus card/cash payments taken
-  against what's actually counted at close.
+- **Nothing consumes an open session, its movements, or its count yet.**
+  No payment endpoint checks whether a session is open, and closing one
+  doesn't compare the count against the float plus movements plus card/cash
+  payments taken. This is deliberate (see "Why it works this way" above)
+  but means the feature today is purely a bookkeeping record with no
+  enforced effect — PAY-11 (*fecho de caixa* with variance reporting) is
+  what gives it real teeth, and will need `Payment` to somehow know which
+  session it was taken under (no such link exists yet — `Payment` has no
+  `CashSessionId`) before "cash payments taken during this session" is even
+  answerable.
 - **No `pos` UI.** `admin`'s back-office screen is the only place a session
-  can be opened or closed today. A terminal opening its own shift session
-  from the POS itself — the more realistic real-world flow — is a real
-  future trigger, not built yet.
+  can be opened, closed, or counted today. A terminal opening its own shift
+  session from the POS itself — the more realistic real-world flow — is a
+  real future trigger, not built yet.
 - **No history view.** There's no "list every past session for this
   terminal" endpoint — only the currently-open one. Revisit once PAY-11's
   reporting needs it.

@@ -1246,8 +1246,25 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Closes a cash session. A bare status flip today — variance reporting against a blind count is PAY-10/11, not this. */
+        /** Closes a cash session. A bare status flip today — variance reporting against a blind count is PAY-11, not this. */
         post: operations["CloseCashSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-sessions/{cashSessionId}/count": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Records a blind cash count against an open session, at most once (PAY-10). No comparison against an expected total — variance reporting is PAY-11, not this. */
+        post: operations["RecordCashCount"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1387,6 +1404,11 @@ export interface components {
             openedAtUtc: string;
             closedAtUtc: null | string;
             isOpen: boolean;
+            countedAmount: null | components["schemas"]["MoneyDto"];
+            /** Format: uuid */
+            countedByStaffId: null | string;
+            countedByStaffName: null | string;
+            countedAtUtc: null | string;
         };
         ClientRequirementsDto: {
             minimumSupported: string;
@@ -1707,6 +1729,12 @@ export interface components {
             /** Format: uuid */
             menuItemId: string;
             price: components["schemas"]["MoneyDto"];
+        };
+        RecordCashCountRequest: {
+            /** Format: uuid */
+            staffId: string;
+            /** Format: double */
+            countedAmount: number | string;
         };
         RecordCashMovementRequest: {
             direction: string;
@@ -3882,6 +3910,32 @@ export interface operations {
             cookie?: never;
         };
         requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionDto"];
+                };
+            };
+        };
+    };
+    RecordCashCount: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cashSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordCashCountRequest"];
+            };
+        };
         responses: {
             /** @description OK */
             200: {

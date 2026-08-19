@@ -16,12 +16,17 @@ internal sealed class CashSessionConfiguration : IEntityTypeConfiguration<CashSe
         builder.Property(c => c.OpenedByStaffId).IsRequired();
         builder.Property(c => c.OpenedAtUtc).IsRequired();
         builder.Property(c => c.ClosedAtUtc).IsRequired(false);
+        builder.Property(c => c.CountedByStaffId).IsRequired(false);
+        builder.Property(c => c.CountedAtUtc).IsRequired(false);
 
         // Computed from ClosedAtUtc — never a stored column, the same
         // "never store a derived total" rule Payment.AmountApplied follows.
         builder.Ignore(c => c.IsOpen);
 
         builder.MapMoney(c => c.OpeningFloat, "opening_float");
+        // Genuinely absent until counted (PAY-10), not just zero -- MapOptionalMoney
+        // is the same convention MenuItem.TakeawayPrice (CAT-06) already uses.
+        builder.MapOptionalMoney(c => c.CountedAmount, "counted_amount");
 
         builder.HasIndex(c => c.TerminalId);
     }

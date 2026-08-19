@@ -9,19 +9,20 @@ using Microsoft.EntityFrameworkCore;
 namespace Brasa.Api.Endpoints;
 
 /// <summary>
-/// Cash session endpoints (PAY-08/09) — <i>abertura de caixa</i>, a staff
+/// Cash session endpoints (PAY-08/09/10) — <i>abertura de caixa</i>, a staff
 /// member declaring a starting float against a terminal at the start of a
-/// shift, plus pay-in/pay-out movements against an open session. Composes
-/// <see cref="PaymentsDbContext"/> (this module's own tables) and
-/// <see cref="IdentityDbContext"/> (to confirm a real terminal and staff
-/// member, and resolve their names) at the API layer, the same shape
-/// <see cref="PaymentEndpoints"/> already uses for tip attribution.
+/// shift, pay-in/pay-out movements against an open session, and a blind
+/// count of what's in the drawer. Composes <see cref="PaymentsDbContext"/>
+/// (this module's own tables) and <see cref="IdentityDbContext"/> (to
+/// confirm a real terminal and staff member, and resolve their names) at
+/// the API layer, the same shape <see cref="PaymentEndpoints"/> already
+/// uses for tip attribution.
 /// </summary>
 /// <remarks>
-/// <b>Purely a record of the declaration — does not gate anything else
-/// yet.</b> See <see cref="CashSession"/>'s own class remarks. Counting the
-/// float back out and reconciling variance against these movements is
-/// PAY-10/11's own later task.
+/// <b>Purely a record — does not gate anything else yet.</b> See
+/// <see cref="CashSession"/>'s own class remarks. Comparing the blind count
+/// against an expected total (opening float + movements + cash payments
+/// taken) is PAY-11's own later task, not this.
 /// </remarks>
 public static class CashSessionEndpoints
 {
@@ -37,7 +38,12 @@ public static class CashSessionEndpoints
 
         group.MapPost("/cash-sessions/{cashSessionId:guid}/close", CloseCashSessionAsync)
             .WithName("CloseCashSession")
-            .WithSummary("Closes a cash session. A bare status flip today — variance reporting against a blind count is PAY-10/11, not this.")
+            .WithSummary("Closes a cash session. A bare status flip today — variance reporting against a blind count is PAY-11, not this.")
+            .Produces<CashSessionDto>();
+
+        group.MapPost("/cash-sessions/{cashSessionId:guid}/count", RecordCashCountAsync)
+            .WithName("RecordCashCount")
+            .WithSummary("Records a blind cash count against an open session, at most once (PAY-10). No comparison against an expected total — variance reporting is PAY-11, not this.")
             .Produces<CashSessionDto>();
 
         group.MapGet("/cash-sessions/{cashSessionId:guid}", GetCashSessionAsync)
@@ -143,8 +149,46 @@ public static class CashSessionEndpoints
 
         await paymentsDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
 
-        var (terminalLabel, staffName) = await ResolveNamesAsync(session, identityDb, cancellationToken).ConfigureAwait(false);
-        return Results.Ok(session.ToDto(terminalLabel, staffName));
+        var (terminalLabel, staffName, countedByStaffName) = await ResolveNamesAsync(session, identityDb, cancellationToken).ConfigureAwait(false);
+        return Results.Ok(session.ToDto(terminalLabel, staffName, countedByStaffName));
+    }
+
+    private static async Task<IResult> RecordCashCountAsync(
+        Guid cashSessionId,
+        RecordCashCountRequest request,
+        PaymentsDbContext paymentsDb,
+        IdentityDbContext identityDb,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var session = await paymentsDb.CashSessions
+            .FirstOrDefaultAsync(c => c.Id == cashSessionId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (session is null)
+        {
+            return Error.NotFound("cash_session.not_found", $"Cash session {cashSessionId} was not found.").ToProblem();
+        }
+
+        var staff = await identityDb.Staff
+            .FirstOrDefaultAsync(s => s.Id == request.StaffId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (staff is null)
+        {
+            return Error.NotFound("identity.staff_not_found", $"Staff member {request.StaffId} was not found.").ToProblem();
+        }
+
+        var countResult = session.RecordCount(request.StaffId, Money.FromDecimal(request.CountedAmount), clock.UtcNow);
+        if (countResult.IsFailure)
+        {
+            return countResult.Error.ToProblem();
+        }
+
+        await paymentsDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        var (terminalLabel, openedByStaffName, _) = await ResolveNamesAsync(session, identityDb, cancellationToken).ConfigureAwait(false);
+        return Results.Ok(session.ToDto(terminalLabel, openedByStaffName, staff.Name));
     }
 
     private static async Task<IResult> GetCashSessionAsync(
@@ -162,8 +206,8 @@ public static class CashSessionEndpoints
             return Error.NotFound("cash_session.not_found", $"Cash session {cashSessionId} was not found.").ToProblem();
         }
 
-        var (terminalLabel, staffName) = await ResolveNamesAsync(session, identityDb, cancellationToken).ConfigureAwait(false);
-        return Results.Ok(session.ToDto(terminalLabel, staffName));
+        var (terminalLabel, staffName, countedByStaffName) = await ResolveNamesAsync(session, identityDb, cancellationToken).ConfigureAwait(false);
+        return Results.Ok(session.ToDto(terminalLabel, staffName, countedByStaffName));
     }
 
     private static async Task<IResult> GetCurrentCashSessionAsync(
@@ -197,11 +241,11 @@ public static class CashSessionEndpoints
             return Results.NoContent();
         }
 
-        var (terminalLabel, staffName) = await ResolveNamesAsync(session, identityDb, cancellationToken).ConfigureAwait(false);
-        return Results.Ok(session.ToDto(terminalLabel, staffName));
+        var (terminalLabel, staffName, countedByStaffName) = await ResolveNamesAsync(session, identityDb, cancellationToken).ConfigureAwait(false);
+        return Results.Ok(session.ToDto(terminalLabel, staffName, countedByStaffName));
     }
 
-    private static async Task<(string TerminalLabel, string StaffName)> ResolveNamesAsync(
+    private static async Task<(string TerminalLabel, string StaffName, string? CountedByStaffName)> ResolveNamesAsync(
         CashSession session, IdentityDbContext identityDb, CancellationToken cancellationToken)
     {
         var terminal = await identityDb.Terminals
@@ -216,7 +260,16 @@ public static class CashSessionEndpoints
         // genuine bug, not an expected runtime state — the fallback below
         // only guards a hypothetical rather than adding a new error path
         // for something that can't happen today.
-        return (terminal?.Label ?? "?", staff?.Name ?? "?");
+        string? countedByStaffName = null;
+        if (session.CountedByStaffId is { } countedByStaffId)
+        {
+            var countedByStaff = await identityDb.Staff
+                .FirstOrDefaultAsync(s => s.Id == countedByStaffId, cancellationToken)
+                .ConfigureAwait(false);
+            countedByStaffName = countedByStaff?.Name ?? "?";
+        }
+
+        return (terminal?.Label ?? "?", staff?.Name ?? "?", countedByStaffName);
     }
 
     private static async Task<IResult> RecordCashMovementAsync(

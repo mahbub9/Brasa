@@ -164,6 +164,7 @@ function TerminalRow({ terminal, session, staff, onReload, onErrorChange }: Term
           >
             {t('cashSession.closeSession')}
           </Button>
+          <CashCountPanel session={session} staff={staff} onReload={onReload} onErrorChange={onErrorChange} />
           <CashMovementsPanel session={session} staff={staff} onErrorChange={onErrorChange} />
         </>
       ) : opening ? (
@@ -214,6 +215,105 @@ function TerminalRow({ terminal, session, staff, onReload, onErrorChange }: Term
         </Button>
       )}
     </li>
+  );
+}
+
+interface CashCountPanelProps {
+  session: CashSessionDto;
+  staff: StaffDto[];
+  onReload: () => void;
+  onErrorChange: (message: string | null) => void;
+}
+
+/**
+ * PAY-10's own admin surface — a blind cash count against an open session,
+ * at most once. "Blind" because nothing here shows an expected total to
+ * compare against (no variance calculation exists yet — PAY-11). Once
+ * recorded, this collapses to a read-only line; there's no edit path,
+ * matching `CashSession.RecordCount`'s own "at most once" domain rule.
+ */
+function CashCountPanel({ session, staff, onReload, onErrorChange }: CashCountPanelProps) {
+  const { t } = useTranslation();
+  const [counting, setCounting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [staffId, setStaffId] = useState(staff[0]?.id ?? '');
+  const [countedAmount, setCountedAmount] = useState('');
+
+  function submit() {
+    setBusy(true);
+    onErrorChange(null);
+    api
+      .recordCashCount(session.id, { staffId, countedAmount: Number(countedAmount) })
+      .then(() => {
+        setCounting(false);
+        setCountedAmount('');
+        onReload();
+      })
+      .catch((err: unknown) => onErrorChange(err instanceof ApiError ? err.message : t('error.generic')))
+      .finally(() => setBusy(false));
+  }
+
+  if (session.countedAmount) {
+    return (
+      <p className="cash-count-recorded" data-testid={`cash-count-recorded-${session.terminalLabel}`}>
+        {t('cashSession.counted', {
+          amount: formatMoney(session.countedAmount),
+          name: session.countedByStaffName,
+        })}
+      </p>
+    );
+  }
+
+  if (!counting) {
+    return (
+      <Button
+        variant="ghost"
+        data-testid={`cash-count-start-${session.terminalLabel}`}
+        disabled={staff.length === 0}
+        onClick={() => setCounting(true)}
+      >
+        {t('cashSession.recordCount')}
+      </Button>
+    );
+  }
+
+  return (
+    <div className="cash-count-form">
+      <SelectField
+        aria-label={t('cashSession.staff')}
+        value={staffId}
+        data-testid={`cash-count-staff-${session.terminalLabel}`}
+        disabled={busy}
+        onChange={(e) => setStaffId(e.target.value)}
+      >
+        {staff.map((member) => (
+          <option key={member.id} value={member.id}>
+            {member.name}
+          </option>
+        ))}
+      </SelectField>
+      <TextField
+        type="number"
+        step="0.01"
+        min="0"
+        inputMode="decimal"
+        placeholder={t('cashSession.countedAmountPlaceholder')}
+        value={countedAmount}
+        data-testid={`cash-count-amount-${session.terminalLabel}`}
+        disabled={busy}
+        onChange={(e) => setCountedAmount(e.target.value)}
+      />
+      <Button
+        data-testid={`cash-count-save-${session.terminalLabel}`}
+        disabled={busy || countedAmount === ''}
+        onClick={submit}
+      >
+        {t('common.save')}
+      </Button>
+      <Button variant="ghost" disabled={busy} onClick={() => setCounting(false)}>
+        {t('common.cancel')}
+      </Button>
+    </div>
   );
 }
 

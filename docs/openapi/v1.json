@@ -2996,7 +2996,7 @@
         "tags": [
           "CashSessionEndpoints"
         ],
-        "summary": "Closes a cash session. A bare status flip today — variance reporting against a blind count is PAY-10/11, not this.",
+        "summary": "Closes a cash session. A bare status flip today — variance reporting against a blind count is PAY-11, not this.",
         "operationId": "CloseCashSession",
         "parameters": [
           {
@@ -3009,6 +3009,48 @@
             }
           }
         ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-sessions/{cashSessionId}/count": {
+      "post": {
+        "tags": [
+          "CashSessionEndpoints"
+        ],
+        "summary": "Records a blind cash count against an open session, at most once (PAY-10). No comparison against an expected total — variance reporting is PAY-11, not this.",
+        "operationId": "RecordCashCount",
+        "parameters": [
+          {
+            "name": "cashSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCashCountRequest"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
             "description": "OK",
@@ -3368,7 +3410,11 @@
           "openingFloat",
           "openedAtUtc",
           "closedAtUtc",
-          "isOpen"
+          "isOpen",
+          "countedAmount",
+          "countedByStaffId",
+          "countedByStaffName",
+          "countedAtUtc"
         ],
         "type": "object",
         "properties": {
@@ -3404,6 +3450,35 @@
           },
           "isOpen": {
             "type": "boolean"
+          },
+          "countedAmount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyDto"
+              }
+            ]
+          },
+          "countedByStaffId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
+          },
+          "countedByStaffName": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "countedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ]
           }
         }
       },
@@ -4655,6 +4730,27 @@
           },
           "price": {
             "$ref": "#/components/schemas/MoneyDto"
+          }
+        }
+      },
+      "RecordCashCountRequest": {
+        "required": [
+          "staffId",
+          "countedAmount"
+        ],
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "countedAmount": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },

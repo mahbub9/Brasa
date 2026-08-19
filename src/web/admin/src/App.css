@@ -625,6 +625,24 @@
   width: 10rem;
 }
 
+.cash-count-recorded {
+  margin: 0.25rem 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.cash-count-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.cash-count-form input[type='number'] {
+  width: 8rem;
+}
+
 .cash-movements-panel {
   margin-top: 0.25rem;
   padding-top: 0.5rem;

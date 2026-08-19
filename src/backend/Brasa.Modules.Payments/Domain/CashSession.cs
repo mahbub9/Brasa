@@ -6,17 +6,18 @@ namespace Brasa.Modules.Payments.Domain;
 /// <summary>
 /// A cash session — <i>abertura de caixa</i> (PAY-08) — a staff member
 /// declaring a starting cash float against a specific terminal at the
-/// start of a shift.
+/// start of a shift, a blind count of what's in the drawer at the end of
+/// it (PAY-10), and eventually a close.
 /// </summary>
 /// <remarks>
 /// <para>
-/// <b>Purely a record of the declaration — does not gate anything else
-/// yet.</b> No payment endpoint requires an open session to exist, the
-/// same "mechanism before the trigger" shape this codebase already uses
-/// everywhere (<c>TaxRule</c> not wired into <c>AddLine</c>, price lists
-/// not resolved through it, DAT-07's role with no real consumer yet).
-/// Counting the float back out and reconciling variance at the end of a
-/// shift is PAY-10/11's own later task, not this.
+/// <b>Purely a record — does not gate anything else yet.</b> No payment
+/// endpoint requires an open session to exist, the same "mechanism before
+/// the trigger" shape this codebase already uses everywhere (<c>TaxRule</c>
+/// not wired into <c>AddLine</c>, price lists not resolved through it,
+/// DAT-07's role with no real consumer yet). Comparing the count against
+/// an expected total — reconciling variance at the end of a shift — is
+/// PAY-11's own later task, not this.
 /// </para>
 /// <para>
 /// <c>TerminalId</c> and <c>OpenedByStaffId</c> are both plain opaque
@@ -32,6 +33,17 @@ namespace Brasa.Modules.Payments.Domain;
 /// before a second <see cref="CashSession"/> is ever constructed. Two
 /// overlapping sessions on the same till would make "who's responsible for
 /// this cash drawer right now" ambiguous, the entire point of this record.
+/// </para>
+/// <para>
+/// <b>A blind cash count (PAY-10) is at most once per session.</b> Staff
+/// count what's physically in the drawer and record it via
+/// <see cref="RecordCount"/> — "blind" because nothing in this codebase
+/// shows them an expected total to compare against first (no variance
+/// calculation exists yet; that's PAY-11's own later task, which will need
+/// this count as one of its inputs). A second count on the same session is
+/// rejected (<c>cash_session.already_counted</c>) rather than silently
+/// overwriting the first — the entire value of a blind count is that it
+/// wasn't influenced by anything, including an earlier attempt.
 /// </para>
 /// </remarks>
 public sealed class CashSession : Entity
@@ -87,7 +99,7 @@ public sealed class CashSession : Entity
     /// <summary>True until <see cref="Close"/> succeeds.</summary>
     public bool IsOpen => ClosedAtUtc is null;
 
-    /// <summary>Closes the session. A bare status flip — variance reporting is PAY-10/11, not this.</summary>
+    /// <summary>Closes the session. A bare status flip — variance reporting is PAY-11, not this.</summary>
     /// <param name="closedAtUtc">When the session was closed.</param>
     public Result Close(DateTimeOffset closedAtUtc)
     {
@@ -98,6 +110,50 @@ public sealed class CashSession : Entity
         }
 
         ClosedAtUtc = closedAtUtc;
+        return Result.Success();
+    }
+
+    /// <summary>How much cash was physically counted in the drawer, if it has been (PAY-10).</summary>
+    public Money? CountedAmount { get; private set; }
+
+    /// <summary>Which staff member counted it, if it has been.</summary>
+    public Guid? CountedByStaffId { get; private set; }
+
+    /// <summary>When the count was recorded, if it has been.</summary>
+    public DateTimeOffset? CountedAtUtc { get; private set; }
+
+    /// <summary>
+    /// Records a blind cash count against this session — at most once, and
+    /// only while the session is still open (counting happens as part of
+    /// closing out a shift, not afterward). No comparison against an
+    /// expected total is computed here — see the class remarks.
+    /// </summary>
+    /// <param name="staffId">Who counted. Never validated here — see the class remarks.</param>
+    /// <param name="countedAmount">What was physically counted. Must not be negative — an empty drawer is zero, not invalid.</param>
+    /// <param name="countedAtUtc">When the count was recorded.</param>
+    public Result RecordCount(Guid staffId, Money countedAmount, DateTimeOffset countedAtUtc)
+    {
+        if (countedAmount.IsNegative)
+        {
+            return Result.Failure(Error.Validation(
+                "cash_session.invalid_counted_amount", "Counted amount must not be negative."));
+        }
+
+        if (!IsOpen)
+        {
+            return Result.Failure(Error.Validation(
+                "cash_session.already_closed", "This cash session is already closed."));
+        }
+
+        if (CountedAmount is not null)
+        {
+            return Result.Failure(Error.Validation(
+                "cash_session.already_counted", "This cash session has already been counted."));
+        }
+
+        CountedByStaffId = staffId;
+        CountedAmount = countedAmount;
+        CountedAtUtc = countedAtUtc;
         return Result.Success();
     }
 }

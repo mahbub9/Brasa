@@ -106,6 +106,10 @@ export interface CashSessionDto {
   openedAtUtc: string;
   closedAtUtc: string | null;
   isOpen: boolean;
+  countedAmount: MoneyDto | null;
+  countedByStaffId: string | null;
+  countedByStaffName: string | null;
+  countedAtUtc: string | null;
 }
 
 /** A pay-in or pay-out against an open cash session (PAY-09) — always requires a reason. */

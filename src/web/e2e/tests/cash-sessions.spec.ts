@@ -13,6 +13,8 @@ import {
   getStaff,
   openCashSession,
   openCashSessionResponse,
+  recordCashCount,
+  recordCashCountResponse,
   recordCashMovement,
   recordCashMovementResponse,
 } from './support/api';
@@ -26,11 +28,11 @@ const adminBaseUrl = process.env.BRASA_ADMIN_BASE_URL ?? 'http://localhost:5174'
 // everywhere. Only one open session per terminal at a time, so every test
 // here creates its own fresh terminal rather than sharing the seeded demo
 // "Caixa 1" (see support/api.ts's own remarks). Cash movements (PAY-09) —
-// pay-ins/pay-outs against an open session, always with a reason — build
-// on the same session, so their tests live in this same file rather than a
-// separate one.
+// pay-ins/pay-outs against an open session, always with a reason — and a
+// blind cash count (PAY-10) both build on the same session, so their tests
+// live in this same file rather than a separate one.
 
-test.describe('cash sessions (PAY-08/09)', () => {
+test.describe('cash sessions (PAY-08/09/10)', () => {
   test('opens a cash session with a float, and GET current returns it', async ({ request }) => {
     const organizations = await getOrganizations(request);
     const demoOrg = organizations[0];
@@ -221,6 +223,80 @@ test.describe('cash sessions (PAY-08/09)', () => {
     expect((await list.json()).code).toBe('cash_session.not_found');
   });
 
+  test('records a blind cash count against an open session, resolving the counting staff member', async ({
+    request,
+  }) => {
+    const organizations = await getOrganizations(request);
+    const sites = await getSites(request, organizations[0]!.id);
+    const staff = await getStaff(request, sites[0]!.id);
+    const terminal = await createTerminal(request, sites[0]!.id, `Cash Test Terminal ${Date.now()}`);
+    const session = await openCashSession(request, terminal.id, staff[0]!.id, 50);
+    expect(session.countedAmount).toBeNull();
+
+    const counted = await recordCashCount(request, session.id, staff[0]!.id, 62.5);
+    expect(counted.countedAmount).toEqual({ amount: 62.5, currency: 'EUR' });
+    expect(counted.countedByStaffId).toBe(staff[0]!.id);
+    expect(counted.countedByStaffName).toBe(staff[0]!.name);
+    expect(counted.countedAtUtc).not.toBeNull();
+
+    // GET reflects the same recorded count, not just the response body of the record call.
+    const fetched = await getCashSessionResponse(request, session.id);
+    const fetchedBody = await fetched.json();
+    expect(fetchedBody.countedAmount).toEqual({ amount: 62.5, currency: 'EUR' });
+  });
+
+  test('rejects a second count on the same session, a negative amount, an unknown staff id, and a count on a closed session', async ({
+    request,
+  }) => {
+    const organizations = await getOrganizations(request);
+    const sites = await getSites(request, organizations[0]!.id);
+    const staff = await getStaff(request, sites[0]!.id);
+    const terminal = await createTerminal(request, sites[0]!.id, `Cash Test Terminal ${Date.now()}`);
+    const session = await openCashSession(request, terminal.id, staff[0]!.id, 50);
+
+    await recordCashCount(request, session.id, staff[0]!.id, 50);
+
+    const recount = await recordCashCountResponse(request, session.id, staff[0]!.id, 45);
+    expect(recount.status()).toBe(400);
+    expect((await recount.json()).code).toBe('cash_session.already_counted');
+
+    const terminal2 = await createTerminal(request, sites[0]!.id, `Cash Test Terminal ${Date.now()}-2`);
+    const session2 = await openCashSession(request, terminal2.id, staff[0]!.id, 30);
+
+    const negative = await recordCashCountResponse(request, session2.id, staff[0]!.id, -5);
+    expect(negative.status()).toBe(400);
+    expect((await negative.json()).code).toBe('cash_session.invalid_counted_amount');
+
+    const unknownStaff = await recordCashCountResponse(
+      request,
+      session2.id,
+      '00000000-0000-0000-0000-000000000000',
+      30,
+    );
+    expect(unknownStaff.status()).toBe(404);
+    expect((await unknownStaff.json()).code).toBe('identity.staff_not_found');
+
+    await closeCashSession(request, session2.id);
+    const onClosed = await recordCashCountResponse(request, session2.id, staff[0]!.id, 30);
+    expect(onClosed.status()).toBe(400);
+    expect((await onClosed.json()).code).toBe('cash_session.already_closed');
+  });
+
+  test('404s recording a blind count against an unknown cash session id', async ({ request }) => {
+    const organizations = await getOrganizations(request);
+    const sites = await getSites(request, organizations[0]!.id);
+    const staff = await getStaff(request, sites[0]!.id);
+
+    const response = await recordCashCountResponse(
+      request,
+      '00000000-0000-0000-0000-000000000000',
+      staff[0]!.id,
+      10,
+    );
+    expect(response.status()).toBe(404);
+    expect((await response.json()).code).toBe('cash_session.not_found');
+  });
+
   test('the admin cash sessions screen opens and closes a session through the real UI', async ({ page, request }) => {
     const organizations = await getOrganizations(request);
     const sites = await getSites(request, organizations[0]!.id);
@@ -280,5 +356,38 @@ test.describe('cash sessions (PAY-08/09)', () => {
     await expect(row.getByTestId(`cash-movement-add-${label}`)).toBeVisible(); // form closed back to the button
     await expect(row).toContainText('Petty cash for supplies');
     await expect(row).toContainText('12,00');
+  });
+
+  test('the admin blind count panel records a count through the real UI, then collapses to read-only', async ({
+    page,
+    request,
+  }) => {
+    const organizations = await getOrganizations(request);
+    const sites = await getSites(request, organizations[0]!.id);
+    const demoSite = sites[0]!;
+    const staff = await getStaff(request, demoSite.id);
+    const staffMember = staff[0]!;
+    const label = `UI Count Test ${Date.now()}`;
+    const terminal = await createTerminal(request, demoSite.id, label);
+    await openCashSession(request, terminal.id, staffMember.id, 40);
+
+    await page.goto(adminBaseUrl);
+    await page.getByTestId('nav-cash').click();
+    await page.waitForSelector('.cash-session-manager');
+
+    const row = page.getByTestId(`cash-session-terminal-${label}`);
+    await expect(row).toBeVisible();
+    await expect(row.getByTestId(`cash-count-start-${label}`)).toBeVisible();
+
+    await row.getByTestId(`cash-count-start-${label}`).click();
+    await row.getByTestId(`cash-count-staff-${label}`).selectOption(staffMember.id);
+    await row.getByTestId(`cash-count-amount-${label}`).fill('55.5');
+    await row.getByTestId(`cash-count-save-${label}`).click();
+
+    await expect(row.getByTestId(`cash-count-recorded-${label}`)).toBeVisible();
+    await expect(row).toContainText('55,50');
+    await expect(row).toContainText(staffMember.name);
+    // The "record count" trigger is gone -- a blind count is at most once per session.
+    await expect(row.getByTestId(`cash-count-start-${label}`)).not.toBeVisible();
   });
 });

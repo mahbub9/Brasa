@@ -116,7 +116,9 @@ as any change to an error code, the same rule as everything else in
 | `payment.empty_split` | Validation | 400 | `POST /orders/{id}/payments/split`'s (PAY-04) `tenders` array is missing or empty — a split needs at least one tender to apply. |
 | `cash_session.invalid_opening_float` | Validation | 400 | `POST /cash-sessions`'s (PAY-08) `openingFloat` is negative. Zero is valid. |
 | `cash_session.already_open` | Conflict | 409 | `POST /cash-sessions`'s (PAY-08) `terminalId` already has an open cash session — only one at a time per terminal. Close the existing one first. |
-| `cash_session.already_closed` | Validation | 400 | `POST /cash-sessions/{id}/close`'s (PAY-08) session was already closed. |
+| `cash_session.already_closed` | Validation | 400 | `POST /cash-sessions/{id}/close`'s (PAY-08) session was already closed, or `POST /cash-sessions/{id}/count`'s (PAY-10) session is closed — a blind count can only be recorded while a session is still open. |
+| `cash_session.invalid_counted_amount` | Validation | 400 | `POST /cash-sessions/{id}/count`'s (PAY-10) `countedAmount` is negative. Zero is valid — an empty drawer is a real count. |
+| `cash_session.already_counted` | Validation | 400 | `POST /cash-sessions/{id}/count`'s (PAY-10) session has already had a blind count recorded — at most once per session. |
 | `cash_session.not_found` | NotFound | 404 | `POST /cash-sessions/{id}/close`, `GET /cash-sessions/{id}`, `POST /cash-sessions/{id}/movements` or `GET /cash-sessions/{id}/movements`'s (PAY-08/09) session id doesn't exist. |
 | `cash_movement.session_closed` | Validation | 400 | `POST /cash-sessions/{id}/movements`'s (PAY-09) session is already closed — a movement can only be recorded against an open session. |
 | `cash_movement.invalid_direction` | Validation | 400 | `POST /cash-sessions/{id}/movements`'s (PAY-09) `direction` isn't `"PayIn"` or `"PayOut"`. |

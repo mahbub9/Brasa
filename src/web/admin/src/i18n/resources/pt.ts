@@ -123,6 +123,9 @@ export const pt = {
     addMovement: 'Adicionar entrada / saída',
     amountPlaceholder: 'Valor',
     reasonPlaceholder: 'Motivo',
+    recordCount: 'Registar contagem cega',
+    countedAmountPlaceholder: 'Valor contado',
+    counted: 'Contado: {{amount}} por {{name}}',
     direction: {
       label: 'Direção',
       PayIn: 'Entrada',

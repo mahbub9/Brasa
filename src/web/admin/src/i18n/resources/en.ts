@@ -126,6 +126,9 @@ export const en = {
     addMovement: 'Add pay-in / pay-out',
     amountPlaceholder: 'Amount',
     reasonPlaceholder: 'Reason',
+    recordCount: 'Record blind count',
+    countedAmountPlaceholder: 'Amount counted',
+    counted: 'Counted: {{amount}} by {{name}}',
     direction: {
       label: 'Direction',
       PayIn: 'Pay in',
