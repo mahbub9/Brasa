@@ -186,17 +186,41 @@ main {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: var(--space-3);
+  /* perspective on the row, not each tile, so the hover tilt below reads
+     as tiles leaning within one shared 3D space rather than each getting
+     its own independent vanishing point. */
+  perspective: 900px;
 }
 
-/* "Live tile" treatment: each table is a solid, saturated block of its own
-   state color (not a white card with a colored border) -- glanceable across
-   a room the way a Windows-style live tile is, and it's the same four
-   semantic colors STATE_TONE already maps to Badge tones, just promoted
-   from a border/dot accent to the tile's own fill. Direct-child combinator,
-   not a plain descendant selector -- the tile's own toggle button is a
-   direct child of .floor-table, but the confirm form's own Button
-   (.floor-table-confirm > Button) is a *grandchild*, nested one level
-   deeper. A plain ".floor-table button" matches both, which used to
+/* Grid entrance -- tiles rise and settle in rather than just appearing,
+   staggered per column so a room "arrives" left to right. Caps at 8
+   explicit delays (typical room size); anything beyond just uses the
+   base rule's implicit 0ms, which is unnoticeable in a run that long. */
+.floor-table {
+  animation: brasa-pop-in 420ms var(--ease-bounce) both;
+}
+.floor-tables > .floor-table:nth-child(1) { animation-delay: 0ms; }
+.floor-tables > .floor-table:nth-child(2) { animation-delay: 40ms; }
+.floor-tables > .floor-table:nth-child(3) { animation-delay: 80ms; }
+.floor-tables > .floor-table:nth-child(4) { animation-delay: 120ms; }
+.floor-tables > .floor-table:nth-child(5) { animation-delay: 160ms; }
+.floor-tables > .floor-table:nth-child(6) { animation-delay: 200ms; }
+.floor-tables > .floor-table:nth-child(7) { animation-delay: 240ms; }
+.floor-tables > .floor-table:nth-child(8) { animation-delay: 280ms; }
+
+/* Table tile v3 -- a pale state-tinted card with a full colored border,
+   not a solid saturated fill (v1) and not a near-white card with only a
+   thin top bar (v2). v2 read as too similar across states and too
+   white-dominant once seen across a whole room ("red, green, and needs
+   clearing are too similar... white dominant" -- user feedback). v3 keeps
+   two signals per state instead of one: --tile-tint colors the whole card
+   (a pale wash, not the v1 saturated fill) and --tile-accent draws a 2px
+   border + tints the label text, both set together per
+   .floor-table-<State> rule below so they can't drift apart. Direct-child
+   combinator, not a plain descendant selector -- the tile's own toggle
+   button is a direct child of .floor-table, but the confirm form's own
+   Button (.floor-table-confirm > Button) is a *grandchild*, nested one
+   level deeper. A plain ".floor-table button" matches both, which used to
    overwrite that Button's brasa-btn-primary background with this rule's
    fill (higher specificity: one class + one type selector beats one class
    alone) while leaving its white text untouched -- genuinely invisible
@@ -206,6 +230,8 @@ main {
    rather than left for later since it's a real, demo-breaking bug either
    way. */
 .floor-table > button {
+  --tile-accent: var(--muted);
+  --tile-tint: var(--panel);
   width: 100%;
   min-height: 128px;
   display: flex;
@@ -213,98 +239,97 @@ main {
   align-items: flex-start;
   gap: var(--space-2);
   padding: var(--space-4);
-  background: var(--muted);
-  color: #fff;
-  border: none;
+  background: var(--tile-tint);
+  color: var(--ink);
+  border: 2px solid var(--tile-accent);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-1);
   text-align: left;
   position: relative;
   overflow: hidden;
   transition: box-shadow var(--duration-base) var(--ease), transform var(--duration-base) var(--ease-bounce);
 }
 
-/* Diagonal sheen in the tile's own top-left corner -- the bit of polish
-   that reads as "tile" rather than "flat rectangle". Low enough opacity it
-   never meaningfully changes the white-text contrast ratios computed below;
-   painted before the label/seats/badge in source order so it always sits
-   behind them without needing an explicit z-index. */
-.floor-table > button::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.24) 0%, rgba(255, 255, 255, 0) 50%);
-  pointer-events: none;
-}
-
 .floor-table > button:not(:disabled):hover {
-  box-shadow: var(--shadow-2), 0 10px 24px rgba(36, 28, 21, 0.22);
-  transform: translateY(-3px) scale(1.03);
+  box-shadow: var(--shadow-2), 0 14px 28px rgba(36, 28, 21, 0.16);
+  /* A genuine 3D lean, not just a flat lift -- perspective() scoped to
+     this one transform list (no separate 3D-space parent needed), a
+     small rotateX so the tile reads as tipping toward the guest rather
+     than just floating straight up. */
+  transform: perspective(700px) rotateX(6deg) translateY(-4px) scale(1.035);
 }
 
 .floor-table > button:active:not(:disabled) {
-  transform: translateY(-1px) scale(0.98);
+  transform: perspective(700px) rotateX(2deg) translateY(-1px) scale(0.98);
 }
 
 .floor-table > button:disabled {
   cursor: not-allowed;
 }
 
+/* Tinted with --tile-accent (inherited from the button above -- custom
+   properties cascade to descendants regardless of nesting) so the state
+   reads in the numeral itself, not just the border/badge -- a third signal
+   at the thing a waiter's eye actually lands on first. */
 .floor-table-label {
   font-family: var(--font-display);
   font-weight: 800;
   font-size: 1.5rem;
   line-height: 1.1;
   letter-spacing: -0.01em;
+  color: var(--tile-accent);
 }
 
 .floor-table-seats {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--muted);
   font-size: var(--text-caption);
   font-weight: 600;
 }
 
 /* Pinned to the tile's bottom edge regardless of how much the label/seats
-   above it take up, so every tile in a row keeps its state pill aligned. */
+   above it take up, so every tile in a row keeps its state pill aligned.
+   Background pinned to --panel (white) regardless of tone -- against a
+   pale-tinted card the Badge's own same-family tint (brasa-badge-success
+   etc.) would nearly disappear, so the chip needs its own contrasting
+   backing to still read as a discrete pill. Combined selector for
+   specificity (0,2,0) so it reliably beats .brasa-badge-<tone>'s (0,1,0)
+   background regardless of stylesheet order; only background is
+   overridden, so the tone class still supplies the dot/text color. */
 .floor-table-state.brasa-badge {
   margin-top: auto;
-  background: rgba(255, 255, 255, 0.22);
-  color: #fff;
+  background: var(--panel);
 }
 
-.floor-table-state.brasa-badge::before {
-  background: #fff;
-}
-
-/* Free/Occupied deliberately do NOT reuse tokens.css's --success/--danger
-   here -- those are calibrated for small text on a light tint (badges,
-   error banners) and tokens.css itself flags them as a "solved,
-   legally-adjacent semantic" not worth re-theming broadly. A full-tile flat
-   fill is a different, much larger surface where the same dark, muted
-   values read as flat and heavy rather than bold. These two are a
-   tile-only variant: livelier/fresher at the same AA bar, hand-verified
-   against #fff text -- #1a7a35 (fresh grass green) 5.41:1, #c72923 (clear
-   red, hue kept well clear of --brasa/--warning's orange so Occupied never
-   reads as BillRequested at a glance) 5.57:1. warning 4.97:1, muted 6.21:1
-   below are unchanged tokens, already clearing AA with margin. */
+/* Free/Occupied/BillRequested/Dirty each set both halves of the state
+   signal together -- --tile-accent (border + label) and --tile-tint (card
+   wash) -- reusing the same tokens the Badge below already renders with
+   (--success/--danger/--warning/--muted, plus each token's own paired
+   *-bg tint) rather than the tile owning its own separate hand-picked
+   shade. Occupied and Dirty are deliberately given different *shapes*
+   (solid vs. dashed border, tint vs. hatch texture) on top of the color
+   difference -- two similarly dark, roughly-warm-neutral colors read as
+   too close to each other at a glance across a room; a shape difference
+   doesn't have that problem. */
 .floor-table-Free > button {
-  background: #1a7a35;
+  --tile-accent: var(--success);
+  --tile-tint: var(--success-bg);
 }
 
 .floor-table-Occupied > button {
-  background: #c72923;
+  --tile-accent: var(--danger);
+  --tile-tint: var(--danger-bg);
 }
 
 .floor-table-BillRequested > button {
-  background: var(--warning);
+  --tile-accent: var(--warning);
+  --tile-tint: var(--warning-bg);
   animation: floor-table-pulse 2.2s var(--ease) infinite;
 }
 
-/* A dashed border read as "needs cleaning" before; now it's a subtle
-   diagonal hatch across the fill so the state still reads at a glance
-   without falling back to an outline the other three states don't have. */
 .floor-table-Dirty > button {
-  background: repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.14) 0 10px, transparent 10px 20px), var(--muted);
+  --tile-accent: var(--muted);
+  border-style: dashed;
+  background: repeating-linear-gradient(135deg, rgba(107, 95, 82, 0.12) 0 8px, transparent 8px 16px), #efe9e2;
 }
 
 /* The one state that genuinely wants the room's attention -- a soft glow
@@ -314,10 +339,10 @@ main {
 @keyframes floor-table-pulse {
   0%,
   100% {
-    box-shadow: var(--shadow-2);
+    box-shadow: var(--shadow-1);
   }
   50% {
-    box-shadow: var(--shadow-2), 0 0 0 6px rgba(196, 70, 10, 0.28);
+    box-shadow: var(--shadow-1), 0 0 0 6px rgba(196, 70, 10, 0.22);
   }
 }
 
