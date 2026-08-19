@@ -2,7 +2,7 @@
 // translation of the English copy. See docs/architecture/decisions/0011-i18n.md.
 export const pt = {
   app: {
-    tagline: 'POS — protótipo inicial (I0)',
+    tagline: 'Ponto de venda',
   },
   floor: {
     title: 'Escolher mesa',

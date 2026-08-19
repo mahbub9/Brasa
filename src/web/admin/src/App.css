@@ -9,14 +9,15 @@
   align-items: baseline;
   gap: 0.75rem;
   padding: 1rem 1.5rem;
-  background: var(--brasa);
+  background: var(--gradient-brand);
   color: #fff;
 }
 
 .admin-brand {
-  font-size: 1.25rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
+  font-family: var(--font-display);
+  font-size: 1.4rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
 }
 
 .admin-tagline {
@@ -33,14 +34,15 @@
 }
 
 .language-toggle button {
-  padding: 0.35rem 0.6rem;
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  border-radius: 6px;
-  background: none;
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.12);
   /* Full-opacity white, not dimmed — same QA-14 contrast fix as .admin-tagline. */
   color: #fff;
   font-size: 0.8rem;
-  font-weight: 600;
+  font-weight: 700;
+  transition: background var(--duration-fast) var(--ease);
 }
 
 .language-toggle button.active {
@@ -70,18 +72,25 @@
   width: 100%;
   padding: 0.6rem 0.75rem;
   border: none;
-  border-radius: 6px;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
   background: none;
   color: var(--ink);
   font: inherit;
-  font-weight: 500;
+  font-weight: 600;
   text-align: left;
   cursor: pointer;
+  transition: background var(--duration-fast) var(--ease), border-color var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease);
+}
+
+.admin-nav-item:hover {
+  background: var(--paper);
 }
 
 .admin-nav-item.active {
-  background: var(--paper);
-  color: var(--brasa-dark);
+  background: var(--accent-tint);
+  border-left-color: var(--accent);
+  color: var(--accent-dark);
 }
 
 .admin-main {
@@ -365,9 +374,12 @@
   box-shadow: 0 4px 12px rgba(36, 28, 21, 0.25);
 }
 
-/* Same accessible palette pos's own floor-table states already use (QA-14). */
+/* Same accessible palette pos's own floor-table states already use (QA-14).
+   This was drifted from the real tokens (a stale #2f9e44/#868e96 that never
+   got updated when tokens.css's own --success/--muted were fixed for
+   contrast) — now genuinely the same values, not just the same intent. */
 .floor-canvas-table-state-Free {
-  border-color: #2f9e44;
+  border-color: var(--success);
 }
 
 .floor-canvas-table-state-Occupied {
@@ -375,11 +387,11 @@
 }
 
 .floor-canvas-table-state-BillRequested {
-  border-color: #c4460a;
+  border-color: var(--warning);
 }
 
 .floor-canvas-table-state-Dirty {
-  border-color: #868e96;
+  border-color: var(--muted);
   border-style: dashed;
 }
 

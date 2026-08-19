@@ -1,8 +1,9 @@
 /**
- * Shared component styles (WEB-02, beta UI refresh). Plain CSS, same
- * convention pos/admin's own App.css already use — no CSS-in-JS, no
- * modules. Class names are prefixed "brasa-" so they can't collide with
- * either app's existing App.css while both are restyled incrementally.
+ * Shared component styles (WEB-02, beta UI refresh; bold & vibrant redesign
+ * on top of it). Plain CSS, same convention pos/admin's own App.css already
+ * use — no CSS-in-JS, no modules. Class names are prefixed "brasa-" so they
+ * can't collide with either app's existing App.css while both are restyled
+ * incrementally.
  */
 
 /* ── Button ─────────────────────────────────────────────────────────── */
@@ -11,7 +12,7 @@
   appearance: none;
   border: none;
   font: inherit;
-  font-weight: 600;
+  font-weight: 700;
   font-size: var(--text-body);
   cursor: pointer;
   display: inline-flex;
@@ -20,11 +21,13 @@
   gap: var(--space-2);
   padding: 0 var(--space-5);
   min-height: var(--touch-target);
-  border-radius: var(--radius-md);
-  transition: background var(--duration-fast) var(--ease), box-shadow var(--duration-fast) var(--ease), color var(--duration-fast) var(--ease), transform var(--duration-fast) var(--ease);
+  /* Pill, not a rounded rectangle — the single biggest signature of the
+     bold redesign, since it touches every button in both apps for free. */
+  border-radius: var(--radius-full);
+  transition: background var(--duration-fast) var(--ease), box-shadow var(--duration-base) var(--ease), color var(--duration-fast) var(--ease), transform var(--duration-base) var(--ease-bounce);
 }
 .brasa-btn:active:not(:disabled) {
-  transform: translateY(1px);
+  transform: translateY(1px) scale(0.98);
 }
 .brasa-btn:focus-visible {
   outline: 2px solid var(--brasa-dark);
@@ -43,7 +46,8 @@
 }
 .brasa-btn-primary:hover:not(:disabled) {
   background: var(--brasa-dark);
-  box-shadow: var(--shadow-2);
+  box-shadow: var(--shadow-glow-brasa);
+  transform: translateY(-1px);
 }
 
 .brasa-btn-secondary {
@@ -54,6 +58,7 @@
 .brasa-btn-secondary:hover:not(:disabled) {
   border-color: var(--brasa);
   color: var(--brasa-dark);
+  transform: translateY(-1px);
 }
 
 .brasa-btn-ghost {
@@ -82,6 +87,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-1);
   padding: var(--space-5);
+  transition: box-shadow var(--duration-base) var(--ease), transform var(--duration-base) var(--ease);
 }
 
 /* ── Badge ──────────────────────────────────────────────────────────── */
@@ -91,8 +97,8 @@
   align-items: center;
   gap: var(--space-1);
   font-size: var(--text-caption);
-  font-weight: 600;
-  padding: 0.3rem 0.65rem;
+  font-weight: 700;
+  padding: 0.3rem 0.7rem;
   border-radius: var(--radius-full);
   white-space: nowrap;
 }
@@ -195,8 +201,10 @@ select.brasa-field-control {
   gap: var(--space-3);
 }
 .brasa-modal-title {
+  font-family: var(--font-display);
   font-size: var(--text-heading-sm);
-  font-weight: 700;
+  font-weight: 800;
+  letter-spacing: -0.01em;
   margin: 0;
 }
 .brasa-modal-actions {

@@ -1,6 +1,6 @@
 export const en = {
   app: {
-    tagline: 'POS — I0 walking skeleton',
+    tagline: 'Point of sale',
   },
   floor: {
     title: 'Choose a table',

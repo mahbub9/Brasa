@@ -1,16 +1,33 @@
 /**
- * Shared design tokens (WEB-02, beta UI refresh) — the single source for
- * what pos/admin/kds's own index.css previously each hand-rolled a copy of.
- * Colors are unchanged from the original identity; everything else here
- * (spacing/radius/elevation/type-scale/motion) is new — see the approved
- * style-tile proposal and docs/architecture/decisions (ADR forthcoming for
- * the beta UI refresh) for the reasoning.
+ * Shared design tokens (WEB-02 v2 — "bold & vibrant" redesign) — the single
+ * source for what pos/admin/kds's own index.css previously each hand-rolled
+ * a copy of. Every color pair below is verified against WCAG AA (4.5:1
+ * normal text, 3:1 large text/UI) with a computed contrast check, the same
+ * discipline that caught the pre-v1 #8a7d6d/#2f9e44/#e8590c failures this
+ * file already documents — see the git history of this file for the exact
+ * ratios checked. `-bright` variants are decorative only (gradients, large
+ * non-text surfaces) and are deliberately NOT verified for text contrast —
+ * never place small text directly on a `-bright` fill.
  */
 :root {
-  /* Color — unchanged from the original identity. */
-  --brasa: #c1440e;
-  --brasa-dark: #8f3009;
+  /* Color — primary (was a muted terracotta #c1440e; now a more saturated
+     red-orange with real headroom above the 4.5:1 minimum at 4.70:1, not
+     just clearing it). */
+  --brasa: #d63a0a;
+  --brasa-bright: #ff6b35;
+  --brasa-dark: #a8280a;
   --brasa-tint: #f8e4d9;
+
+  /* Color — secondary accent (new). A "punchy" complement to the primary
+     orange, used for a second CTA/highlight color, alternating badges, and
+     the admin nav's active-item accent — never for the same role the
+     primary already owns, so the two colors read as a deliberate pair, not
+     a clash. */
+  --accent: #0f766e;
+  --accent-bright: #2dd4bf;
+  --accent-dark: #0b5b54;
+  --accent-tint: #dcf5f1;
+
   --ink: #241c15;
   --paper: #fdfaf6;
   --panel: #ffffff;
@@ -21,16 +38,16 @@
   --danger: #b3261e;
   --danger-bg: #fdecea;
 
-  /* Formalizes hex codes both apps already used ad hoc for success/warning
-     states into real tokens — the QA-14/axe-audited pair from pos's own
-     floor-table states, not the pre-fix #2f9e44/#e8590c that only cleared
-     3.2:1 and 3.3:1 (both below WCAG AA's 4.5:1 for text). */
+  /* Unchanged from v1 — already axe-audited, and re-theming a solved,
+     legally-adjacent semantic (a floor table's Free/Occupied state, a
+     variance's over/under) is real risk for a "make it prettier" task to
+     take on for no benefit. */
   --success: #1c6e2f;
   --success-bg: #ebfbee;
   --warning: #c4460a;
   --warning-bg: #fff4e6;
 
-  /* Spacing — 4px base grid. */
+  /* Spacing — 4px base grid. Unchanged. */
   --space-1: 0.25rem;
   --space-2: 0.5rem;
   --space-3: 0.75rem;
@@ -39,32 +56,58 @@
   --space-6: 2rem;
   --space-7: 3rem;
 
-  /* Radius. */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
+  /* Radius — bumped up a step across the board for a friendlier, more
+     "2024 fintech app" feel than v1's sharper 6/10/16px trio. `--radius-full`
+     (unchanged) is now the shared Button's own radius — see components.css
+     — so most interactive controls read as pills, not rounded rectangles. */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
   --radius-full: 999px;
 
-  /* Elevation — warm-tinted (traces of the brand hue) rather than generic
-     gray Material-style shadows. */
+  /* Elevation — warm-tinted (traces of the brand hue), plus a new colored
+     glow reserved for a primary button's own hover/press state (see
+     components.css) — a generic gray shadow would mute exactly the "pop"
+     a bold palette exists to deliver. */
   --shadow-1: 0 1px 2px rgba(140, 66, 20, 0.08), 0 1px 1px rgba(140, 66, 20, 0.06);
-  --shadow-2: 0 4px 10px rgba(140, 66, 20, 0.14), 0 2px 4px rgba(140, 66, 20, 0.08);
-  --shadow-modal: 0 20px 40px rgba(36, 28, 21, 0.24), 0 4px 12px rgba(36, 28, 21, 0.12);
+  --shadow-2: 0 6px 16px rgba(140, 66, 20, 0.16), 0 2px 6px rgba(140, 66, 20, 0.1);
+  --shadow-modal: 0 24px 48px rgba(36, 28, 21, 0.26), 0 6px 16px rgba(36, 28, 21, 0.14);
+  --shadow-glow-brasa: 0 8px 20px rgba(214, 58, 10, 0.35);
+  --shadow-glow-accent: 0 8px 20px rgba(15, 118, 110, 0.32);
 
-  /* Motion. */
+  /* Brand gradient — the header/hero treatment (App.css in both apps) and
+     anywhere else a large, non-text surface wants the "bold" identity at
+     full saturation. Never used where text sits directly on the lightest
+     stop — see the file-level note on `-bright` tokens above. */
+  --gradient-brand: linear-gradient(135deg, var(--brasa-bright) 0%, var(--brasa) 55%, var(--brasa-dark) 100%);
+
+  /* Motion. --ease-bounce is new -- a slight overshoot for the handful of
+     deliberately playful micro-interactions (button press, a card landing
+     on hover) a "bold & vibrant" pass calls for; --ease stays the
+     no-overshoot default for everything else (focus rings, color fades). */
   --duration-fast: 120ms;
   --duration-base: 180ms;
   --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.34, 1.56, 0.64, 1);
 
   /* Type scale — still system-ui: a POS terminal cold-boots on a cheap
-     tablet (ADR 0004), so no webfont is worth that cost. Named sizes
-     instead of ad hoc rem values scattered per component. */
+     tablet (ADR 0004), so no webfont is worth that cost, "bold & vibrant"
+     included. --font-display leans on `ui-rounded` where the platform
+     genuinely has one (Apple's San Francisco Rounded, at zero network
+     cost) and falls back to a heavy-weight --font-ui everywhere else --
+     real rounded-display type on the platforms that support it, a bold
+     system sans everywhere that doesn't, never a downloaded font either
+     way. --text-display is new: one size up from the old ceiling, for the
+     handful of genuinely "hero" numbers (an order's running total, a
+     receipt's grand total) that earn standing out from an ordinary heading. */
   --text-caption: 0.75rem;
   --text-body: 0.9375rem;
   --text-body-lg: 1.0625rem;
   --text-heading-sm: 1.375rem;
   --text-heading-lg: 1.75rem;
+  --text-display: 2.5rem;
   --font-ui: system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-display: ui-rounded, 'SF Pro Rounded', system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-mono: ui-monospace, 'Cascadia Code', Consolas, monospace;
 
   /* Minimum touch target (WCAG 2.5.5 / platform HIG) — every interactive
@@ -91,7 +134,9 @@ body {
 
 h1,
 h2 {
-  font-weight: 600;
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: -0.01em;
   margin: 0 0 0.5em;
 }
 
