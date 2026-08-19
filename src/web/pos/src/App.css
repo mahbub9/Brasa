@@ -171,6 +171,14 @@ main {
   margin: 0 auto;
 }
 
+/* The page's own h1 ("Escolher mesa") otherwise just inherits the global
+   h1 rule (display font/800 weight/--ink) -- fine for a form label, too
+   quiet for the first thing staff see on this screen all day. */
+.table-picker > h1 {
+  font-size: var(--text-display);
+  color: var(--brasa-dark);
+}
+
 .takeaway-picker {
   margin-bottom: var(--space-5);
 }
@@ -206,10 +214,28 @@ main {
   margin-bottom: 0.5rem;
 }
 
+/* A section eyebrow, not a plain gray subheading -- the small colored bar
+   + uppercase tracking is the same "deliberate second-color chrome" role
+   the teal accent already plays for admin's active nav item, just reused
+   here for a room name instead of a nav state. */
 .floor-room h2 {
-  font-size: 1.05rem;
-  color: var(--muted);
-  margin-top: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+  margin-top: 1.75rem;
+}
+
+.floor-room h2::before {
+  content: '';
+  width: 22px;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  flex-shrink: 0;
 }
 
 .floor-room:first-of-type h2 {
@@ -310,15 +336,23 @@ main {
   background: #fff;
 }
 
-/* Contrast checked by hand against #fff text (WCAG AA, 4.5:1 minimum):
-   success 6.32:1, danger 6.54:1, warning 4.97:1, muted 6.21:1 -- all four
-   clear it with real margin, so no new colors were needed for the fill. */
+/* Free/Occupied deliberately do NOT reuse tokens.css's --success/--danger
+   here -- those are calibrated for small text on a light tint (badges,
+   error banners) and tokens.css itself flags them as a "solved,
+   legally-adjacent semantic" not worth re-theming broadly. A full-tile flat
+   fill is a different, much larger surface where the same dark, muted
+   values read as flat and heavy rather than bold. These two are a
+   tile-only variant: livelier/fresher at the same AA bar, hand-verified
+   against #fff text -- #1a7a35 (fresh grass green) 5.41:1, #c72923 (clear
+   red, hue kept well clear of --brasa/--warning's orange so Occupied never
+   reads as BillRequested at a glance) 5.57:1. warning 4.97:1, muted 6.21:1
+   below are unchanged tokens, already clearing AA with margin. */
 .floor-table-Free > button {
-  background: var(--success);
+  background: #1a7a35;
 }
 
 .floor-table-Occupied > button {
-  background: var(--danger);
+  background: #c72923;
 }
 
 .floor-table-BillRequested > button {
