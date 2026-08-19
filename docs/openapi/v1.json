@@ -2960,6 +2960,136 @@
         }
       }
     },
+    "/api/v1/cash-sessions": {
+      "post": {
+        "tags": [
+          "CashSessionEndpoints"
+        ],
+        "summary": "Opens a cash session against a terminal, declaring a starting float (PAY-08). Rejected if that terminal already has an open session — only one at a time.",
+        "operationId": "OpenCashSession",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenCashSessionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-sessions/{cashSessionId}/close": {
+      "post": {
+        "tags": [
+          "CashSessionEndpoints"
+        ],
+        "summary": "Closes a cash session. A bare status flip today — variance reporting against a blind count is PAY-10/11, not this.",
+        "operationId": "CloseCashSession",
+        "parameters": [
+          {
+            "name": "cashSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/cash-sessions/{cashSessionId}": {
+      "get": {
+        "tags": [
+          "CashSessionEndpoints"
+        ],
+        "summary": "Fetches one cash session by id.",
+        "operationId": "GetCashSession",
+        "parameters": [
+          {
+            "name": "cashSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/terminals/{terminalId}/cash-sessions/current": {
+      "get": {
+        "tags": [
+          "CashSessionEndpoints"
+        ],
+        "summary": "Returns the currently open cash session for a terminal (200), or 204 with no body if none is open.",
+        "operationId": "GetCurrentCashSession",
+        "parameters": [
+          {
+            "name": "terminalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionDto"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No Content"
+          }
+        }
+      }
+    },
     "/api/v1/client-requirements": {
       "get": {
         "tags": [
@@ -3108,6 +3238,55 @@
               "string"
             ],
             "format": "uuid"
+          }
+        }
+      },
+      "CashSessionDto": {
+        "required": [
+          "id",
+          "terminalId",
+          "terminalLabel",
+          "openedByStaffId",
+          "openedByStaffName",
+          "openingFloat",
+          "openedAtUtc",
+          "closedAtUtc",
+          "isOpen"
+        ],
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "terminalLabel": {
+            "type": "string"
+          },
+          "openedByStaffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "openedByStaffName": {
+            "type": "string"
+          },
+          "openingFloat": {
+            "$ref": "#/components/schemas/MoneyDto"
+          },
+          "openedAtUtc": {
+            "type": "string"
+          },
+          "closedAtUtc": {
+            "type": [
+              "null",
+              "string"
+            ]
+          },
+          "isOpen": {
+            "type": "boolean"
           }
         }
       },
@@ -3860,6 +4039,32 @@
           },
           "currency": {
             "type": "string"
+          }
+        }
+      },
+      "OpenCashSessionRequest": {
+        "required": [
+          "terminalId",
+          "staffId",
+          "openingFloat"
+        ],
+        "type": "object",
+        "properties": {
+          "terminalId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "staffId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "openingFloat": {
+            "pattern": "^-?(?:0|[1-9]\\d*)(?:\\.\\d+)?$",
+            "type": [
+              "number",
+              "string"
+            ],
+            "format": "double"
           }
         }
       },
@@ -5270,6 +5475,9 @@
     },
     {
       "name": "PaymentEndpoints"
+    },
+    {
+      "name": "CashSessionEndpoints"
     },
     {
       "name": "ClientEndpoints"

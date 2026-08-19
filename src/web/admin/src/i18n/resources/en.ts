@@ -15,6 +15,7 @@ export const en = {
     menu: 'Menu',
     floor: 'Floor plan',
     staff: 'Staff',
+    cash: 'Cash sessions',
     flags: 'Feature flags',
   },
   overview: {
@@ -112,6 +113,16 @@ export const en = {
     locked: 'Locked',
     resetPin: 'Reset PIN',
     newPinPlaceholder: 'New 4-6 digit PIN',
+  },
+  cashSession: {
+    noTerminals: 'No terminals registered at this site yet.',
+    open: 'Open',
+    closed: 'Closed',
+    openedBy: 'Opened by {{name}}, float {{float}}',
+    openSession: 'Open session',
+    closeSession: 'Close session',
+    staff: 'Staff member',
+    openingFloatPlaceholder: 'Opening float',
   },
   featureFlags: {
     empty: 'No feature flags configured yet.',

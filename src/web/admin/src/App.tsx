@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api, ApiError } from './api/client';
 import type { AdminMenuCategoryDto, RoomDto } from './api/types';
+import { CashSessionManager } from './components/CashSessionManager';
 import { FeatureFlagManager } from './components/FeatureFlagManager';
 import { FloorManager } from './components/FloorManager';
 import { MenuManager } from './components/MenuManager';
@@ -13,20 +14,21 @@ import './App.css';
 // Every nav entry is live now — "flags" was the last placeholder. Kept as
 // its own list (not inlined into the JSX below) since a future section
 // will likely need the "labelled but not live yet" branch again.
-const NAV_KEYS = ['overview', 'menu', 'floor', 'staff', 'flags'] as const;
+const NAV_KEYS = ['overview', 'menu', 'floor', 'staff', 'cash', 'flags'] as const;
 type Section = (typeof NAV_KEYS)[number];
 
 /**
- * The back-office shell (WEB-09), now with five real editors: WEB-10's menu
+ * The back-office shell (WEB-09), now with six real editors: WEB-10's menu
  * slice, FLR-03's table/room CRUD plus its drag-and-drop canvas, a staff
- * screen (IDN-08/09, WEB-11's own staff half), and feature flags (IDN-16).
- * No site-selector exists anywhere in either client yet, so "staff"
- * assumes the first organization's first site — the same single-site
- * shortcut every other screen here already takes, just made explicit for
- * this one since `GET /sites/{id}/staff` actually needs a site id to call
- * at all. "flags" needs no site id at all — feature flags are tenant-scoped,
- * not site-scoped — it just shares the same top-level categories/rooms
- * loading gate every other section already waits behind.
+ * screen (IDN-08/09, WEB-11's own staff half), cash sessions (PAY-08), and
+ * feature flags (IDN-16). No site-selector exists anywhere in either client
+ * yet, so "staff"/"cash" both assume the first organization's first site —
+ * the same single-site shortcut every other screen here already takes,
+ * just made explicit for these two since `GET /sites/{id}/staff` and
+ * `GET /sites/{id}/terminals` actually need a site id to call at all.
+ * "flags" needs no site id at all — feature flags are tenant-scoped, not
+ * site-scoped — it just shares the same top-level categories/rooms loading
+ * gate every other section already waits behind.
  */
 export default function App() {
   const { t } = useTranslation();
@@ -109,6 +111,7 @@ export default function App() {
             <FloorManager rooms={rooms} siteId={siteId} onReload={loadFloor} onErrorChange={setError} />
           )}
           {section === 'staff' && <StaffManager siteId={siteId} onErrorChange={setError} />}
+          {section === 'cash' && <CashSessionManager siteId={siteId} onErrorChange={setError} />}
           {section === 'flags' && <FeatureFlagManager onErrorChange={setError} />}
         </main>
       </div>

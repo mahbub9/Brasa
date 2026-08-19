@@ -1,12 +1,14 @@
 import type {
   AdminMenuCategoryDto,
   AssignRoomSectionRequest,
+  CashSessionDto,
   CreateRoomRequest,
   CreateStaffRequest,
   CreateTableRequest,
   FeatureFlagDto,
   ImportMenuItemsResponse,
   MenuItemDto,
+  OpenCashSessionRequest,
   OrganizationDto,
   ProblemDetails,
   RoomDto,
@@ -15,6 +17,7 @@ import type {
   StaffDto,
   StaffPinRequest,
   TableDto,
+  TerminalDto,
   UpdateMenuCategoryVisibilityRequest,
   UpdateMenuItemAvailabilityRequest,
   UpdateMenuItemCouvertRequest,
@@ -181,4 +184,13 @@ export const api = {
   getFeatureFlags: () => request<FeatureFlagDto[]>('/feature-flags'),
 
   setFeatureFlag: (key: string, body: SetFeatureFlagRequest) => put<FeatureFlagDto>(`/feature-flags/${key}`, body),
+
+  getTerminals: (siteId: string) => request<TerminalDto[]>(`/sites/${siteId}/terminals`),
+
+  getCurrentCashSession: (terminalId: string) =>
+    request<CashSessionDto | null>(`/terminals/${terminalId}/cash-sessions/current`),
+
+  openCashSession: (body: OpenCashSessionRequest) => post<CashSessionDto>('/cash-sessions', body),
+
+  closeCashSession: (cashSessionId: string) => post<CashSessionDto>(`/cash-sessions/${cashSessionId}/close`),
 };

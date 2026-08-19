@@ -95,6 +95,19 @@ export interface TerminalDto {
   label: string;
 }
 
+/** A cash session — *abertura de caixa* (PAY-08) — a starting float declaration against a terminal. */
+export interface CashSessionDto {
+  id: string;
+  terminalId: string;
+  terminalLabel: string;
+  openedByStaffId: string;
+  openedByStaffName: string;
+  openingFloat: MoneyDto;
+  openedAtUtc: string;
+  closedAtUtc: string | null;
+  isOpen: boolean;
+}
+
 /** A staff member who can sign in with a PIN (IDN-08/09). Never carries the PIN or its hash. */
 export interface StaffDto {
   id: string;

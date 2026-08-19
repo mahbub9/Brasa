@@ -1,6 +1,7 @@
 import type { APIRequestContext } from '@playwright/test';
 import type {
   AdminMenuCategoryDto,
+  CashSessionDto,
   CloseOrderResponse,
   ComboDto,
   EffectivePriceDto,
@@ -1095,6 +1096,78 @@ export async function getTerminals(request: APIRequestContext, siteId: string): 
   const response = await getTerminalsResponse(request, siteId);
   if (!response.ok()) {
     throw new Error(`GET /sites/${siteId}/terminals failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+// Cash sessions (PAY-08) — abertura de caixa. Only one open session per
+// terminal at a time, so every test that opens one creates its own fresh
+// terminal (createTerminal) rather than sharing the seeded demo "Caixa 1",
+// the same "isolated resource, not the shared seeded one" instinct
+// staff-login.spec.ts already uses for its own locked-out staff member.
+
+export function openCashSessionResponse(
+  request: APIRequestContext,
+  terminalId: string,
+  staffId: string,
+  openingFloat: number,
+) {
+  return request.post(`${apiBaseUrl}/cash-sessions`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { terminalId, staffId, openingFloat },
+  });
+}
+
+export async function openCashSession(
+  request: APIRequestContext,
+  terminalId: string,
+  staffId: string,
+  openingFloat: number,
+): Promise<CashSessionDto> {
+  const response = await openCashSessionResponse(request, terminalId, staffId, openingFloat);
+  if (!response.ok()) {
+    throw new Error(`POST /cash-sessions failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export function closeCashSessionResponse(request: APIRequestContext, cashSessionId: string) {
+  return request.post(`${apiBaseUrl}/cash-sessions/${cashSessionId}/close`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+  });
+}
+
+export async function closeCashSession(request: APIRequestContext, cashSessionId: string): Promise<CashSessionDto> {
+  const response = await closeCashSessionResponse(request, cashSessionId);
+  if (!response.ok()) {
+    throw new Error(`POST /cash-sessions/${cashSessionId}/close failed: ${response.status()} ${await response.text()}`);
+  }
+  return response.json();
+}
+
+export function getCashSessionResponse(request: APIRequestContext, cashSessionId: string) {
+  return request.get(`${apiBaseUrl}/cash-sessions/${cashSessionId}`);
+}
+
+export function getCurrentCashSessionResponse(request: APIRequestContext, terminalId: string) {
+  return request.get(`${apiBaseUrl}/terminals/${terminalId}/cash-sessions/current`);
+}
+
+export async function getCurrentCashSession(
+  request: APIRequestContext,
+  terminalId: string,
+): Promise<CashSessionDto | null> {
+  const response = await getCurrentCashSessionResponse(request, terminalId);
+  if (!response.ok()) {
+    throw new Error(
+      `GET /terminals/${terminalId}/cash-sessions/current failed: ${response.status()} ${await response.text()}`,
+    );
+  }
+  // 204 (no open session) carries no body -- calling .json() on it would
+  // throw "Unexpected end of JSON input" the same way a real client's fetch
+  // would, a trap this helper exists specifically to avoid for every caller.
+  if (response.status() === 204) {
+    return null;
   }
   return response.json();
 }

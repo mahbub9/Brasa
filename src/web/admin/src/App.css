@@ -572,6 +572,59 @@
   max-width: 34rem;
 }
 
+.cash-session-manager {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  max-width: 34rem;
+}
+
+.cash-session-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.cash-session-row {
+  padding: 0.75rem 1.25rem;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cash-session-row-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cash-session-terminal-label {
+  font-weight: 600;
+}
+
+.cash-session-details {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.cash-session-open-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cash-session-open-form input[type='number'] {
+  width: 10rem;
+}
+
 .feature-flag-list {
   list-style: none;
   margin: 0;

@@ -517,6 +517,7 @@ v1.MapComboEndpoints();
 v1.MapTaxRuleEndpoints();
 v1.MapOrderEndpoints();
 v1.MapPaymentEndpoints();
+v1.MapCashSessionEndpoints();
 v1.MapClientEndpoints();
 
 // Not under /api/v1 -- a hub is a connection, not a versioned resource.

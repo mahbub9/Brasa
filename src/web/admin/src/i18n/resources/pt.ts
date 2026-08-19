@@ -10,6 +10,7 @@ export const pt = {
     menu: 'Menu',
     floor: 'Plano de sala',
     staff: 'Equipa',
+    cash: 'Sessões de caixa',
     flags: 'Funcionalidades',
   },
   overview: {
@@ -109,6 +110,16 @@ export const pt = {
     locked: 'Bloqueado',
     resetPin: 'Repor PIN',
     newPinPlaceholder: 'Novo PIN de 4 a 6 dígitos',
+  },
+  cashSession: {
+    noTerminals: 'Ainda não há terminais registados neste local.',
+    open: 'Aberta',
+    closed: 'Fechada',
+    openedBy: 'Aberta por {{name}}, fundo de {{float}}',
+    openSession: 'Abrir caixa',
+    closeSession: 'Fechar caixa',
+    staff: 'Funcionário',
+    openingFloatPlaceholder: 'Fundo de maneio',
   },
   featureFlags: {
     empty: 'Ainda não há funcionalidades configuradas.',

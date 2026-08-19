@@ -164,6 +164,7 @@ export default defineConfig({
           { text: 'Order concurrency', link: '/features/order-concurrency' },
           { text: 'Privileged system-context role', link: '/features/system-context-role' },
           { text: 'Cash payments', link: '/features/cash-payments' },
+          { text: 'Cash sessions', link: '/features/cash-sessions' },
         ],
       },
     ],

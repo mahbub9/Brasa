@@ -50,4 +50,5 @@ missing page as a documentation gap, not evidence the feature isn't built.
 | [Feature flags](feature-flags.md) | IDN-16 | Identity |
 | [Order concurrency — a lost-update guard for the order aggregate](order-concurrency.md) | ORD-21 | Ordering |
 | [Privileged system-context role for background jobs](system-context-role.md) | DAT-07 | Shared kernel |
-| [Cash payments — a tender recorded against an order, with change](cash-payments.md) | PAY-01, PAY-02 | Payments |
+| [Cash and card payments — a tender recorded against an order, with change](cash-payments.md) | PAY-01, PAY-02, PAY-03, PAY-04, PAY-05, PAY-06 | Payments |
+| [Cash sessions — abertura de caixa with a starting float](cash-sessions.md) | PAY-08 | Payments + Identity |

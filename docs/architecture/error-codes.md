@@ -67,6 +67,7 @@ as any change to an error code, the same rule as everything else in
 | `identity.organization_not_found` | NotFound | 404 | The organization id in the request doesn't exist. |
 | `identity.pin_incorrect` | Validation | 400 | `POST /staff/{id}/verify-pin`'s (IDN-08/09) `pin` doesn't match — advances `FailedPinAttempts`, possibly triggering `identity.staff_locked` on a future attempt. |
 | `identity.site_not_found` | NotFound | 404 | The site id in the request doesn't exist. |
+| `identity.terminal_not_found` | NotFound | 404 | (PAY-08) `POST /cash-sessions`'s `terminalId`, or `GET /terminals/{id}/cash-sessions/current`'s own path `terminalId`, doesn't exist. |
 | `identity.staff_locked` | Conflict | 409 | `POST /staff/{id}/verify-pin`'s (IDN-09) staff member is locked out after 5 consecutive incorrect PINs — retry after the lockout window (15 minutes) elapses, or `PUT /staff/{id}/pin` to reset it immediately. |
 | `identity.staff_not_found` | NotFound | 404 | The staff id in the request doesn't exist (IDN-08/09), (IDN-11) the `managerStaffId` on a void/discount request names an unknown staff member, (FLR-06) a room-section `staffId` names an unknown staff member, or (PAY-06) a payment's `staffId` (tip attribution) names an unknown staff member. |
 | `identity.staff_not_manager` | Forbidden | 403 | (IDN-11) A void or discount request's `managerStaffId` names a real staff member whose `role` isn't `Manager` — checked before the PIN is even verified, so it never advances that person's own `FailedPinAttempts`. |
@@ -113,6 +114,10 @@ as any change to an error code, the same rule as everything else in
 | `payment.invalid_tip_amount` | Validation | 400 | `POST /orders/{id}/payments`'s (PAY-06) `tipAmount` is negative. Zero (no tip) and omitting the field entirely are both valid. |
 | `payment.card_tender_exceeds_balance` | Validation | 400 | `POST /orders/{id}/payments`'s (PAY-03) `method` is `"Card"` and `amountTendered` exceeds the order's remaining balance — a standalone TPA has no change to give back, unlike cash. A card tender smaller than the balance is still a valid partial payment (PAY-05); only overpaying by card is rejected. Also returned by `POST /orders/{id}/payments/split` (PAY-04) for the same reason on any tender within the batch. |
 | `payment.empty_split` | Validation | 400 | `POST /orders/{id}/payments/split`'s (PAY-04) `tenders` array is missing or empty — a split needs at least one tender to apply. |
+| `cash_session.invalid_opening_float` | Validation | 400 | `POST /cash-sessions`'s (PAY-08) `openingFloat` is negative. Zero is valid. |
+| `cash_session.already_open` | Conflict | 409 | `POST /cash-sessions`'s (PAY-08) `terminalId` already has an open cash session — only one at a time per terminal. Close the existing one first. |
+| `cash_session.already_closed` | Validation | 400 | `POST /cash-sessions/{id}/close`'s (PAY-08) session was already closed. |
+| `cash_session.not_found` | NotFound | 404 | `POST /cash-sessions/{id}/close` or `GET /cash-sessions/{id}`'s (PAY-08) session id doesn't exist. |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |
 | `request.rate_limited` | RateLimited | 429 | The calling `(tenant, X-Brasa-Client client id)` pair exceeded `RateLimiting`'s configured requests-per-window (API-12). The response carries a `Retry-After` header. |
 

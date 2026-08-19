@@ -182,6 +182,37 @@ export interface StaffPinRequest {
   pin: string;
 }
 
+/** A physical POS device registered at a site (IDN-01). No pairing/auth yet. */
+export interface TerminalDto {
+  id: string;
+  siteId: string;
+  label: string;
+}
+
+/**
+ * A cash session — *abertura de caixa* (PAY-08) — a staff member's starting
+ * float declaration against a terminal. Purely a record; nothing else in
+ * this codebase requires one to exist yet. `terminalLabel`/
+ * `openedByStaffName` are resolved server-side, never editable here.
+ */
+export interface CashSessionDto {
+  id: string;
+  terminalId: string;
+  terminalLabel: string;
+  openedByStaffId: string;
+  openedByStaffName: string;
+  openingFloat: MoneyDto;
+  openedAtUtc: string;
+  closedAtUtc: string | null;
+  isOpen: boolean;
+}
+
+export interface OpenCashSessionRequest {
+  terminalId: string;
+  staffId: string;
+  openingFloat: number;
+}
+
 /** A per-tenant, optionally per-platform on/off switch (IDN-16). `platform` is never empty — `"all"` means every platform. */
 export interface FeatureFlagDto {
   id: string;

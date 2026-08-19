@@ -22,6 +22,9 @@ public sealed class PaymentsDbContext(
     /// <summary>Payments.</summary>
     public DbSet<Payment> Payments => Set<Payment>();
 
+    /// <summary>Cash sessions — abertura de caixa (PAY-08).</summary>
+    public DbSet<CashSession> CashSessions => Set<CashSession>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

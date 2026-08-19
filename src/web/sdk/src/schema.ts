@@ -1220,6 +1220,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cash-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Opens a cash session against a terminal, declaring a starting float (PAY-08). Rejected if that terminal already has an open session — only one at a time. */
+        post: operations["OpenCashSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-sessions/{cashSessionId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Closes a cash session. A bare status flip today — variance reporting against a blind count is PAY-10/11, not this. */
+        post: operations["CloseCashSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/cash-sessions/{cashSessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Fetches one cash session by id. */
+        get: operations["GetCashSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/terminals/{terminalId}/cash-sessions/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Returns the currently open cash session for a terminal (200), or 204 with no body if none is open. */
+        get: operations["GetCurrentCashSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/client-requirements": {
         parameters: {
             query?: never;
@@ -1274,6 +1342,20 @@ export interface components {
         AssignRoomSectionRequest: {
             /** Format: uuid */
             staffId: null | string;
+        };
+        CashSessionDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            terminalId: string;
+            terminalLabel: string;
+            /** Format: uuid */
+            openedByStaffId: string;
+            openedByStaffName: string;
+            openingFloat: components["schemas"]["MoneyDto"];
+            openedAtUtc: string;
+            closedAtUtc: null | string;
+            isOpen: boolean;
         };
         ClientRequirementsDto: {
             minimumSupported: string;
@@ -1463,6 +1545,14 @@ export interface components {
             /** Format: double */
             amount: number | string;
             currency: string;
+        };
+        OpenCashSessionRequest: {
+            /** Format: uuid */
+            terminalId: string;
+            /** Format: uuid */
+            staffId: string;
+            /** Format: double */
+            openingFloat: number | string;
         };
         OpenOrderRequest: {
             /** Format: uuid */
@@ -3716,6 +3806,103 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["PaymentDto"][];
                 };
+            };
+        };
+    };
+    OpenCashSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OpenCashSessionRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionDto"];
+                };
+            };
+        };
+    };
+    CloseCashSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cashSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionDto"];
+                };
+            };
+        };
+    };
+    GetCashSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cashSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionDto"];
+                };
+            };
+        };
+    };
+    GetCurrentCashSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                terminalId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionDto"];
+                };
+            };
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
