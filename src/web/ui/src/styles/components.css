@@ -6,6 +6,100 @@
  * incrementally.
  */
 
+/* ── App header ─────────────────────────────────────────────────────── */
+
+/* pos and admin each hand-rolled an identical copy of this (`.app-header`/
+   `.admin-header` etc.) — the exact kind of drift this shared file exists
+   to prevent, and the proximate cause of the header looking like a bare
+   flat-color bar with no depth: a plain gradient strip, no shadow lifting
+   it off the page below, no mark, just a wordmark and a tagline. One
+   definition now, used by both apps' `<header>`. */
+.brasa-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-6);
+  background: var(--gradient-brand);
+  color: #fff;
+  box-shadow: var(--shadow-2);
+  position: relative;
+  z-index: 1;
+}
+
+.brasa-header-lockup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Three embers of ascending height -- "brasa" is Portuguese for hot
+   coals/embers, so this reads as a literal mark, not an arbitrary shape.
+   Plain rounded rects, deliberately not a hand-drawn flame path: simple
+   enough to render correctly at 26px on a cheap tablet with zero risk of
+   the curve math going wrong. */
+.brasa-mark {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+}
+
+.brasa-mark rect {
+  fill: #fff;
+}
+
+.brasa-brand {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+
+.brasa-tagline {
+  padding-left: var(--space-3);
+  margin-left: var(--space-1);
+  border-left: 1px solid rgba(255, 255, 255, 0.45);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  /* Full-opacity white, not dimmed via CSS opacity -- an opacity-dimmed
+     version of this exact text already failed WCAG AA once (QA-14, 4.12:1)
+     before either app's header carried its own copy of this rule. */
+  color: #fff;
+}
+
+/* Shared by both apps' language toggle (@brasa/ui/components/LanguageToggle)
+   -- previously two identical hand-rolled copies, one per App.css.
+   Deliberately no `margin-left: auto` here -- admin's header has this as
+   its only right-side control and pushes it right itself; pos's header
+   has StaffLogin *before* it doing that same push, and if both this and
+   StaffLogin had their own auto margin the free space would split between
+   the two, pulling them apart instead of grouping them at the right edge. */
+.language-toggle {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.language-toggle button {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+  transition: background var(--duration-fast) var(--ease), transform var(--duration-base) var(--ease-bounce);
+}
+
+.language-toggle button:hover {
+  background: rgba(255, 255, 255, 0.22);
+  transform: translateY(-1px);
+}
+
+.language-toggle button.active {
+  background: #fff;
+  color: var(--brasa-dark);
+}
+
 /* ── Button ─────────────────────────────────────────────────────────── */
 
 .brasa-btn {

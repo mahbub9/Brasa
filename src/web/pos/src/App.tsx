@@ -1,3 +1,4 @@
+import { BrandMark } from '@brasa/ui/components/BrandMark';
 import { LanguageToggle } from '@brasa/ui/components/LanguageToggle';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -301,9 +302,12 @@ export default function App() {
 
   return (
     <div className="app">
-      <header className="app-header">
-        <span className="app-brand">Brasa</span>
-        <span className="app-tagline">{t('app.tagline')}</span>
+      <header className="brasa-header">
+        <div className="brasa-header-lockup">
+          <BrandMark />
+          <span className="brasa-brand">Brasa</span>
+          <span className="brasa-tagline">{t('app.tagline')}</span>
+        </div>
         <StaffLogin
           siteId={siteId}
           staff={staffList}

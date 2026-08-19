@@ -4,28 +4,9 @@
   min-height: 100svh;
 }
 
-.app-header {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  background: var(--gradient-brand);
-  color: #fff;
-}
-
-.app-brand {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-}
-
-.app-tagline {
-  font-size: 0.85rem;
-  /* Not dimmed via opacity — that blends toward the red background and
-     drops below WCAG AA's 4.5:1 (QA-14 caught this at 4.12:1). */
-  color: #fff;
-}
+/* Header (.brasa-header/.brasa-brand/.brasa-tagline) and the language
+   toggle are now shared with admin — see components.css. This file used to
+   carry its own identical copy of both. */
 
 .staff-login-open,
 .staff-login-badge {
@@ -99,29 +80,6 @@
   color: var(--danger);
   font-size: 0.85rem;
   margin: 0;
-}
-
-.language-toggle {
-  display: flex;
-  gap: 0.25rem;
-}
-
-.language-toggle button {
-  padding: 0.35rem 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.12);
-  /* Full-opacity white, not dimmed — same QA-14 contrast fix as .app-tagline. */
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  transition: background var(--duration-fast) var(--ease);
-}
-
-.language-toggle button.active {
-  background: #fff;
-  color: var(--brasa-dark);
-  opacity: 1;
 }
 
 main {

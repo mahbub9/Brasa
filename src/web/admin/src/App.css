@@ -4,50 +4,14 @@
   min-height: 100svh;
 }
 
-.admin-header {
-  display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
-  padding: 1rem 1.5rem;
-  background: var(--gradient-brand);
-  color: #fff;
-}
-
-.admin-brand {
-  font-family: var(--font-display);
-  font-size: 1.4rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-}
-
-.admin-tagline {
-  font-size: 0.85rem;
-  /* Full-opacity, not dimmed via CSS opacity — see pos's App.css for why
-     (QA-14 caught opacity-dimmed text failing WCAG AA contrast). */
-  color: #fff;
-}
-
-.language-toggle {
+/* Header (.brasa-header/.brasa-brand/.brasa-tagline) and the language
+   toggle are now shared with pos — see components.css. This file used to
+   carry its own identical copy of both. Pushing the toggle to the header's
+   right edge stays app-local: admin has no StaffLogin doing that job, so
+   it's the toggle's own job here (pos's equivalent lives on
+   .staff-login-open/.staff-login-badge in its own App.css instead). */
+.brasa-header > .language-toggle {
   margin-left: auto;
-  display: flex;
-  gap: 0.25rem;
-}
-
-.language-toggle button {
-  padding: 0.35rem 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.6);
-  border-radius: var(--radius-full);
-  background: rgba(255, 255, 255, 0.12);
-  /* Full-opacity white, not dimmed — same QA-14 contrast fix as .admin-tagline. */
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: 700;
-  transition: background var(--duration-fast) var(--ease);
-}
-
-.language-toggle button.active {
-  background: #fff;
-  color: var(--brasa-dark);
 }
 
 .admin-layout {
