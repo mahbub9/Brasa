@@ -17,6 +17,23 @@ node --version; npm --version
 docker --version
 ```
 
+## Quick start (one click)
+
+```powershell
+infra/scripts/start-local.ps1
+```
+
+Starts the API (in-memory database, ADR 0012 -- no Docker/PostgreSQL
+needed) and both `pos`/`admin` web clients, waits for each to come up,
+opens a browser tab for each, then stops everything together when you
+press Enter. Safe to re-run -- it leaves anything already running alone
+rather than starting a second copy. `-Stop` tears down a run you left
+going with `-NoWait`; see the script's own `Get-Help -Full` for every flag.
+Data is lost the moment it stops (see ADR 0012) -- this is a throwaway
+sandbox for a quick look, not a place to build up real data. For that, or
+for anything you want to survive a restart, use the manual steps below
+against a real PostgreSQL instance instead.
+
 ## Build and test
 
 ```powershell

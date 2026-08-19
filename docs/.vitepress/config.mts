@@ -121,6 +121,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: 'Getting started', link: '/development/getting-started' },
+          { text: 'Deployment', link: '/development/deployment' },
           { text: 'Testing', link: '/development/testing' },
           { text: 'End-to-end testing', link: '/development/e2e-testing' },
           { text: 'Backup and restore', link: '/development/backup-and-restore' },
