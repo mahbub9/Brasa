@@ -6,7 +6,7 @@ import { Button } from '@brasa/ui/components/Button';
 import { SelectField } from '@brasa/ui/components/SelectField';
 import { TextField } from '@brasa/ui/components/TextField';
 import { api, ApiError } from '../api/client';
-import type { CashSessionDto, StaffDto, TerminalDto } from '../api/types';
+import type { CashMovementDirection, CashMovementDto, CashSessionDto, StaffDto, TerminalDto } from '../api/types';
 
 interface CashSessionManagerProps {
   /** The site to manage cash sessions at. `null` until App.tsx resolves one — see its own remarks on why there's no site-selector yet. */
@@ -155,14 +155,17 @@ function TerminalRow({ terminal, session, staff, onReload, onErrorChange }: Term
       </div>
 
       {session?.isOpen ? (
-        <Button
-          variant="secondary"
-          data-testid={`cash-session-close-${terminal.label}`}
-          disabled={busy}
-          onClick={closeSession}
-        >
-          {t('cashSession.closeSession')}
-        </Button>
+        <>
+          <Button
+            variant="secondary"
+            data-testid={`cash-session-close-${terminal.label}`}
+            disabled={busy}
+            onClick={closeSession}
+          >
+            {t('cashSession.closeSession')}
+          </Button>
+          <CashMovementsPanel session={session} staff={staff} onErrorChange={onErrorChange} />
+        </>
       ) : opening ? (
         <div className="cash-session-open-form">
           <SelectField
@@ -211,5 +214,135 @@ function TerminalRow({ terminal, session, staff, onReload, onErrorChange }: Term
         </Button>
       )}
     </li>
+  );
+}
+
+interface CashMovementsPanelProps {
+  session: CashSessionDto;
+  staff: StaffDto[];
+  onErrorChange: (message: string | null) => void;
+}
+
+/**
+ * PAY-09's own admin surface — pay-ins/pay-outs against an open session,
+ * always with a reason. Nested inside `TerminalRow`, visible only while
+ * that terminal's session is open — a movement makes no sense against a
+ * closed one, and the API rejects it (`cash_movement.session_closed`).
+ */
+function CashMovementsPanel({ session, staff, onErrorChange }: CashMovementsPanelProps) {
+  const { t } = useTranslation();
+  const [movements, setMovements] = useState<CashMovementDto[] | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [direction, setDirection] = useState<CashMovementDirection>('PayOut');
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [staffId, setStaffId] = useState(staff[0]?.id ?? '');
+
+  const load = useCallback(() => {
+    api
+      .getCashMovements(session.id)
+      .then(setMovements)
+      .catch((err: unknown) => onErrorChange(err instanceof ApiError ? err.message : t('error.generic')));
+  }, [session.id, onErrorChange, t]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  function submit() {
+    setBusy(true);
+    onErrorChange(null);
+    api
+      .recordCashMovement(session.id, { direction, amount: Number(amount), reason, staffId })
+      .then(() => {
+        setAmount('');
+        setReason('');
+        setAdding(false);
+        load();
+      })
+      .catch((err: unknown) => onErrorChange(err instanceof ApiError ? err.message : t('error.generic')))
+      .finally(() => setBusy(false));
+  }
+
+  return (
+    <div className="cash-movements-panel" data-testid={`cash-movements-${session.terminalLabel}`}>
+      {movements && movements.length > 0 && (
+        <ul className="cash-movements-list">
+          {movements.map((movement) => (
+            <li key={movement.id}>
+              {t(`cashSession.direction.${movement.direction}`)}: {formatMoney(movement.amount)} —{' '}
+              {movement.reason} ({movement.recordedByStaffName})
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {!adding ? (
+        <Button
+          variant="ghost"
+          data-testid={`cash-movement-add-${session.terminalLabel}`}
+          disabled={staff.length === 0}
+          onClick={() => setAdding(true)}
+        >
+          {t('cashSession.addMovement')}
+        </Button>
+      ) : (
+        <div className="cash-movement-form">
+          <SelectField
+            aria-label={t('cashSession.direction.label')}
+            value={direction}
+            data-testid={`cash-movement-direction-${session.terminalLabel}`}
+            disabled={busy}
+            onChange={(e) => setDirection(e.target.value as CashMovementDirection)}
+          >
+            <option value="PayOut">{t('cashSession.direction.PayOut')}</option>
+            <option value="PayIn">{t('cashSession.direction.PayIn')}</option>
+          </SelectField>
+          <TextField
+            type="number"
+            step="0.01"
+            min="0"
+            inputMode="decimal"
+            placeholder={t('cashSession.amountPlaceholder')}
+            value={amount}
+            data-testid={`cash-movement-amount-${session.terminalLabel}`}
+            disabled={busy}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+          <TextField
+            type="text"
+            placeholder={t('cashSession.reasonPlaceholder')}
+            value={reason}
+            data-testid={`cash-movement-reason-${session.terminalLabel}`}
+            disabled={busy}
+            onChange={(e) => setReason(e.target.value)}
+          />
+          <SelectField
+            aria-label={t('cashSession.staff')}
+            value={staffId}
+            data-testid={`cash-movement-staff-${session.terminalLabel}`}
+            disabled={busy}
+            onChange={(e) => setStaffId(e.target.value)}
+          >
+            {staff.map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.name}
+              </option>
+            ))}
+          </SelectField>
+          <Button
+            data-testid={`cash-movement-save-${session.terminalLabel}`}
+            disabled={busy || amount === '' || reason.trim() === ''}
+            onClick={submit}
+          >
+            {t('common.save')}
+          </Button>
+          <Button variant="ghost" disabled={busy} onClick={() => setAdding(false)}>
+            {t('common.cancel')}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 }

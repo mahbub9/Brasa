@@ -25,6 +25,9 @@ public sealed class PaymentsDbContext(
     /// <summary>Cash sessions — abertura de caixa (PAY-08).</summary>
     public DbSet<CashSession> CashSessions => Set<CashSession>();
 
+    /// <summary>Pay-ins/pay-outs against an open cash session (PAY-09).</summary>
+    public DbSet<CashMovement> CashMovements => Set<CashMovement>();
+
     /// <inheritdoc/>
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

@@ -120,6 +120,14 @@ export const pt = {
     closeSession: 'Fechar caixa',
     staff: 'Funcionário',
     openingFloatPlaceholder: 'Fundo de maneio',
+    addMovement: 'Adicionar entrada / saída',
+    amountPlaceholder: 'Valor',
+    reasonPlaceholder: 'Motivo',
+    direction: {
+      label: 'Direção',
+      PayIn: 'Entrada',
+      PayOut: 'Saída',
+    },
   },
   featureFlags: {
     empty: 'Ainda não há funcionalidades configuradas.',

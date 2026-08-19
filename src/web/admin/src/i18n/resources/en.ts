@@ -123,6 +123,14 @@ export const en = {
     closeSession: 'Close session',
     staff: 'Staff member',
     openingFloatPlaceholder: 'Opening float',
+    addMovement: 'Add pay-in / pay-out',
+    amountPlaceholder: 'Amount',
+    reasonPlaceholder: 'Reason',
+    direction: {
+      label: 'Direction',
+      PayIn: 'Pay in',
+      PayOut: 'Pay out',
+    },
   },
   featureFlags: {
     empty: 'No feature flags configured yet.',

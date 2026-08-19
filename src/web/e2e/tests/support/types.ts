@@ -108,6 +108,18 @@ export interface CashSessionDto {
   isOpen: boolean;
 }
 
+/** A pay-in or pay-out against an open cash session (PAY-09) — always requires a reason. */
+export interface CashMovementDto {
+  id: string;
+  cashSessionId: string;
+  direction: 'PayIn' | 'PayOut';
+  amount: MoneyDto;
+  reason: string;
+  recordedByStaffId: string;
+  recordedByStaffName: string;
+  recordedAtUtc: string;
+}
+
 /** A staff member who can sign in with a PIN (IDN-08/09). Never carries the PIN or its hash. */
 export interface StaffDto {
   id: string;

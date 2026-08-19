@@ -1288,6 +1288,24 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cash-sessions/{cashSessionId}/movements": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Lists every pay-in/pay-out recorded against a cash session, oldest first. */
+        get: operations["GetCashMovements"];
+        put?: never;
+        /** Records a pay-in or pay-out against an open cash session, with a required reason (PAY-09). Rejected if the session is already closed. */
+        post: operations["RecordCashMovement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/client-requirements": {
         parameters: {
             query?: never;
@@ -1342,6 +1360,19 @@ export interface components {
         AssignRoomSectionRequest: {
             /** Format: uuid */
             staffId: null | string;
+        };
+        CashMovementDto: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            cashSessionId: string;
+            direction: string;
+            amount: components["schemas"]["MoneyDto"];
+            reason: string;
+            /** Format: uuid */
+            recordedByStaffId: string;
+            recordedByStaffName: string;
+            recordedAtUtc: string;
         };
         CashSessionDto: {
             /** Format: uuid */
@@ -1676,6 +1707,14 @@ export interface components {
             /** Format: uuid */
             menuItemId: string;
             price: components["schemas"]["MoneyDto"];
+        };
+        RecordCashMovementRequest: {
+            direction: string;
+            /** Format: double */
+            amount: number | string;
+            reason: string;
+            /** Format: uuid */
+            staffId: string;
         };
         RecordPaymentRequest: {
             method: string;
@@ -3903,6 +3942,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    GetCashMovements: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cashSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashMovementDto"][];
+                };
+            };
+        };
+    };
+    RecordCashMovement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cashSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordCashMovementRequest"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashMovementDto"];
+                };
             };
         };
     };

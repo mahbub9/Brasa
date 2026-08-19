@@ -9,17 +9,19 @@ using Microsoft.EntityFrameworkCore;
 namespace Brasa.Api.Endpoints;
 
 /// <summary>
-/// Cash session endpoints (PAY-08) — <i>abertura de caixa</i>, a staff
+/// Cash session endpoints (PAY-08/09) — <i>abertura de caixa</i>, a staff
 /// member declaring a starting float against a terminal at the start of a
-/// shift. Composes <see cref="PaymentsDbContext"/> (this module's own
-/// table) and <see cref="IdentityDbContext"/> (to confirm a real terminal
-/// and staff member, and resolve their names) at the API layer, the same
-/// shape <see cref="PaymentEndpoints"/> already uses for tip attribution.
+/// shift, plus pay-in/pay-out movements against an open session. Composes
+/// <see cref="PaymentsDbContext"/> (this module's own tables) and
+/// <see cref="IdentityDbContext"/> (to confirm a real terminal and staff
+/// member, and resolve their names) at the API layer, the same shape
+/// <see cref="PaymentEndpoints"/> already uses for tip attribution.
 /// </summary>
 /// <remarks>
 /// <b>Purely a record of the declaration — does not gate anything else
 /// yet.</b> See <see cref="CashSession"/>'s own class remarks. Counting the
-/// float back out and reconciling variance is PAY-10/11's own later task.
+/// float back out and reconciling variance against these movements is
+/// PAY-10/11's own later task.
 /// </remarks>
 public static class CashSessionEndpoints
 {
@@ -48,6 +50,16 @@ public static class CashSessionEndpoints
             .WithSummary("Returns the currently open cash session for a terminal (200), or 204 with no body if none is open.")
             .Produces<CashSessionDto>()
             .Produces(StatusCodes.Status204NoContent);
+
+        group.MapPost("/cash-sessions/{cashSessionId:guid}/movements", RecordCashMovementAsync)
+            .WithName("RecordCashMovement")
+            .WithSummary("Records a pay-in or pay-out against an open cash session, with a required reason (PAY-09). Rejected if the session is already closed.")
+            .Produces<CashMovementDto>(StatusCodes.Status201Created);
+
+        group.MapGet("/cash-sessions/{cashSessionId:guid}/movements", GetCashMovementsAsync)
+            .WithName("GetCashMovements")
+            .WithSummary("Lists every pay-in/pay-out recorded against a cash session, oldest first.")
+            .Produces<List<CashMovementDto>>();
 
         return group;
     }
@@ -205,5 +217,106 @@ public static class CashSessionEndpoints
         // only guards a hypothetical rather than adding a new error path
         // for something that can't happen today.
         return (terminal?.Label ?? "?", staff?.Name ?? "?");
+    }
+
+    private static async Task<IResult> RecordCashMovementAsync(
+        Guid cashSessionId,
+        RecordCashMovementRequest request,
+        PaymentsDbContext paymentsDb,
+        IdentityDbContext identityDb,
+        IClock clock,
+        CancellationToken cancellationToken)
+    {
+        var session = await paymentsDb.CashSessions
+            .FirstOrDefaultAsync(c => c.Id == cashSessionId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (session is null)
+        {
+            return Error.NotFound("cash_session.not_found", $"Cash session {cashSessionId} was not found.").ToProblem();
+        }
+
+        if (!session.IsOpen)
+        {
+            return Error.Validation(
+                "cash_movement.session_closed",
+                $"Cash session {cashSessionId} is closed — a movement can only be recorded against an open session.").ToProblem();
+        }
+
+        if (!Enum.TryParse<CashMovementDirection>(request.Direction, ignoreCase: true, out var direction))
+        {
+            return Error.Validation(
+                "cash_movement.invalid_direction", $"\"{request.Direction}\" is not \"PayIn\" or \"PayOut\".").ToProblem();
+        }
+
+        if (request.Amount <= 0)
+        {
+            return Error.Validation(
+                "cash_movement.invalid_amount", "Amount must be greater than zero.").ToProblem();
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Reason))
+        {
+            return Error.Validation("cash_movement.reason_required", "A reason is required.").ToProblem();
+        }
+
+        var staff = await identityDb.Staff
+            .FirstOrDefaultAsync(s => s.Id == request.StaffId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (staff is null)
+        {
+            return Error.NotFound("identity.staff_not_found", $"Staff member {request.StaffId} was not found.").ToProblem();
+        }
+
+        var movement = new CashMovement(
+            cashSessionId, direction, Money.FromDecimal(request.Amount), request.Reason, request.StaffId, clock.UtcNow);
+        paymentsDb.CashMovements.Add(movement);
+        await paymentsDb.SaveChangesAsync(cancellationToken).ConfigureAwait(false);
+
+        return Results.Created(
+            $"/api/v1/cash-sessions/{cashSessionId}/movements/{movement.Id}", movement.ToDto(staff.Name));
+    }
+
+    private static async Task<IResult> GetCashMovementsAsync(
+        Guid cashSessionId,
+        PaymentsDbContext paymentsDb,
+        IdentityDbContext identityDb,
+        CancellationToken cancellationToken)
+    {
+        var sessionExists = await paymentsDb.CashSessions
+            .AnyAsync(c => c.Id == cashSessionId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (!sessionExists)
+        {
+            return Error.NotFound("cash_session.not_found", $"Cash session {cashSessionId} was not found.").ToProblem();
+        }
+
+        var movements = await paymentsDb.CashMovements
+            .Where(m => m.CashSessionId == cashSessionId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        // One batched Identity query for every distinct RecordedByStaffId,
+        // not N+1 — the same shape PaymentEndpoints.GetPaymentsAsync
+        // already uses for AttributedStaffName.
+        var distinctStaffIds = movements.Select(m => m.RecordedByStaffId).Distinct().ToList();
+        var staffNamesById = distinctStaffIds.Count == 0
+            ? new Dictionary<Guid, string>()
+            : await identityDb.Staff
+                .Where(s => distinctStaffIds.Contains(s.Id))
+                .ToDictionaryAsync(s => s.Id, s => s.Name, cancellationToken)
+                .ConfigureAwait(false);
+
+        // Sorted client-side: SQLite's EF Core provider (ADR 0012) cannot
+        // translate an ORDER BY over DateTimeOffset — the same limitation
+        // TaxRuleEndpoints.GetTaxRulesAsync already works around.
+        var ordered = movements
+            .OrderBy(m => m.RecordedAtUtc)
+            .Select(m => m.ToDto(staffNamesById.GetValueOrDefault(m.RecordedByStaffId, "?")))
+            .ToList();
+
+        return Results.Ok(ordered);
     }
 }

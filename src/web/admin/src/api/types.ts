@@ -213,6 +213,27 @@ export interface OpenCashSessionRequest {
   openingFloat: number;
 }
 
+export type CashMovementDirection = 'PayIn' | 'PayOut';
+
+/** A pay-in or pay-out against an open cash session (PAY-09) — always requires a reason. */
+export interface CashMovementDto {
+  id: string;
+  cashSessionId: string;
+  direction: CashMovementDirection;
+  amount: MoneyDto;
+  reason: string;
+  recordedByStaffId: string;
+  recordedByStaffName: string;
+  recordedAtUtc: string;
+}
+
+export interface RecordCashMovementRequest {
+  direction: CashMovementDirection;
+  amount: number;
+  reason: string;
+  staffId: string;
+}
+
 /** A per-tenant, optionally per-platform on/off switch (IDN-16). `platform` is never empty — `"all"` means every platform. */
 export interface FeatureFlagDto {
   id: string;

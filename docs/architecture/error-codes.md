@@ -117,7 +117,11 @@ as any change to an error code, the same rule as everything else in
 | `cash_session.invalid_opening_float` | Validation | 400 | `POST /cash-sessions`'s (PAY-08) `openingFloat` is negative. Zero is valid. |
 | `cash_session.already_open` | Conflict | 409 | `POST /cash-sessions`'s (PAY-08) `terminalId` already has an open cash session — only one at a time per terminal. Close the existing one first. |
 | `cash_session.already_closed` | Validation | 400 | `POST /cash-sessions/{id}/close`'s (PAY-08) session was already closed. |
-| `cash_session.not_found` | NotFound | 404 | `POST /cash-sessions/{id}/close` or `GET /cash-sessions/{id}`'s (PAY-08) session id doesn't exist. |
+| `cash_session.not_found` | NotFound | 404 | `POST /cash-sessions/{id}/close`, `GET /cash-sessions/{id}`, `POST /cash-sessions/{id}/movements` or `GET /cash-sessions/{id}/movements`'s (PAY-08/09) session id doesn't exist. |
+| `cash_movement.session_closed` | Validation | 400 | `POST /cash-sessions/{id}/movements`'s (PAY-09) session is already closed — a movement can only be recorded against an open session. |
+| `cash_movement.invalid_direction` | Validation | 400 | `POST /cash-sessions/{id}/movements`'s (PAY-09) `direction` isn't `"PayIn"` or `"PayOut"`. |
+| `cash_movement.invalid_amount` | Validation | 400 | `POST /cash-sessions/{id}/movements`'s (PAY-09) `amount` is zero or negative. |
+| `cash_movement.reason_required` | Validation | 400 | `POST /cash-sessions/{id}/movements`'s (PAY-09) `reason` is missing, empty or whitespace. |
 | `request.idempotency_key_required` | Validation | 400 | A mutating `/api` request had no `Idempotency-Key` header. |
 | `request.rate_limited` | RateLimited | 429 | The calling `(tenant, X-Brasa-Client client id)` pair exceeded `RateLimiting`'s configured requests-per-window (API-12). The response carries a `Retry-After` header. |
 

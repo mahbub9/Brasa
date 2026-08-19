@@ -1,6 +1,7 @@
 import type { APIRequestContext } from '@playwright/test';
 import type {
   AdminMenuCategoryDto,
+  CashMovementDto,
   CashSessionDto,
   CloseOrderResponse,
   ComboDto,
@@ -1168,6 +1169,54 @@ export async function getCurrentCashSession(
   // would, a trap this helper exists specifically to avoid for every caller.
   if (response.status() === 204) {
     return null;
+  }
+  return response.json();
+}
+
+// Cash movements (PAY-09) — pay-in/pay-out against an open cash session.
+
+/** `direction` is a plain string, not the narrower DTO union — callers testing an invalid value need to pass one. */
+export function recordCashMovementResponse(
+  request: APIRequestContext,
+  cashSessionId: string,
+  direction: string,
+  amount: number,
+  reason: string,
+  staffId: string,
+) {
+  return request.post(`${apiBaseUrl}/cash-sessions/${cashSessionId}/movements`, {
+    headers: { 'Idempotency-Key': idempotencyKey() },
+    data: { direction, amount, reason, staffId },
+  });
+}
+
+export async function recordCashMovement(
+  request: APIRequestContext,
+  cashSessionId: string,
+  direction: 'PayIn' | 'PayOut',
+  amount: number,
+  reason: string,
+  staffId: string,
+): Promise<CashMovementDto> {
+  const response = await recordCashMovementResponse(request, cashSessionId, direction, amount, reason, staffId);
+  if (!response.ok()) {
+    throw new Error(
+      `POST /cash-sessions/${cashSessionId}/movements failed: ${response.status()} ${await response.text()}`,
+    );
+  }
+  return response.json();
+}
+
+export function getCashMovementsResponse(request: APIRequestContext, cashSessionId: string) {
+  return request.get(`${apiBaseUrl}/cash-sessions/${cashSessionId}/movements`);
+}
+
+export async function getCashMovements(request: APIRequestContext, cashSessionId: string): Promise<CashMovementDto[]> {
+  const response = await getCashMovementsResponse(request, cashSessionId);
+  if (!response.ok()) {
+    throw new Error(
+      `GET /cash-sessions/${cashSessionId}/movements failed: ${response.status()} ${await response.text()}`,
+    );
   }
   return response.json();
 }

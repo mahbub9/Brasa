@@ -625,6 +625,41 @@
   width: 10rem;
 }
 
+.cash-movements-panel {
+  margin-top: 0.25rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.cash-movements-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.cash-movement-form {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.cash-movement-form input[type='number'] {
+  width: 8rem;
+}
+
+.cash-movement-form input[type='text'] {
+  width: 12rem;
+}
+
 .feature-flag-list {
   list-style: none;
   margin: 0;

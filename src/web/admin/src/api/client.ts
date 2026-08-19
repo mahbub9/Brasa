@@ -1,6 +1,7 @@
 import type {
   AdminMenuCategoryDto,
   AssignRoomSectionRequest,
+  CashMovementDto,
   CashSessionDto,
   CreateRoomRequest,
   CreateStaffRequest,
@@ -11,6 +12,7 @@ import type {
   OpenCashSessionRequest,
   OrganizationDto,
   ProblemDetails,
+  RecordCashMovementRequest,
   RoomDto,
   SetFeatureFlagRequest,
   SiteDto,
@@ -193,4 +195,9 @@ export const api = {
   openCashSession: (body: OpenCashSessionRequest) => post<CashSessionDto>('/cash-sessions', body),
 
   closeCashSession: (cashSessionId: string) => post<CashSessionDto>(`/cash-sessions/${cashSessionId}/close`),
+
+  getCashMovements: (cashSessionId: string) => request<CashMovementDto[]>(`/cash-sessions/${cashSessionId}/movements`),
+
+  recordCashMovement: (cashSessionId: string, body: RecordCashMovementRequest) =>
+    post<CashMovementDto>(`/cash-sessions/${cashSessionId}/movements`, body),
 };
