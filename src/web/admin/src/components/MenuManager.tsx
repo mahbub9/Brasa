@@ -99,7 +99,7 @@ export function MenuManager({ categories, onReload, onErrorChange }: MenuManager
       {categories.map((category) => (
         <section key={category.id} className="menu-manager-category" data-testid={`category-${category.name}`}>
           <div className="menu-manager-category-heading">
-            <h2>{category.name}</h2>
+            <h2 className="brasa-eyebrow">{category.name}</h2>
             <Badge tone={category.isVisible ? 'success' : 'danger'}>
               {category.isVisible ? t('menu.visible') : t('menu.hidden')}
             </Badge>

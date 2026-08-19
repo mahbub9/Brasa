@@ -32,7 +32,7 @@ export function TransferTablePicker({ rooms, busy, onSelect, onCancel }: Transfe
       ) : (
         roomsWithFreeTables.map((room) => (
           <section key={room.id} className="transfer-picker-room">
-            <h3>{room.name}</h3>
+            <h3 className="brasa-eyebrow">{room.name}</h3>
             <div className="transfer-picker-tables">
               {room.tables.map((table) => (
                 <Button

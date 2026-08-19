@@ -99,7 +99,7 @@ export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTake
           )}
           {group.rooms.map((room) => (
             <section key={room.id} className="floor-room">
-              <h2>{room.name}</h2>
+              <h2 className="brasa-eyebrow">{room.name}</h2>
               <div className="floor-tables">
                 {room.tables.map((table) => (
                   <div key={table.id} className={`floor-table floor-table-${table.state}`}>

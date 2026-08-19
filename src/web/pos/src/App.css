@@ -214,28 +214,10 @@ main {
   margin-bottom: 0.5rem;
 }
 
-/* A section eyebrow, not a plain gray subheading -- the small colored bar
-   + uppercase tracking is the same "deliberate second-color chrome" role
-   the teal accent already plays for admin's active nav item, just reused
-   here for a room name instead of a nav state. */
+/* Visual style now comes from the shared .brasa-eyebrow class (components.css)
+   -- only this screen's own spacing lives here. */
 .floor-room h2 {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  font-size: var(--text-caption);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--accent-dark);
   margin-top: 1.75rem;
-}
-
-.floor-room h2::before {
-  content: '';
-  width: 22px;
-  height: 3px;
-  border-radius: var(--radius-full);
-  background: var(--accent);
-  flex-shrink: 0;
 }
 
 .floor-room:first-of-type h2 {
@@ -421,8 +403,6 @@ main {
 }
 
 .menu-category h2 {
-  font-size: 1.05rem;
-  color: var(--muted);
   margin-top: 1.5rem;
 }
 
@@ -441,8 +421,6 @@ main {
 }
 
 .couvert-bar h2 {
-  font-size: 1.05rem;
-  color: var(--brasa);
   margin: 0 0 var(--space-3);
 }
 
@@ -989,8 +967,6 @@ main {
 
 .transfer-picker-room h3 {
   margin: 0 0 var(--space-2);
-  font-size: var(--text-body);
-  color: var(--muted);
 }
 
 .transfer-picker-tables {

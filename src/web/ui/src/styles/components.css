@@ -34,7 +34,12 @@
   outline-offset: 2px;
 }
 .brasa-btn:disabled {
-  opacity: 0.45;
+  /* 0.45 made an already-pale variant (e.g. danger's tinted background)
+     read as barely-there -- a disabled "Eliminar sala" with a title
+     explaining why was effectively invisible until you happened to hover
+     it. Still clearly "disabled" at 0.6, but the label stays legible
+     without relying on a hover-only tooltip to know it's even there. */
+  opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
 }
@@ -88,6 +93,35 @@
   box-shadow: var(--shadow-1);
   padding: var(--space-5);
   transition: box-shadow var(--duration-base) var(--ease), transform var(--duration-base) var(--ease);
+}
+
+/* ── Eyebrow (section label) ───────────────────────────────────────── */
+
+/* A small colored bar + uppercase caption -- the shared "this text
+   introduces a group of things below it" label, used for a room name
+   above its tables, a menu category above its items, etc. Both pos and
+   admin used to hand-roll a plain small-gray-text version of this
+   per screen (and one spot used a bare, completely unstyled <h3>) --
+   pulled into one class so every occurrence of the pattern looks the
+   same and a future one gets it for free by adding the class. */
+.brasa-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-caption);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-dark);
+}
+
+.brasa-eyebrow::before {
+  content: '';
+  width: 22px;
+  height: 3px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  flex-shrink: 0;
 }
 
 /* ── Badge ──────────────────────────────────────────────────────────── */

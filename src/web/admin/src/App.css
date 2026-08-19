@@ -112,29 +112,71 @@
 .overview-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: 1rem;
+  gap: var(--space-4);
   max-width: 48rem;
 }
 
+/* Four identical white boxes read as a placeholder, not a dashboard --
+   each metric gets its own accent (cycling the palette we already have,
+   nothing new) as a top bar plus a tinted value color, so the row reads
+   at a glance instead of requiring you to read every label first. */
 .overview-card {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 1.25rem;
+  gap: var(--space-1);
+  padding: var(--space-5);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
+  border-top: 4px solid var(--brasa);
+  box-shadow: var(--shadow-1);
+  transition: box-shadow var(--duration-base) var(--ease), transform var(--duration-base) var(--ease-bounce);
+}
+
+.overview-card:hover {
+  box-shadow: var(--shadow-2);
+  transform: translateY(-2px);
+}
+
+.overview-card:nth-of-type(1) {
+  border-top-color: var(--brasa);
+}
+.overview-card:nth-of-type(1) .overview-card-value {
+  color: var(--brasa-dark);
+}
+
+.overview-card:nth-of-type(2) {
+  border-top-color: var(--accent);
+}
+.overview-card:nth-of-type(2) .overview-card-value {
+  color: var(--accent-dark);
+}
+
+.overview-card:nth-of-type(3) {
+  border-top-color: var(--success);
+}
+.overview-card:nth-of-type(3) .overview-card-value {
+  color: var(--success);
+}
+
+.overview-card:nth-of-type(4) {
+  border-top-color: var(--warning);
+}
+.overview-card:nth-of-type(4) .overview-card-value {
+  color: var(--warning);
 }
 
 .overview-card-value {
-  font-size: 2rem;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: var(--text-display);
+  font-weight: 800;
   font-variant-numeric: tabular-nums;
 }
 
 .overview-card-label {
   color: var(--muted);
-  font-size: 0.85rem;
+  font-size: var(--text-caption);
+  font-weight: 600;
 }
 
 .menu-manager {
@@ -148,7 +190,8 @@
   padding: 1rem 1.25rem;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
 }
 
 .menu-import h2 {
@@ -179,7 +222,8 @@
   padding: 1rem 1.25rem;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
 }
 
 .menu-manager-category-heading {
@@ -190,7 +234,6 @@
 }
 
 .menu-manager-category-heading h2 {
-  font-size: 1.05rem;
   margin: 0;
 }
 
@@ -211,8 +254,14 @@
 }
 
 .menu-manager-item {
-  padding: 0.5rem 0;
+  padding: var(--space-3) var(--space-3);
   border-top: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.menu-manager-item:hover {
+  background: var(--paper);
 }
 
 .menu-manager-item:first-child {
@@ -227,17 +276,40 @@
   gap: 0.6rem;
 }
 
+/* Pushes the delete action to the row's own right edge instead of it
+   sitting wherever it lands after the last wrapped price/schedule chip --
+   a direct-child combinator so it only catches this row's own delete
+   button, not the "yes" button nested one level deeper in its own
+   confirm span once clicked. */
+.menu-manager-item-row > .brasa-btn-danger {
+  margin-left: auto;
+}
+
 .menu-manager-item-name {
-  font-weight: 600;
+  font-weight: 700;
+  font-size: var(--text-body-lg);
   min-width: 9rem;
 }
 
+/* A tinted pill, the same "chip" language as a Badge, not a dashed
+   wireframe placeholder box -- price is the single most-referenced number
+   on this screen and deserves to look like a finished control. */
 .menu-manager-item-price {
-  border: 1px dashed var(--border);
-  border-radius: 6px;
-  padding: 0.2rem 0.5rem;
-  background: none;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 0.3rem 0.7rem;
+  background: var(--accent-tint);
+  color: var(--accent-dark);
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+}
+
+/* Overrides Button's own ghost-variant hover (background/color) so the
+   pill keeps reading as a price chip on hover instead of flashing to
+   ghost's generic muted-hover treatment. */
+.menu-manager-item-price:hover:not(:disabled) {
+  background: var(--accent-tint);
+  color: var(--accent-dark);
 }
 
 .menu-manager-item-price-edit {
@@ -318,7 +390,8 @@
   padding: 1rem 1.25rem;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
 }
 
 .floor-canvas-scroll {
@@ -348,11 +421,17 @@
   justify-content: center;
   background: var(--panel);
   border: 2px solid var(--border);
+  box-shadow: var(--shadow-1);
   font-size: 0.75rem;
   font-weight: 700;
   cursor: grab;
   touch-action: none;
   user-select: none;
+  transition: box-shadow var(--duration-fast) var(--ease);
+}
+
+.floor-canvas-table:hover {
+  box-shadow: var(--shadow-2);
 }
 
 .floor-canvas-table-round {
@@ -405,8 +484,14 @@
 }
 
 .floor-manager-table {
-  padding: 0.5rem 0;
+  padding: var(--space-3);
   border-top: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  transition: background var(--duration-fast) var(--ease);
+}
+
+.floor-manager-table:hover {
+  background: var(--paper);
 }
 
 .floor-manager-table:first-child {
@@ -422,12 +507,21 @@
   gap: 0.5rem;
 }
 
+/* Same direct-child right-alignment as menu manager's own delete button --
+   see the comment on .menu-manager-item-row > .brasa-btn-danger. */
+.floor-manager-table-row > .brasa-btn-danger {
+  margin-left: auto;
+}
+
+/* Same tinted-pill treatment as menu manager's own price chip, not a
+   dashed wireframe box. */
 .floor-manager-table-label {
-  border: 1px dashed var(--border);
-  border-radius: 6px;
-  padding: 0.2rem 0.5rem;
-  background: none;
-  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-full);
+  padding: 0.3rem 0.7rem;
+  background: var(--brasa-tint);
+  color: var(--brasa-dark);
+  font-weight: 700;
 }
 
 .floor-manager-table-detail {
@@ -476,7 +570,6 @@
 
 .floor-manager-room-name h2 {
   margin: 0;
-  font-size: 1.05rem;
 }
 
 .floor-manager-room-heading button:not(.floor-manager-room-name) {
@@ -533,7 +626,8 @@
   padding: 0.75rem 1.25rem;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -604,7 +698,8 @@
   padding: 0.75rem 1.25rem;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
@@ -718,7 +813,8 @@
   padding: 0.75rem 1.25rem;
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-1);
   display: flex;
   flex-direction: column;
   gap: 0.5rem;

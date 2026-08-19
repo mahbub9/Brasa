@@ -22,7 +22,7 @@ export function MenuGrid({ categories, onSelectItem, disabled, isTakeaway }: Men
     <div className="menu-grid">
       {categories.map((category) => (
         <section key={category.id} className="menu-category">
-          <h2>{category.name}</h2>
+          <h2 className="brasa-eyebrow">{category.name}</h2>
           <div className="menu-items">
             {category.items.map((item) => (
               <button

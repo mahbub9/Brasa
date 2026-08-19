@@ -27,7 +27,7 @@ export function CouvertBar({ items, coverCount, disabled, onAdd }: CouvertBarPro
 
   return (
     <section className="couvert-bar" data-testid="couvert-bar">
-      <h2>{t('couvert.title')}</h2>
+      <h2 className="brasa-eyebrow">{t('couvert.title')}</h2>
       <div className="menu-items">
         {items.map((item) => (
           <button

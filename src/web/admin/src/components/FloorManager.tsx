@@ -365,7 +365,7 @@ function FloorManagerRoomHeading({ room, showFloors, onReload, onErrorChange }: 
           setEditing(true);
         }}
       >
-        <h2>{room.name}</h2>
+        <h2 className="brasa-eyebrow">{room.name}</h2>
         {showFloors && (
           <Badge tone="neutral" data-testid={`room-floor-badge-${room.name}`}>
             {t('floor.floorBadge', { level: room.floorLevel })}
