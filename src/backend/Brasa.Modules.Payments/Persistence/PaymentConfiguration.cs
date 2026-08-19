@@ -30,7 +30,9 @@ internal sealed class PaymentConfiguration : IEntityTypeConfiguration<Payment>
         builder.MapMoney(p => p.TipAmount, "tip_amount");
 
         builder.Property(p => p.AttributedStaffId).IsRequired(false);
+        builder.Property(p => p.CashSessionId).IsRequired(false);
 
         builder.HasIndex(p => p.OrderId);
+        builder.HasIndex(p => p.CashSessionId);
     }
 }

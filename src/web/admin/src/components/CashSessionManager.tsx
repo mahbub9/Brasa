@@ -6,7 +6,14 @@ import { Button } from '@brasa/ui/components/Button';
 import { SelectField } from '@brasa/ui/components/SelectField';
 import { TextField } from '@brasa/ui/components/TextField';
 import { api, ApiError } from '../api/client';
-import type { CashMovementDirection, CashMovementDto, CashSessionDto, StaffDto, TerminalDto } from '../api/types';
+import type {
+  CashMovementDirection,
+  CashMovementDto,
+  CashSessionDto,
+  CashSessionVarianceDto,
+  StaffDto,
+  TerminalDto,
+} from '../api/types';
 
 interface CashSessionManagerProps {
   /** The site to manage cash sessions at. `null` until App.tsx resolves one — see its own remarks on why there's no site-selector yet. */
@@ -214,6 +221,8 @@ function TerminalRow({ terminal, session, staff, onReload, onErrorChange }: Term
           {t('cashSession.openSession')}
         </Button>
       )}
+      {/* Shown regardless of open/closed -- variance is meaningful the moment a count exists (PAY-10), whether or not the session has been closed since. */}
+      {session?.countedAmount && <CashVarianceReport session={session} onErrorChange={onErrorChange} />}
     </li>
   );
 }
@@ -442,6 +451,58 @@ function CashMovementsPanel({ session, staff, onErrorChange }: CashMovementsPane
             {t('common.cancel')}
           </Button>
         </div>
+      )}
+    </div>
+  );
+}
+
+interface CashVarianceReportProps {
+  session: CashSessionDto;
+  onErrorChange: (message: string | null) => void;
+}
+
+/**
+ * PAY-11's own admin surface — a computed *fecho de caixa* variance report,
+ * fetched fresh on every render rather than derived client-side from the
+ * session/movements already in memory here, since the expected amount also
+ * depends on cash `Payment`s this screen never loads. Shown whenever a
+ * blind count exists (PAY-10), regardless of whether the session has since
+ * been closed — variance doesn't stop being meaningful just because the
+ * till was closed out.
+ */
+function CashVarianceReport({ session, onErrorChange }: CashVarianceReportProps) {
+  const { t } = useTranslation();
+  const [variance, setVariance] = useState<CashSessionVarianceDto | null>(null);
+
+  const load = useCallback(() => {
+    api
+      .getCashSessionVariance(session.id)
+      .then(setVariance)
+      .catch((err: unknown) => onErrorChange(err instanceof ApiError ? err.message : t('error.generic')));
+  }, [session.id, onErrorChange, t]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  if (!variance) {
+    return null;
+  }
+
+  const varianceAmount = variance.variance;
+  const isBalanced = varianceAmount !== null && varianceAmount.amount === 0;
+
+  return (
+    <div className="cash-variance-report" data-testid={`cash-variance-${session.terminalLabel}`}>
+      <p className="cash-variance-line">
+        {t('cashSession.expectedAmount', { amount: formatMoney(variance.expectedAmount) })}
+      </p>
+      {varianceAmount !== null && (
+        <p className="cash-variance-line">
+          <Badge tone={isBalanced ? 'neutral' : 'danger'} data-testid={`cash-variance-badge-${session.terminalLabel}`}>
+            {t('cashSession.variance', { amount: formatMoney(varianceAmount) })}
+          </Badge>
+        </p>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import type {
   AdminMenuCategoryDto,
   CashMovementDto,
   CashSessionDto,
+  CashSessionVarianceDto,
   CloseOrderResponse,
   ComboDto,
   EffectivePriceDto,
@@ -929,10 +930,11 @@ export async function closeOrderAndClearTable(
   await clearTable(request, tableId);
 }
 
-/** Optional tip fields (PAY-06) — omitted entirely means no tip, the same as the server-side default. */
+/** Optional tip fields (PAY-06) and cash session attribution (PAY-11) — omitted entirely means the server-side default (no tip, no session). */
 export interface RecordPaymentOptions {
   tipAmount?: number;
   staffId?: string | null;
+  cashSessionId?: string | null;
 }
 
 /** Raw response so callers can assert on status/body for the failure cases too (PAY-01/02/06). */
@@ -982,11 +984,16 @@ export interface SplitTender {
   amountTendered: number;
 }
 
-/** Raw response so callers can assert on status/body for the failure cases too (PAY-04). */
-export function recordSplitPaymentResponse(request: APIRequestContext, orderId: string, tenders: SplitTender[]) {
+/** Raw response so callers can assert on status/body for the failure cases too (PAY-04). `cashSessionId` (PAY-11) applies to the whole batch, not per-tender — a split happens at one terminal at one moment. */
+export function recordSplitPaymentResponse(
+  request: APIRequestContext,
+  orderId: string,
+  tenders: SplitTender[],
+  cashSessionId?: string | null,
+) {
   return request.post(`${apiBaseUrl}/orders/${orderId}/payments/split`, {
     headers: { 'Idempotency-Key': idempotencyKey() },
-    data: { tenders },
+    data: { tenders, cashSessionId },
   });
 }
 
@@ -994,8 +1001,9 @@ export async function recordSplitPayment(
   request: APIRequestContext,
   orderId: string,
   tenders: SplitTender[],
+  cashSessionId?: string | null,
 ): Promise<PaymentDto[]> {
-  const response = await recordSplitPaymentResponse(request, orderId, tenders);
+  const response = await recordSplitPaymentResponse(request, orderId, tenders, cashSessionId);
   if (!response.ok()) {
     throw new Error(`POST /orders/${orderId}/payments/split failed: ${response.status()} ${await response.text()}`);
   }
@@ -1246,6 +1254,26 @@ export async function recordCashCount(
   if (!response.ok()) {
     throw new Error(
       `POST /cash-sessions/${cashSessionId}/count failed: ${response.status()} ${await response.text()}`,
+    );
+  }
+  return response.json();
+}
+
+// Fecho de caixa variance (PAY-11) — computed on every request from opening
+// float + movements + cash payments tagged with this session, never stored.
+
+export function getCashSessionVarianceResponse(request: APIRequestContext, cashSessionId: string) {
+  return request.get(`${apiBaseUrl}/cash-sessions/${cashSessionId}/variance`);
+}
+
+export async function getCashSessionVariance(
+  request: APIRequestContext,
+  cashSessionId: string,
+): Promise<CashSessionVarianceDto> {
+  const response = await getCashSessionVarianceResponse(request, cashSessionId);
+  if (!response.ok()) {
+    throw new Error(
+      `GET /cash-sessions/${cashSessionId}/variance failed: ${response.status()} ${await response.text()}`,
     );
   }
   return response.json();

@@ -9,20 +9,22 @@ using Microsoft.EntityFrameworkCore;
 namespace Brasa.Api.Endpoints;
 
 /// <summary>
-/// Cash session endpoints (PAY-08/09/10) — <i>abertura de caixa</i>, a staff
-/// member declaring a starting float against a terminal at the start of a
-/// shift, pay-in/pay-out movements against an open session, and a blind
-/// count of what's in the drawer. Composes <see cref="PaymentsDbContext"/>
-/// (this module's own tables) and <see cref="IdentityDbContext"/> (to
-/// confirm a real terminal and staff member, and resolve their names) at
-/// the API layer, the same shape <see cref="PaymentEndpoints"/> already
+/// Cash session endpoints (PAY-08/09/10/11) — <i>abertura de caixa</i>, a
+/// staff member declaring a starting float against a terminal at the start
+/// of a shift, pay-in/pay-out movements against an open session, a blind
+/// count of what's in the drawer, and a computed variance report comparing
+/// the two. Composes <see cref="PaymentsDbContext"/> (this module's own
+/// tables — <c>Payment</c> lives here too, so the variance report needs no
+/// new cross-module composition at all) and <see cref="IdentityDbContext"/>
+/// (to confirm a real terminal and staff member, and resolve their names)
+/// at the API layer, the same shape <see cref="PaymentEndpoints"/> already
 /// uses for tip attribution.
 /// </summary>
 /// <remarks>
 /// <b>Purely a record — does not gate anything else yet.</b> See
-/// <see cref="CashSession"/>'s own class remarks. Comparing the blind count
-/// against an expected total (opening float + movements + cash payments
-/// taken) is PAY-11's own later task, not this.
+/// <see cref="CashSession"/>'s own class remarks. The variance report
+/// (PAY-11) only ever reads; nothing about closing a session requires one
+/// to have been computed, or requires the numbers to reconcile.
 /// </remarks>
 public static class CashSessionEndpoints
 {
@@ -66,6 +68,11 @@ public static class CashSessionEndpoints
             .WithName("GetCashMovements")
             .WithSummary("Lists every pay-in/pay-out recorded against a cash session, oldest first.")
             .Produces<List<CashMovementDto>>();
+
+        group.MapGet("/cash-sessions/{cashSessionId:guid}/variance", GetCashSessionVarianceAsync)
+            .WithName("GetCashSessionVariance")
+            .WithSummary("Computes a fecho de caixa variance report (PAY-11) — expected drawer contents (float + pay-ins - pay-outs + cash payments taken) versus the blind count, if one has been recorded. Never stored; recomputed on every call.")
+            .Produces<CashSessionVarianceDto>();
 
         return group;
     }
@@ -371,5 +378,56 @@ public static class CashSessionEndpoints
             .ToList();
 
         return Results.Ok(ordered);
+    }
+
+    private static async Task<IResult> GetCashSessionVarianceAsync(
+        Guid cashSessionId,
+        PaymentsDbContext paymentsDb,
+        CancellationToken cancellationToken)
+    {
+        var session = await paymentsDb.CashSessions
+            .FirstOrDefaultAsync(c => c.Id == cashSessionId, cancellationToken)
+            .ConfigureAwait(false);
+
+        if (session is null)
+        {
+            return Error.NotFound("cash_session.not_found", $"Cash session {cashSessionId} was not found.").ToProblem();
+        }
+
+        var movements = await paymentsDb.CashMovements
+            .Where(m => m.CashSessionId == cashSessionId)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var totalPayIns = Money.Sum(movements.Where(m => m.Direction == CashMovementDirection.PayIn).Select(m => m.Amount));
+        var totalPayOuts = Money.Sum(movements.Where(m => m.Direction == CashMovementDirection.PayOut).Select(m => m.Amount));
+
+        // Only Cash payments count toward the physical drawer — a card
+        // tender never touches it. Payment lives in this same
+        // PaymentsDbContext (this module's own table), so no new
+        // cross-module composition is needed to read it.
+        var cashPayments = await paymentsDb.Payments
+            .Where(p => p.CashSessionId == cashSessionId && p.Method == PaymentMethod.Cash)
+            .ToListAsync(cancellationToken)
+            .ConfigureAwait(false);
+        var totalCashPaymentsTaken = Money.Sum(cashPayments.Select(p => p.AmountApplied));
+
+        var expectedAmount = session.OpeningFloat + totalPayIns - totalPayOuts + totalCashPaymentsTaken;
+
+        // Variance is only meaningful once a blind count exists (PAY-10) —
+        // comparing against nothing would be a false "zero variance", not
+        // an honest "not counted yet".
+        Money? variance = session.CountedAmount is { } counted ? counted - expectedAmount : null;
+
+        var dto = new CashSessionVarianceDto(
+            session.Id,
+            session.OpeningFloat.ToDto(),
+            totalPayIns.ToDto(),
+            totalPayOuts.ToDto(),
+            totalCashPaymentsTaken.ToDto(),
+            expectedAmount.ToDto(),
+            session.CountedAmount?.ToDto(),
+            variance?.ToDto());
+
+        return Results.Ok(dto);
     }
 }

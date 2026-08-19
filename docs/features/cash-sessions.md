@@ -1,8 +1,8 @@
 # Cash sessions — *abertura de caixa* with a starting float
 
-> **Status:** ✅ built (mechanism only — see Open questions)
+> **Status:** ✅ built
 > **Module:** Payments, composed with Identity at the API layer
-> **Roadmap:** I6 (`PAY-08`, `PAY-09`, `PAY-10`)
+> **Roadmap:** I6 (`PAY-08`, `PAY-09`, `PAY-10`, `PAY-11`)
 
 ## What it is
 
@@ -26,6 +26,15 @@ Before closing out, staff record a blind cash count (PAY-10) — what's
 physically in the drawer, counted without being shown any expected total
 first. `POST /cash-sessions/{id}/count` records it, at most once per
 session, directly on the `CashSession` row itself.
+
+*Fecho de caixa* variance reporting (PAY-11) closes the loop: once a cash
+payment can optionally be tagged with the session it was taken under
+(`Payment.CashSessionId`, threaded through `POST /orders/{id}/payments` and
+`.../payments/split`), `GET /cash-sessions/{id}/variance` compares what
+*should* be in the drawer (opening float + pay-ins − pay-outs + cash
+payments taken under that session) against the blind count, if one exists,
+and reports the difference. Nothing is stored — every field is recomputed
+from `CashMovement` and `Payment` rows on each request.
 
 ## Why it works this way
 
@@ -105,6 +114,40 @@ rules. A second count on the same session is rejected
 first: the entire value of *blind* is that it wasn't influenced by
 anything, including an earlier attempt at the same count.
 
+**`Payment.CashSessionId` lives on `Payment` (Payments module), not as a
+cross-module reference — because it doesn't need to be one.** `CashSession`
+is already in the same module, so this is an ordinary nullable foreign key
+with an index, not the opaque-Guid convention `TerminalId`/`OpenedByStaffId`
+need for reaching into Identity. It's optional and unvalidated against the
+session's own open/closed state deliberately: a payment predates the
+concept of "this terminal is mid-shift" for takeaway/online-order flows that
+never open a session at all, and backdating one after the fact (e.g. an
+order started before a shift's cash session was opened) is a real scenario,
+not a bug to prevent. The one thing that *is* validated is that the
+`cashSessionId` a payment names actually exists — `404
+cash_session.not_found` — the same defensive-against-typos posture every
+other opaque-reference field in this codebase takes.
+
+**A split payment (PAY-04) takes one `cashSessionId` for the whole batch,
+not one per tender.** A split happens at one terminal at one moment — cash
+and card tenders in the same split were physically handled by the same
+person at the same drawer, so attributing them to two different sessions
+would never be meaningful.
+
+**The variance endpoint recomputes everything on every request instead of
+storing a snapshot at close time.** A `CashSession` can accumulate payments
+after it closes — nothing gates that, see above — so a stored snapshot
+taken at `Close()` could go stale the moment a late payment lands. Computing
+fresh from `CashMovement`/`Payment` rows means the report is always
+consistent with what's actually in the database, at the cost of a few
+extra queries per request — an acceptable trade for a report a manager
+checks once per shift, not a hot path.
+
+**Only `PaymentMethod.Cash` payments count toward `totalCashPaymentsTaken`.**
+A card tender never touches the physical drawer — including it would make
+the "expected amount in the drawer" figure wrong by construction, not just
+imprecise.
+
 ## Behaviour
 
 1. A restaurant registers a terminal once (IDN-01, `POST /sites/{id}/terminals`)
@@ -130,6 +173,15 @@ anything, including an earlier attempt at the same count.
    much. `admin` shows a "Record blind count" action next to the movements
    panel while the session is open and uncounted; once recorded, it
    collapses to a read-only line — there's no edit or re-count path.
+8. A cash payment recorded anywhere in the system can optionally name the
+   cash session it was taken under (`cashSessionId` on `POST
+   /orders/{id}/payments` or `.../payments/split`) — the POS UI doesn't
+   wire this up yet (see Open questions), so today it's exercised via the
+   API directly.
+9. Once a count exists, `GET /cash-sessions/{id}/variance` answers "what
+   should be in the drawer, and how far off was the count." `admin` shows
+   this automatically under the blind-count panel the moment a count is
+   recorded, whether or not the session has since been closed.
 
 ## Offline behaviour
 
@@ -159,6 +211,9 @@ other mutating endpoint in this codebase before the eventual SYN work.
 | A second count is recorded against the same session | Rejected — at most once | `400 cash_session.already_counted` |
 | A count's `staffId` doesn't exist | No count recorded | `404 identity.staff_not_found` |
 | Recording a count against an unknown session id | — | `404 cash_session.not_found` |
+| A payment names a `cashSessionId` that doesn't exist | No payment written | `404 cash_session.not_found` |
+| Requesting variance for an unknown session id | — | `404 cash_session.not_found` |
+| Requesting variance before any count has been recorded | Not an error — `countedAmount`/`variance` are simply `null` | `200`, `expectedAmount` populated, `countedAmount`/`variance` null |
 
 ## Data
 
@@ -204,6 +259,16 @@ nullable `Counted*` columns above to the already-existing `cash_sessions`
 table — no new table, so no `EnableFor`/`EnableSystemReadFor` calls at all;
 RLS was already enabled on that table by `AddCashSession`.
 
+PAY-11's migration (`AddCashSessionIdToPayment`) adds one nullable
+`CashSessionId` column plus an index to the existing `payments` table (same
+`payments` schema, same `PaymentsDbContext` as `CashSession` itself) —
+generated via a real `dotnet ef migrations add`, no RLS calls needed since
+`payments` already has RLS enabled. The variance report itself has no
+table of its own — `CashSessionVarianceDto` is computed on every request
+from `CashSession.OpeningFloat`/`CountedAmount`, a `SUM` over
+`CashMovement` split by `Direction`, and a `SUM` over `Payment.AmountApplied`
+filtered to `CashSessionId` = the session and `Method` = `Cash`.
+
 ## API
 
 - `POST /cash-sessions` — body `{ terminalId, staffId, openingFloat }`,
@@ -223,6 +288,19 @@ RLS was already enabled on that table by `AddCashSession`.
   (`countedAmount`/`countedByStaffId`/`countedByStaffName`/`countedAtUtc`
   all populated). Rejected with a `400` if the session is closed or
   already counted — see Failure modes.
+- `GET /cash-sessions/{cashSessionId}/variance` (PAY-11) — returns `200`
+  with a `CashSessionVarianceDto`: `openingFloat`, `totalPayIns`,
+  `totalPayOuts`, `totalCashPaymentsTaken`, `expectedAmount` (always
+  populated), and `countedAmount`/`variance` (both `null` until a blind
+  count exists). `404 cash_session.not_found` for an unknown session id.
+  Works whether the session is still open or already closed.
+- `POST /orders/{orderId}/payments` and `POST
+  /orders/{orderId}/payments/split` (PAY-01/02/03/04) now accept an
+  optional `cashSessionId` — see PAY-01's own doc
+  ([cash-payments.md](cash-payments.md)) for the full request shape.
+  `404 cash_session.not_found` if it's set but doesn't resolve to a real
+  session; omitted entirely, a payment carries no session (`cashSessionId:
+  null` in the response), same as today.
 
 `CashSessionDto` carries `terminalLabel`/`openedByStaffName`, and
 `CashMovementDto` carries `recordedByStaffName`, resolved fresh from
@@ -255,20 +333,29 @@ PAY-11 territory, not this.
 **Backend:** covered indirectly through the endpoints' own validation logic
 (terminal/staff lookups, float validation, the one-open-session-per-terminal
 check, the movement direction/amount/reason checks, the count
-amount/already-counted/session-closed checks) — no dedicated
-`Brasa.Api.IntegrationTests` class yet; the full backend suite (101 tests)
-and `verify.ps1` (build, tests, OpenAPI drift, breaking-change check,
-vulnerable-package scan) all pass with the module wired in. Also verified
-by hand against a real Postgres instance before the E2E suite existed for
-each slice of this feature — for sessions: open, `GET current`, a
-duplicate open rejected with `409`, close, `GET current` returning `204`,
+amount/already-counted/session-closed checks, the variance computation) —
+no dedicated `Brasa.Api.IntegrationTests` class yet; the full backend suite
+(101 tests) and `verify.ps1` (build, tests, OpenAPI drift, breaking-change
+check, vulnerable-package scan) all pass with the module wired in. Also
+verified by hand against a real Postgres instance before the E2E suite
+existed for each slice of this feature — for sessions: open, `GET current`,
+a duplicate open rejected with `409`, close, `GET current` returning `204`,
 reopen (the same pass that caught the `Results.Ok<T>(null)` trap documented
 above); for movements: open a session, record a pay-out, list it, close the
 session, confirm a further movement is rejected, confirm the validation
 rejections; for counts: open a session, record a count, re-count rejected,
-negative amount rejected, count-after-close rejected.
+negative amount rejected, count-after-close rejected; for variance
+(PAY-11): opened a session with a 50.00 float, recorded a 20.00 pay-in and
+a 5.00 pay-out, rang up and paid a 10.00 cash order tagged with the
+session, confirmed `expectedAmount` came back as 75.00 and
+`countedAmount`/`variance` were both `null`; recorded a blind count of
+73.00 and confirmed `variance` came back as -2.00, both before and after
+closing the session; confirmed a payment naming an unknown
+`cashSessionId` is rejected with `404 cash_session.not_found` and leaves
+the order's balance untouched (a following ordinary payment still owed the
+full amount).
 
-**`src/web/e2e/tests/cash-sessions.spec.ts`** — 14 tests. PAY-08: opening a
+**`src/web/e2e/tests/cash-sessions.spec.ts`** — 20 tests. PAY-08: opening a
 session and confirming `GET current` returns it with the right
 terminal/staff/float; a duplicate open on the same terminal rejected with
 `cash_session.already_open`; closing a session, confirming `GET current`
@@ -296,24 +383,47 @@ its own fresh terminal (`createTerminal`) rather than sharing the seeded
 demo "Caixa 1," the same "isolated resource, not the shared seeded one"
 instinct `staff-login.spec.ts` already uses for its own locked-out staff
 member — necessary here since only one session can be open per terminal at
-a time and E2E workers run in parallel.
+a time and E2E workers run in parallel. PAY-11 (6 of the 20): computes
+`expectedAmount` from a float plus a pay-in, a pay-out, and a real cash
+payment against a real order, confirming `countedAmount`/`variance` are
+both `null` before a count exists and correctly populated (including a
+negative variance) after one, and still computable after the session
+closes; a card tender is confirmed to leave `totalCashPaymentsTaken` at
+zero; a split payment's cash tender is confirmed to count while its card
+tender doesn't, using the batch-level `cashSessionId`; a payment against an
+unknown `cashSessionId` is rejected with `404 cash_session.not_found` and
+leaves the order's balance untouched; the variance endpoint itself `404`s
+for an unknown session id; and a real `admin` UI test records a blind count
+through the count panel and confirms the variance report appears
+immediately after with the correctly formatted expected amount and
+variance badge.
 
 ## Open questions
 
-- **Nothing consumes an open session, its movements, or its count yet.**
-  No payment endpoint checks whether a session is open, and closing one
-  doesn't compare the count against the float plus movements plus card/cash
-  payments taken. This is deliberate (see "Why it works this way" above)
-  but means the feature today is purely a bookkeeping record with no
-  enforced effect — PAY-11 (*fecho de caixa* with variance reporting) is
-  what gives it real teeth, and will need `Payment` to somehow know which
-  session it was taken under (no such link exists yet — `Payment` has no
-  `CashSessionId`) before "cash payments taken during this session" is even
-  answerable.
-- **No `pos` UI.** `admin`'s back-office screen is the only place a session
-  can be opened, closed, or counted today. A terminal opening its own shift
-  session from the POS itself — the more realistic real-world flow — is a
-  real future trigger, not built yet.
+- **No `pos` UI for any of PAY-08/09/10/11.** `admin`'s back-office screen
+  is the only place a session can be opened, closed, counted, or have its
+  variance viewed today, and the POS payment screen doesn't offer a
+  `cashSessionId` to attach to a tender — a terminal opening its own shift
+  session and having its own payments auto-attributed to it is the more
+  realistic real-world flow, not built yet.
+- **`cashSessionId` on a payment is optional and never auto-filled.**
+  Nothing infers "this terminal has an open session, attribute cash
+  payments to it automatically" — a caller must know and pass the session
+  id explicitly. Until the POS UI does that wiring, every cash payment
+  taken through the POS today contributes nothing to any session's
+  variance report, silently — not rejected, just not counted. Worth
+  revisiting once PAY-11 has a real UI consumer beyond variance display.
+- **Closing a session doesn't require or even show a count first.** A
+  manager can close a till with money still uncounted, or with a variance
+  never reviewed — `Close()` and `RecordCount()` remain entirely
+  independent operations. Whether closing should eventually require a
+  count, or surface the variance as a confirmation step, is a real product
+  decision, not a technical gap.
 - **No history view.** There's no "list every past session for this
-  terminal" endpoint — only the currently-open one. Revisit once PAY-11's
-  reporting needs it.
+  terminal" endpoint — only the currently-open one, and the variance
+  endpoint requires already knowing the session's id. A per-terminal or
+  per-site shift history is real future work.
+- **No permissions gate on the variance report.** Same as every other
+  cash-session operation today — any real staff id (or, for the variance
+  `GET`, no staff id check at all) can view it. Real accountability (a
+  manager-only variance review, a sign-off) is future work.

@@ -1,22 +1,34 @@
 import { expect, test } from '@playwright/test';
 import {
+  addLine,
+  clearTable,
   closeCashSession,
   closeCashSessionResponse,
+  closeOrder,
   createTerminal,
+  findMenuItem,
   getCashMovements,
   getCashMovementsResponse,
   getCashSessionResponse,
+  getCashSessionVariance,
+  getCashSessionVarianceResponse,
   getCurrentCashSession,
   getCurrentCashSessionResponse,
+  getMenu,
   getOrganizations,
   getSites,
   getStaff,
   openCashSession,
   openCashSessionResponse,
+  openOrderOnAnyFreeTable,
+  openTakeawayOrder,
   recordCashCount,
   recordCashCountResponse,
   recordCashMovement,
   recordCashMovementResponse,
+  recordPayment,
+  recordPaymentResponse,
+  recordSplitPayment,
 } from './support/api';
 
 const adminBaseUrl = process.env.BRASA_ADMIN_BASE_URL ?? 'http://localhost:5174';
@@ -389,5 +401,167 @@ test.describe('cash sessions (PAY-08/09/10)', () => {
     await expect(row).toContainText(staffMember.name);
     // The "record count" trigger is gone -- a blind count is at most once per session.
     await expect(row.getByTestId(`cash-count-start-${label}`)).not.toBeVisible();
+  });
+});
+
+// Fecho de caixa variance (PAY-11) — a computed report comparing what should
+// be in the drawer (opening float + pay-ins - pay-outs + cash payments taken
+// while this session was open) against what a blind count (PAY-10) actually
+// found. Never stored — recomputed from Payment.CashSessionId and
+// CashMovement rows on every request, so it stays correct even if a payment
+// or movement is recorded after the fact. This is the sharper starting point
+// PAY-10's own docs flagged: PAY-10 could record a count, but had nothing to
+// compare it against until a payment could carry a CashSessionId at all.
+
+test.describe('fecho de caixa variance (PAY-11)', () => {
+  test('computes the expected amount from float + movements + cash payments, variance null until a count exists', async ({
+    request,
+  }) => {
+    const organizations = await getOrganizations(request);
+    const sites = await getSites(request, organizations[0]!.id);
+    const staff = await getStaff(request, sites[0]!.id);
+    const terminal = await createTerminal(request, sites[0]!.id, `Variance Test ${Date.now()}`);
+    const session = await openCashSession(request, terminal.id, staff[0]!.id, 50);
+
+    await recordCashMovement(request, session.id, 'PayIn', 20, 'Change top-up', staff[0]!.id);
+    await recordCashMovement(request, session.id, 'PayOut', 5, 'Delivery driver tip', staff[0]!.id);
+
+    const { order, table } = await openOrderOnAnyFreeTable(request, 2);
+    const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
+    await addLine(request, order.id, item.id, 4); // 4 x 2.50 = 10.00
+    const payment = await recordPayment(request, order.id, 'Cash', 10, { cashSessionId: session.id });
+    expect(payment.cashSessionId).toBe(session.id);
+
+    const beforeCount = await getCashSessionVariance(request, session.id);
+    expect(beforeCount.openingFloat).toEqual({ amount: 50, currency: 'EUR' });
+    expect(beforeCount.totalPayIns).toEqual({ amount: 20, currency: 'EUR' });
+    expect(beforeCount.totalPayOuts).toEqual({ amount: 5, currency: 'EUR' });
+    expect(beforeCount.totalCashPaymentsTaken).toEqual({ amount: 10, currency: 'EUR' });
+    expect(beforeCount.expectedAmount).toEqual({ amount: 75, currency: 'EUR' });
+    expect(beforeCount.countedAmount).toBeNull();
+    expect(beforeCount.variance).toBeNull();
+
+    await recordCashCount(request, session.id, staff[0]!.id, 73);
+    const afterCount = await getCashSessionVariance(request, session.id);
+    expect(afterCount.expectedAmount).toEqual({ amount: 75, currency: 'EUR' });
+    expect(afterCount.countedAmount).toEqual({ amount: 73, currency: 'EUR' });
+    expect(afterCount.variance).toEqual({ amount: -2, currency: 'EUR' });
+
+    // Still computable after the session itself is closed.
+    await closeCashSession(request, session.id);
+    const afterClose = await getCashSessionVariance(request, session.id);
+    expect(afterClose.variance).toEqual({ amount: -2, currency: 'EUR' });
+
+    await closeOrder(request, order.id);
+    await clearTable(request, table.id);
+  });
+
+  test('a card tender does not count toward totalCashPaymentsTaken, only cash does', async ({ request }) => {
+    const organizations = await getOrganizations(request);
+    const sites = await getSites(request, organizations[0]!.id);
+    const staff = await getStaff(request, sites[0]!.id);
+    const terminal = await createTerminal(request, sites[0]!.id, `Variance Card Test ${Date.now()}`);
+    const session = await openCashSession(request, terminal.id, staff[0]!.id, 0);
+
+    const order = await openTakeawayOrder(request, `Variance card test ${Date.now()}`);
+    const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
+    await addLine(request, order.id, item.id, 2); // 5.00 due
+
+    await recordPayment(request, order.id, 'Card', 5, { cashSessionId: session.id });
+
+    const variance = await getCashSessionVariance(request, session.id);
+    expect(variance.totalCashPaymentsTaken).toEqual({ amount: 0, currency: 'EUR' });
+    expect(variance.expectedAmount).toEqual({ amount: 0, currency: 'EUR' });
+
+    await closeOrder(request, order.id);
+  });
+
+  test('a split payment attributes its cash tender to the session, ignoring the card tender', async ({ request }) => {
+    const organizations = await getOrganizations(request);
+    const sites = await getSites(request, organizations[0]!.id);
+    const staff = await getStaff(request, sites[0]!.id);
+    const terminal = await createTerminal(request, sites[0]!.id, `Variance Split Test ${Date.now()}`);
+    const session = await openCashSession(request, terminal.id, staff[0]!.id, 0);
+
+    const order = await openTakeawayOrder(request, `Variance split test ${Date.now()}`);
+    const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
+    await addLine(request, order.id, item.id, 4); // 10.00 due
+
+    const tenders = await recordSplitPayment(
+      request,
+      order.id,
+      [
+        { method: 'Cash', amountTendered: 6 },
+        { method: 'Card', amountTendered: 4 },
+      ],
+      session.id,
+    );
+    expect(tenders.every((t) => t.cashSessionId === session.id)).toBe(true);
+
+    const variance = await getCashSessionVariance(request, session.id);
+    expect(variance.totalCashPaymentsTaken).toEqual({ amount: 6, currency: 'EUR' });
+    expect(variance.expectedAmount).toEqual({ amount: 6, currency: 'EUR' });
+
+    await closeOrder(request, order.id);
+  });
+
+  test('rejects a payment against an unknown cash session id, leaving the order unpaid', async ({ request }) => {
+    const { order, table } = await openOrderOnAnyFreeTable(request, 2);
+    const item = findMenuItem(await getMenu(request), 'Pão e Azeitonas');
+    await addLine(request, order.id, item.id, 2); // 5.00 due
+
+    const rejected = await recordPaymentResponse(request, order.id, 'Cash', 5, {
+      cashSessionId: '00000000-0000-0000-0000-000000000000',
+    });
+    expect(rejected.status()).toBe(404);
+    expect((await rejected.json()).code).toBe('cash_session.not_found');
+
+    // The rejected tender left nothing behind -- a following ordinary payment still owes the full amount.
+    const payment = await recordPayment(request, order.id, 'Cash', 5);
+    expect(payment.amountApplied).toEqual({ amount: 5, currency: 'EUR' });
+    expect(payment.remainingBalance).toEqual({ amount: 0, currency: 'EUR' });
+
+    await closeOrder(request, order.id);
+    await clearTable(request, table.id);
+  });
+
+  test('404s the variance endpoint for an unknown cash session id', async ({ request }) => {
+    const response = await getCashSessionVarianceResponse(request, '00000000-0000-0000-0000-000000000000');
+    expect(response.status()).toBe(404);
+    expect((await response.json()).code).toBe('cash_session.not_found');
+  });
+
+  const adminBaseUrlForVariance = process.env.BRASA_ADMIN_BASE_URL ?? 'http://localhost:5174';
+
+  test('the admin variance report appears after a blind count is recorded through the real UI', async ({
+    page,
+    request,
+  }) => {
+    const organizations = await getOrganizations(request);
+    const sites = await getSites(request, organizations[0]!.id);
+    const demoSite = sites[0]!;
+    const staff = await getStaff(request, demoSite.id);
+    const staffMember = staff[0]!;
+    const label = `UI Variance Test ${Date.now()}`;
+    const terminal = await createTerminal(request, demoSite.id, label);
+    const session = await openCashSession(request, terminal.id, staffMember.id, 40);
+
+    await page.goto(adminBaseUrlForVariance);
+    await page.getByTestId('nav-cash').click();
+    await page.waitForSelector('.cash-session-manager');
+
+    const row = page.getByTestId(`cash-session-terminal-${label}`);
+    await expect(row).not.toContainText('Esperado na caixa'); // no report before a count exists
+
+    await row.getByTestId(`cash-count-start-${label}`).click();
+    await row.getByTestId(`cash-count-staff-${label}`).selectOption(staffMember.id);
+    await row.getByTestId(`cash-count-amount-${label}`).fill('38');
+    await row.getByTestId(`cash-count-save-${label}`).click();
+
+    await expect(row.getByTestId(`cash-variance-${label}`)).toBeVisible();
+    await expect(row).toContainText('Esperado na caixa: 40,00');
+    await expect(row.getByTestId(`cash-variance-badge-${label}`)).toContainText('Diferença: -2,00');
+
+    await closeCashSession(request, session.id);
   });
 });

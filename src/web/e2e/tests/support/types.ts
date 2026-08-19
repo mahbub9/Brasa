@@ -281,6 +281,23 @@ export interface PaymentDto {
   attributedStaffId: string | null;
   attributedStaffName: string | null;
   paidAtUtc: string;
+  cashSessionId: string | null;
+}
+
+/**
+ * A computed *fecho de caixa* variance report (PAY-11) — never stored,
+ * recomputed on every request. `countedAmount`/`variance` are both `null`
+ * until a blind count (PAY-10) exists.
+ */
+export interface CashSessionVarianceDto {
+  cashSessionId: string;
+  openingFloat: MoneyDto;
+  totalPayIns: MoneyDto;
+  totalPayOuts: MoneyDto;
+  totalCashPaymentsTaken: MoneyDto;
+  expectedAmount: MoneyDto;
+  countedAmount: MoneyDto | null;
+  variance: MoneyDto | null;
 }
 
 export interface TableDto {

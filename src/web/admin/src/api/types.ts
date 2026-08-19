@@ -246,6 +246,22 @@ export interface RecordCashMovementRequest {
   staffId: string;
 }
 
+/**
+ * A computed *fecho de caixa* variance report (PAY-11) — never stored,
+ * recomputed on every request. `countedAmount`/`variance` are both `null`
+ * until a blind count (PAY-10) exists — nothing to compare against yet.
+ */
+export interface CashSessionVarianceDto {
+  cashSessionId: string;
+  openingFloat: MoneyDto;
+  totalPayIns: MoneyDto;
+  totalPayOuts: MoneyDto;
+  totalCashPaymentsTaken: MoneyDto;
+  expectedAmount: MoneyDto;
+  countedAmount: MoneyDto | null;
+  variance: MoneyDto | null;
+}
+
 /** A per-tenant, optionally per-platform on/off switch (IDN-16). `platform` is never empty — `"all"` means every platform. */
 export interface FeatureFlagDto {
   id: string;

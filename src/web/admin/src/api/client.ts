@@ -3,6 +3,7 @@ import type {
   AssignRoomSectionRequest,
   CashMovementDto,
   CashSessionDto,
+  CashSessionVarianceDto,
   CreateRoomRequest,
   CreateStaffRequest,
   CreateTableRequest,
@@ -204,4 +205,7 @@ export const api = {
 
   recordCashCount: (cashSessionId: string, body: RecordCashCountRequest) =>
     post<CashSessionDto>(`/cash-sessions/${cashSessionId}/count`, body),
+
+  getCashSessionVariance: (cashSessionId: string) =>
+    request<CashSessionVarianceDto>(`/cash-sessions/${cashSessionId}/variance`),
 };

@@ -1323,6 +1323,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/cash-sessions/{cashSessionId}/variance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Computes a fecho de caixa variance report (PAY-11) — expected drawer contents (float + pay-ins - pay-outs + cash payments taken) versus the blind count, if one has been recorded. Never stored; recomputed on every call. */
+        get: operations["GetCashSessionVariance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/client-requirements": {
         parameters: {
             query?: never;
@@ -1409,6 +1426,17 @@ export interface components {
             countedByStaffId: null | string;
             countedByStaffName: null | string;
             countedAtUtc: null | string;
+        };
+        CashSessionVarianceDto: {
+            /** Format: uuid */
+            cashSessionId: string;
+            openingFloat: components["schemas"]["MoneyDto"];
+            totalPayIns: components["schemas"]["MoneyDto"];
+            totalPayOuts: components["schemas"]["MoneyDto"];
+            totalCashPaymentsTaken: components["schemas"]["MoneyDto"];
+            expectedAmount: components["schemas"]["MoneyDto"];
+            countedAmount: null | components["schemas"]["MoneyDto"];
+            variance: null | components["schemas"]["MoneyDto"];
         };
         ClientRequirementsDto: {
             minimumSupported: string;
@@ -1701,6 +1729,8 @@ export interface components {
             attributedStaffId: null | string;
             attributedStaffName: null | string;
             paidAtUtc: string;
+            /** Format: uuid */
+            cashSessionId: null | string;
         };
         PreBillDto: {
             /** Format: uuid */
@@ -1755,9 +1785,13 @@ export interface components {
             tipAmount: number | string;
             /** Format: uuid */
             staffId?: null | string;
+            /** Format: uuid */
+            cashSessionId?: null | string;
         };
         RecordSplitPaymentRequest: {
             tenders: components["schemas"]["SplitTenderRequest"][];
+            /** Format: uuid */
+            cashSessionId?: null | string;
         };
         ResolvedFeatureFlagDto: {
             key: string;
@@ -4043,6 +4077,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CashMovementDto"];
+                };
+            };
+        };
+    };
+    GetCashSessionVariance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                cashSessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CashSessionVarianceDto"];
                 };
             };
         };

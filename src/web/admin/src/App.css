@@ -643,6 +643,21 @@
   width: 8rem;
 }
 
+.cash-variance-report {
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--border);
+}
+
+.cash-variance-line {
+  margin: 0.25rem 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .cash-movements-panel {
   margin-top: 0.25rem;
   padding-top: 0.5rem;

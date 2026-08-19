@@ -129,6 +129,8 @@ export const en = {
     recordCount: 'Record blind count',
     countedAmountPlaceholder: 'Amount counted',
     counted: 'Counted: {{amount}} by {{name}}',
+    expectedAmount: 'Expected in drawer: {{amount}}',
+    variance: 'Variance: {{amount}}',
     direction: {
       label: 'Direction',
       PayIn: 'Pay in',

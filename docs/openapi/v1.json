@@ -3207,6 +3207,38 @@
         }
       }
     },
+    "/api/v1/cash-sessions/{cashSessionId}/variance": {
+      "get": {
+        "tags": [
+          "CashSessionEndpoints"
+        ],
+        "summary": "Computes a fecho de caixa variance report (PAY-11) — expected drawer contents (float + pay-ins - pay-outs + cash payments taken) versus the blind count, if one has been recorded. Never stored; recomputed on every call.",
+        "operationId": "GetCashSessionVariance",
+        "parameters": [
+          {
+            "name": "cashSessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CashSessionVarianceDto"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/client-requirements": {
       "get": {
         "tags": [
@@ -3478,6 +3510,60 @@
             "type": [
               "null",
               "string"
+            ]
+          }
+        }
+      },
+      "CashSessionVarianceDto": {
+        "required": [
+          "cashSessionId",
+          "openingFloat",
+          "totalPayIns",
+          "totalPayOuts",
+          "totalCashPaymentsTaken",
+          "expectedAmount",
+          "countedAmount",
+          "variance"
+        ],
+        "type": "object",
+        "properties": {
+          "cashSessionId": {
+            "type": "string",
+            "format": "uuid"
+          },
+          "openingFloat": {
+            "$ref": "#/components/schemas/MoneyDto"
+          },
+          "totalPayIns": {
+            "$ref": "#/components/schemas/MoneyDto"
+          },
+          "totalPayOuts": {
+            "$ref": "#/components/schemas/MoneyDto"
+          },
+          "totalCashPaymentsTaken": {
+            "$ref": "#/components/schemas/MoneyDto"
+          },
+          "expectedAmount": {
+            "$ref": "#/components/schemas/MoneyDto"
+          },
+          "countedAmount": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyDto"
+              }
+            ]
+          },
+          "variance": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/MoneyDto"
+              }
             ]
           }
         }
@@ -4581,7 +4667,8 @@
           "tipAmount",
           "attributedStaffId",
           "attributedStaffName",
-          "paidAtUtc"
+          "paidAtUtc",
+          "cashSessionId"
         ],
         "type": "object",
         "properties": {
@@ -4629,6 +4716,13 @@
           },
           "paidAtUtc": {
             "type": "string"
+          },
+          "cashSessionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -4816,6 +4910,13 @@
               "string"
             ],
             "format": "uuid"
+          },
+          "cashSessionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },
@@ -4830,6 +4931,13 @@
             "items": {
               "$ref": "#/components/schemas/SplitTenderRequest"
             }
+          },
+          "cashSessionId": {
+            "type": [
+              "null",
+              "string"
+            ],
+            "format": "uuid"
           }
         }
       },

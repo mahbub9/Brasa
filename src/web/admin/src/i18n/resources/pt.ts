@@ -126,6 +126,8 @@ export const pt = {
     recordCount: 'Registar contagem cega',
     countedAmountPlaceholder: 'Valor contado',
     counted: 'Contado: {{amount}} por {{name}}',
+    expectedAmount: 'Esperado na caixa: {{amount}}',
+    variance: 'Diferença: {{amount}}',
     direction: {
       label: 'Direção',
       PayIn: 'Entrada',

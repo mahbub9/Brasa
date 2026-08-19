@@ -62,6 +62,18 @@ namespace Brasa.Modules.Payments.Domain;
 /// silently producing a <see cref="Change"/> value that could never
 /// actually be paid out.
 /// </para>
+/// <para>
+/// <b><see cref="CashSessionId"/> is optional, unvalidated by this type
+/// (PAY-11).</b> A plain opaque reference to a <c>CashSession</c> in this
+/// same module, the same convention <c>CashMovement.CashSessionId</c>
+/// already uses — the API layer confirms it names a real session before
+/// this is constructed, if one is given at all. Lets a variance report
+/// (PAY-11) later ask "how much cash was taken during this session," an
+/// input the report literally cannot answer without it. No client sends
+/// one today — no UI anywhere has a "current cash session" concept yet, the
+/// same "mechanism before the trigger" shape this codebase already uses
+/// everywhere.
+/// </para>
 /// </remarks>
 public sealed class Payment : Entity
 {
@@ -78,6 +90,7 @@ public sealed class Payment : Entity
     /// <param name="tipAmount">Extra money on top of the bill, in the same currency as <paramref name="amountDue"/>. Zero when there is no tip.</param>
     /// <param name="attributedStaffId">Which staff member the tip is credited to, if any. Never validated here — see the class remarks.</param>
     /// <param name="paidAtUtc">When the payment was recorded.</param>
+    /// <param name="cashSessionId">Which cash session this tender was taken under, if any. Never validated here — see the class remarks.</param>
     public Payment(
         Guid orderId,
         PaymentMethod method,
@@ -85,7 +98,8 @@ public sealed class Payment : Entity
         Money amountTendered,
         Money tipAmount,
         Guid? attributedStaffId,
-        DateTimeOffset paidAtUtc)
+        DateTimeOffset paidAtUtc,
+        Guid? cashSessionId = null)
     {
         if (orderId == Guid.Empty)
         {
@@ -128,6 +142,7 @@ public sealed class Payment : Entity
         TipAmount = tipAmount;
         AttributedStaffId = attributedStaffId;
         PaidAtUtc = paidAtUtc;
+        CashSessionId = cashSessionId;
     }
 
     /// <summary>The order this payment settles.</summary>
@@ -164,4 +179,7 @@ public sealed class Payment : Entity
 
     /// <summary>When this payment was recorded.</summary>
     public DateTimeOffset PaidAtUtc { get; private set; }
+
+    /// <summary>Which cash session this tender was taken under, if any (PAY-11).</summary>
+    public Guid? CashSessionId { get; private set; }
 }

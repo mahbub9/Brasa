@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Brasa.Api.Endpoints;
 
 /// <summary>
-/// Tender endpoints (PAY-01/02/03/04/05/06). Composes <see cref="PaymentsDbContext"/>
+/// Tender endpoints (PAY-01/02/03/04/05/06/11). Composes <see cref="PaymentsDbContext"/>
 /// (this module's own table), <see cref="OrderingDbContext"/> (to read an
 /// order's current total, never trusting a client-sent one) and, when a tip
 /// is attributed, <see cref="IdentityDbContext"/> — the same three-module
@@ -73,8 +73,8 @@ public static class PaymentEndpoints
         var amountDue = await RemainingBalanceAsync(orderId, order.Total, paymentsDb, cancellationToken).ConfigureAwait(false);
 
         var built = await BuildTenderAsync(
-            orderId, request.Method, request.AmountTendered, request.TipAmount, request.StaffId,
-            amountDue, identityDb, clock, cancellationToken).ConfigureAwait(false);
+            orderId, request.Method, request.AmountTendered, request.TipAmount, request.StaffId, request.CashSessionId,
+            amountDue, paymentsDb, identityDb, clock, cancellationToken).ConfigureAwait(false);
 
         if (built.IsFailure)
         {
@@ -127,8 +127,8 @@ public static class PaymentEndpoints
         foreach (var tender in request.Tenders)
         {
             var result = await BuildTenderAsync(
-                orderId, tender.Method, tender.AmountTendered, tipAmountRaw: 0, staffId: null,
-                remaining, identityDb, clock, cancellationToken).ConfigureAwait(false);
+                orderId, tender.Method, tender.AmountTendered, tipAmountRaw: 0, staffId: null, request.CashSessionId,
+                remaining, paymentsDb, identityDb, clock, cancellationToken).ConfigureAwait(false);
 
             if (result.IsFailure)
             {
@@ -175,7 +175,9 @@ public static class PaymentEndpoints
         decimal amountTenderedRaw,
         decimal tipAmountRaw,
         Guid? staffId,
+        Guid? cashSessionId,
         Money amountDue,
+        PaymentsDbContext paymentsDb,
         IdentityDbContext identityDb,
         IClock clock,
         CancellationToken cancellationToken)
@@ -225,6 +227,22 @@ public static class PaymentEndpoints
             attributedStaffName = staff.Name;
         }
 
+        // Optional, unvalidated by Payment itself (PAY-11) — but a *named*
+        // session must be real, the same "confirm before constructing"
+        // shape this method already uses for staff attribution just above.
+        if (cashSessionId is { } sessionId)
+        {
+            var sessionExists = await paymentsDb.CashSessions
+                .AnyAsync(c => c.Id == sessionId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (!sessionExists)
+            {
+                return Result.Failure<(Payment, string?)>(
+                    Error.NotFound("cash_session.not_found", $"Cash session {sessionId} was not found."));
+            }
+        }
+
         var amountTendered = Money.FromDecimal(amountTenderedRaw);
 
         // A standalone TPA (PAY-03) charges exactly the amount keyed in —
@@ -240,7 +258,7 @@ public static class PaymentEndpoints
         }
 
         var tipAmount = Money.FromDecimal(tipAmountRaw);
-        var payment = new Payment(orderId, method, amountDue, amountTendered, tipAmount, staffId, clock.UtcNow);
+        var payment = new Payment(orderId, method, amountDue, amountTendered, tipAmount, staffId, clock.UtcNow, cashSessionId);
         return (payment, attributedStaffName);
     }
 

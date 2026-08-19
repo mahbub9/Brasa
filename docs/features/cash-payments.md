@@ -1,13 +1,15 @@
 # Cash and card payments — a tender recorded against an order's remaining balance
 
 > **Status:** ✅ done — cash and card, partial tenders, an atomic split
-> across methods, and an optional tip attributed to staff. Cash-session/
-> blind-count reconciliation (PAY-08/10/11) is still deliberately out of
-> scope. MB WAY/Multibanco (PAY-13) and an integrated TPA (PAY-14) are both
-> deferred past MVP — see `docs/product/backlog.md`.
+> across methods, an optional tip attributed to staff, and an optional cash
+> session attribution consumed by *fecho de caixa* variance reporting
+> (PAY-11) — see [cash-sessions.md](cash-sessions.md). MB WAY/Multibanco
+> (PAY-13) and an integrated TPA (PAY-14) are both deferred past MVP — see
+> `docs/product/backlog.md`.
 > **Module:** Payments (new module this task), composed with Ordering (and,
 > for tip attribution, Identity) at the API layer
-> **Roadmap:** I3/I4 (`PAY-01`, `PAY-02`, `PAY-03`, `PAY-04`, `PAY-05`, `PAY-06`)
+> **Roadmap:** I3/I4/I6 (`PAY-01`, `PAY-02`, `PAY-03`, `PAY-04`, `PAY-05`,
+> `PAY-06`, `PAY-11`)
 
 ## What it is
 
@@ -116,10 +118,19 @@ the receipt screen, so attribution is automatic: whoever is signed in
 
 **The server reads the amount due — the client never sends one.** The
 request body carries `method`, `amountTendered`, and optionally `tipAmount`/
-`staffId`; `RecordPaymentAsync` loads the order and every prior payment
-itself and computes the remaining balance server-side. A client-sent due
-amount would let a stale or manipulated screen record a payment against the
-wrong balance.
+`staffId`/`cashSessionId` (PAY-11); `RecordPaymentAsync` loads the order and
+every prior payment itself and computes the remaining balance server-side. A
+client-sent due amount would let a stale or manipulated screen record a
+payment against the wrong balance.
+
+**`cashSessionId` is optional, unvalidated against the session's own
+open/closed state, and never inferred automatically.** See
+[cash-sessions.md](cash-sessions.md#why-it-works-this-way) for the full
+reasoning — in short, a payment predates the concept of a cash session for
+flows that never open one, and a caller must know and pass the id
+explicitly since nothing here infers "this terminal has an open session."
+The one thing that is checked is that the id, if given, resolves to a real
+session (`404 cash_session.not_found`).
 
 **`Money.ToString()`, not culture-formatted, in error messages.** An earlier
 draft embedded amounts via `Money.Format(CultureInfo.InvariantCulture)` in
@@ -173,6 +184,7 @@ other mutating endpoint in this codebase before the eventual SYN work.
 | A split's `tenders` array is missing or empty | Rejected before the order is even loaded | `400 payment.empty_split` |
 | One tender partway through a split batch fails any of the above checks | The whole batch is rejected — nothing in it is persisted, including otherwise-valid tenders earlier in the same batch | Whichever error the failing tender itself would have produced standalone (e.g. `payment.card_tender_exceeds_balance`) |
 | Two terminals record a payment for the same order at once | Both succeed independently — `Payment` carries no concurrency token, and each reads "prior payments" from its own snapshot in time | Both tenders persist; if both read the balance before either wrote, the order can be over-settled (e.g. two terminals each independently see the full balance still owed). A known, accepted gap — see Open questions |
+| A payment names a `cashSessionId` that doesn't resolve to a real cash session | No payment written | `404 cash_session.not_found` |
 
 ## Data
 
@@ -181,7 +193,10 @@ New `payments` schema, one table (`payments.payments`): `Id`, `OrderId`
 `Method` (int enum, stored as a string), `AmountDue`/`AmountTendered`/
 `TipAmount` (each mapped via `MapMoney`, the same convention every other
 `Money` column in this codebase uses), `AttributedStaffId` (nullable, a
-plain opaque reference to Identity's `Staff`), `PaidAtUtc`.
+plain opaque reference to Identity's `Staff`), `PaidAtUtc`, `CashSessionId`
+(nullable, indexed — PAY-11, an ordinary foreign key rather than an opaque
+reference since `CashSession` lives in this same module; see
+[cash-sessions.md](cash-sessions.md#data)).
 `AmountApplied`/`Change`/`RemainingBalance` are all computed properties, not
 columns — `PaymentConfiguration` ignores all three, the same "never store a
 derived total" rule `Order.Total` follows. Adding `Card` to `PaymentMethod`
@@ -194,16 +209,19 @@ hand-added since the EF Core scaffolder never emits these calls — see
 ## API
 
 - `POST /orders/{orderId}/payments` — body `{ method, amountTendered,
-  tipAmount?, staffId? }` (`tipAmount` defaults to zero, `staffId` is
-  optional even when a tip is given), returns `201` with a `PaymentDto`
-  (`amountDue`, `amountTendered`, `amountApplied`, `change`,
+  tipAmount?, staffId?, cashSessionId? }` (`tipAmount` defaults to zero,
+  `staffId` is optional even when a tip is given, `cashSessionId` is
+  PAY-11's optional cash-session attribution), returns `201` with a
+  `PaymentDto` (`amountDue`, `amountTendered`, `amountApplied`, `change`,
   `remainingBalance`, `tipAmount` as `MoneyDto`; `attributedStaffId`/
-  `attributedStaffName`).
+  `attributedStaffName`; `cashSessionId`, `null` unless given).
 - `POST /orders/{orderId}/payments/split` (PAY-04) — body `{ tenders: [{
-  method, amountTendered }, ...] }`, no tip/staff fields. Returns `201` with
-  a `PaymentDto[]`, one per tender, in the order applied. Atomic: if any
-  tender in the array is rejected, the response is that tender's own error
-  and nothing in the batch is persisted.
+  method, amountTendered }, ...], cashSessionId? }`, no tip/staff fields.
+  `cashSessionId` (PAY-11) applies to every tender in the batch, not
+  per-tender — a split happens at one terminal at one moment. Returns `201`
+  with a `PaymentDto[]`, one per tender, in the order applied. Atomic: if
+  any tender in the array is rejected, the response is that tender's own
+  error and nothing in the batch is persisted.
 - `GET /orders/{orderId}/payments` — returns every payment recorded against
   the order, oldest first (sorted client-side in the endpoint — SQLite,
   [ADR 0012](../architecture/decisions/0012-beta-in-memory-database.md),
@@ -235,7 +253,8 @@ fiscal document and is never treated as one.
 
 None — any authenticated terminal can record a payment against any order,
 same as every other ordering endpoint today. Cash-handling accountability
-(who tendered, session/shift boundaries) is PAY-08/10/11, not this.
+in the stronger sense (a manager-only variance review, a sign-off) remains
+future work — see [cash-sessions.md](cash-sessions.md#open-questions).
 
 ## Testing
 
@@ -272,7 +291,9 @@ payment-method `<select>` to Card and settling across a partial-then-exact
 pair (the history list's own localized method label confirming the selected
 method actually reached the recorded payment), and one filling the split
 form's cash leg, watching the card leg auto-compute the remainder, and
-settling in one click.
+settling in one click. `cashSessionId` (PAY-11) coverage lives in
+`cash-sessions.spec.ts` instead, alongside the rest of that feature's
+tests — see [cash-sessions.md](cash-sessions.md#testing).
 
 ## Open questions
 

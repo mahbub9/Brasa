@@ -12,7 +12,8 @@ namespace Brasa.Api.Contracts;
 /// from all of the above — extra money on top of the bill, never affecting
 /// the balance (PAY-06); <c>AttributedStaffName</c> is resolved fresh from
 /// Identity, the same pattern <c>RoomDto.AssignedStaffName</c> already uses,
-/// never snapshotted onto the payment itself.
+/// never snapshotted onto the payment itself. <c>CashSessionId</c> (PAY-11)
+/// is <c>null</c> unless the caller supplied one — no client does today.
 /// </remarks>
 public sealed record PaymentDto(
     Guid Id,
@@ -26,7 +27,8 @@ public sealed record PaymentDto(
     MoneyDto TipAmount,
     Guid? AttributedStaffId,
     string? AttributedStaffName,
-    string PaidAtUtc);
+    string PaidAtUtc,
+    Guid? CashSessionId);
 
 /// <summary>
 /// Request body to record a payment. <c>AmountTendered</c> only for the bill
@@ -37,9 +39,13 @@ public sealed record PaymentDto(
 /// (PAY-03) — a card tender cannot exceed the balance, since a standalone TPA
 /// has no change to give back. <c>TipAmount</c> defaults to zero when
 /// omitted; <c>StaffId</c> is optional even when a tip is given — an
-/// unattributed tip goes to a shared pool (PAY-06).
+/// unattributed tip goes to a shared pool (PAY-06). <c>CashSessionId</c>
+/// (PAY-11) is optional — when given, must name a real cash session
+/// (<c>404 cash_session.not_found</c> otherwise); lets a variance report
+/// later ask how much cash was taken during that session.
 /// </summary>
-public sealed record RecordPaymentRequest(string Method, decimal AmountTendered, decimal TipAmount = 0, Guid? StaffId = null);
+public sealed record RecordPaymentRequest(
+    string Method, decimal AmountTendered, decimal TipAmount = 0, Guid? StaffId = null, Guid? CashSessionId = null);
 
 /// <summary>One tender within a split payment (PAY-04) — just a method and an amount, no tip/staff attribution.</summary>
 public sealed record SplitTenderRequest(string Method, decimal AmountTendered);
@@ -55,9 +61,12 @@ public sealed record SplitTenderRequest(string Method, decimal AmountTendered);
 /// no tip/staff fields — a tip attributed to one portion of a split
 /// introduces an ambiguity ("which tender earned it?") this feature doesn't
 /// need to resolve; attribute a tip on an ordinary single tender instead
-/// (PAY-06).
+/// (PAY-06). <c>CashSessionId</c> (PAY-11), if given, applies to every
+/// tender in the batch — a split happens at one terminal at one moment, so
+/// there is only ever one session to attribute it to, unlike tip attribution
+/// which is deliberately absent here for the opposite reason.
 /// </summary>
-public sealed record RecordSplitPaymentRequest(IReadOnlyList<SplitTenderRequest> Tenders);
+public sealed record RecordSplitPaymentRequest(IReadOnlyList<SplitTenderRequest> Tenders, Guid? CashSessionId = null);
 
 /// <summary>Maps <see cref="Payment"/> to its wire DTO.</summary>
 public static class PaymentDtoMappings
@@ -80,5 +89,6 @@ public static class PaymentDtoMappings
         payment.TipAmount.ToDto(),
         payment.AttributedStaffId,
         attributedStaffName,
-        payment.PaidAtUtc.ToString("O"));
+        payment.PaidAtUtc.ToString("O"),
+        payment.CashSessionId);
 }

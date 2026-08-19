@@ -40,6 +40,27 @@ public sealed record OpenCashSessionRequest(Guid TerminalId, Guid StaffId, decim
 /// </summary>
 public sealed record RecordCashCountRequest(Guid StaffId, decimal CountedAmount);
 
+/// <summary>
+/// A computed <i>fecho de caixa</i> variance report (PAY-11) — never stored,
+/// recomputed on every request from <see cref="CashSession"/>'s own
+/// <c>OpeningFloat</c>, every <c>CashMovement</c> against it, and every
+/// <c>Payment</c> tagged with its id. <c>ExpectedAmount</c> is what the
+/// drawer should hold: <c>OpeningFloat + TotalPayIns - TotalPayOuts +
+/// TotalCashPaymentsTaken</c> — only <c>Cash</c> payments count, since a
+/// card tender never touches the physical drawer. <c>CountedAmount</c> and
+/// <c>Variance</c> are both <c>null</c> until a blind count (PAY-10) has
+/// been recorded — there is nothing to compare against before that.
+/// </summary>
+public sealed record CashSessionVarianceDto(
+    Guid CashSessionId,
+    MoneyDto OpeningFloat,
+    MoneyDto TotalPayIns,
+    MoneyDto TotalPayOuts,
+    MoneyDto TotalCashPaymentsTaken,
+    MoneyDto ExpectedAmount,
+    MoneyDto? CountedAmount,
+    MoneyDto? Variance);
+
 /// <summary>Maps <see cref="CashSession"/> to its wire DTO.</summary>
 public static class CashSessionDtoMappings
 {
