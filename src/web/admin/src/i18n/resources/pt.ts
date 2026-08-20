@@ -4,6 +4,7 @@ export const pt = {
   app: {
     tagline: 'Retaguarda',
     loading: 'A carregar…',
+    home: 'Brasa — voltar à visão geral',
   },
   nav: {
     overview: 'Visão geral',

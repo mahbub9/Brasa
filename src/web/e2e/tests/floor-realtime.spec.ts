@@ -19,9 +19,11 @@ test.describe('floor realtime updates (API-16/17)', () => {
 
     const { order, table } = await openOrderOnAnyFreeTable(request, 2);
 
-    const watchedTable = watcher.getByTestId(`table-${table.label}`);
-    // No watcher.reload() anywhere above this line.
-    await expect(watchedTable).toBeDisabled({ timeout: 10_000 });
+    const watchedTableRow = watcher.locator('.floor-table', { has: watcher.getByTestId(`table-${table.label}`) });
+    // No watcher.reload() anywhere above this line. Occupied tables stay
+    // clickable (re-entering the order to add lines/issue the bill), so
+    // the pushed state shows up as a class change, not a disabled button.
+    await expect(watchedTableRow).toHaveClass(/floor-table-Occupied/, { timeout: 10_000 });
 
     const imperial = findMenuItem(await getMenu(request), 'Imperial');
     await addLine(request, order.id, imperial.id, 1);

@@ -6,6 +6,7 @@ import type {
   OpenOrderRequest,
   OpenTakeawayOrderRequest,
   OrderDto,
+  OrderSummaryDto,
   OrganizationDto,
   PaymentDto,
   PreBillDto,
@@ -105,6 +106,13 @@ export const api = {
   openTakeawayOrder: (body: OpenTakeawayOrderRequest) => post<OrderDto>('/orders/takeaway', body),
 
   getOrder: (orderId: string) => request<OrderDto>(`/orders/${orderId}`),
+
+  // Re-entering an already-occupied table (ORD-22's search, reused rather
+  // than a new endpoint): there's exactly one Open order per occupied
+  // table, so this is how the table picker finds it again to view/add to/
+  // bill it, instead of only ever being able to open a fresh order.
+  findOpenOrderForTable: (tableId: string) =>
+    request<OrderSummaryDto[]>(`/orders?${new URLSearchParams({ status: 'Open', tableId }).toString()}`),
 
   addLine: (orderId: string, body: AddLineRequest) =>
     post<OrderDto>(`/orders/${orderId}/lines`, body),

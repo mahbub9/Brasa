@@ -3,9 +3,11 @@
 export const pt = {
   app: {
     tagline: 'Ponto de venda',
+    home: 'Brasa — voltar ao mapa de mesas',
   },
   floor: {
     title: 'Escolher mesa',
+    backToFloor: 'Voltar ao mapa de mesas',
     seats: '{{count}} lugares',
     covers: 'Pessoas',
     open: 'Abrir mesa',
@@ -15,6 +17,7 @@ export const pt = {
     newTakeaway: 'Nova venda ao balcão',
     takeawayLabelPlaceholder: 'Nome ou nº do talão (opcional)',
     takeawayDefaultLabel: 'Levantamento',
+    reenterNotFound: 'Não foi possível encontrar uma conta aberta para essa mesa — a atualizar o mapa de mesas.',
     // The visible display form of a seeded table label ("Mesa 1") — see
     // src/lib/tableLabel.ts. Table.Label itself is unchanged; only the
     // on-screen rendering goes through this.

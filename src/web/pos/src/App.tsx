@@ -117,6 +117,28 @@ export default function App() {
     }
   }
 
+  async function handleReenterTable(tableId: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      const [openOrder] = await api.findOpenOrderForTable(tableId);
+      if (!openOrder) {
+        // The floor plan's own state was stale (someone closed/cleared
+        // this table from another terminal since it last loaded) --
+        // refresh rather than get stuck on a table picker that still
+        // shows it as occupied.
+        setError(t('floor.reenterNotFound'));
+        loadFloor();
+        return;
+      }
+      setOrder(await api.getOrder(openOrder.id));
+    } catch (err) {
+      setError(describeError(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handleClearTable(tableId: string) {
     setBusy(true);
     setError(null);
@@ -290,24 +312,39 @@ export default function App() {
     }
   }
 
-  function handleNewTable() {
+  // Leaves whatever's currently on screen (an in-progress order, the
+  // just-issued receipt, an open modifier/pre-bill/transfer modal) and
+  // returns to the floor plan -- the one "go back" a waiter always has,
+  // reused for both OrderSummary's own back button and the header brand
+  // (clicking "Brasa" doubles as "take me home" everywhere in this app).
+  // Never discards the order itself: it stays open server-side exactly as
+  // findOpenOrderForTable/handleReenterTable re-finds it later.
+  function handleBackToFloor() {
     setOrder(null);
     setCloseResult(null);
     setSplitAmounts(null);
     setSplitParts(2);
     setPreBill(null);
     setTransferPicker(null);
+    setPickerItem(null);
+    setError(null);
     loadFloor();
   }
 
   return (
     <div className="app">
       <header className="brasa-header">
-        <div className="brasa-header-lockup">
+        <button
+          type="button"
+          className="brasa-header-lockup"
+          data-testid="header-home"
+          aria-label={t('app.home')}
+          onClick={handleBackToFloor}
+        >
           <BrandMark />
           <span className="brasa-brand">Brasa</span>
           <span className="brasa-tagline">{t('app.tagline')}</span>
-        </div>
+        </button>
         <StaffLogin
           siteId={siteId}
           staff={staffList}
@@ -322,7 +359,7 @@ export default function App() {
 
       <main>
         {closeResult ? (
-          <Receipt result={closeResult} onNewTable={handleNewTable} currentStaff={currentStaff} />
+          <Receipt result={closeResult} onNewTable={handleBackToFloor} currentStaff={currentStaff} />
         ) : order ? (
           <div className="ordering-layout">
             <div className="menu-column">
@@ -349,6 +386,7 @@ export default function App() {
               onRequestBill={handleRequestBill}
               onTransferTable={handleOpenTransferPicker}
               onClose={handleCloseOrder}
+              onBack={handleBackToFloor}
               busy={busy}
             />
           </div>
@@ -359,6 +397,7 @@ export default function App() {
             onOpenTable={handleOpenTable}
             onClearTable={handleClearTable}
             onOpenTakeaway={handleOpenTakeaway}
+            onReenterTable={handleReenterTable}
           />
         )}
       </main>

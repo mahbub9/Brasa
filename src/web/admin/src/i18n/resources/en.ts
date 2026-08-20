@@ -9,6 +9,7 @@ export const en = {
   app: {
     tagline: 'Back office',
     loading: 'Loading…',
+    home: 'Brasa — back to overview',
   },
   nav: {
     overview: 'Overview',

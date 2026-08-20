@@ -21,6 +21,7 @@ interface OrderSummaryProps {
   onRequestBill: () => void;
   onTransferTable: () => void;
   onClose: () => void;
+  onBack: () => void;
   busy: boolean;
 }
 
@@ -37,6 +38,7 @@ export function OrderSummary({
   onRequestBill,
   onTransferTable,
   onClose,
+  onBack,
   busy,
 }: OrderSummaryProps) {
   const { t } = useTranslation();
@@ -53,6 +55,15 @@ export function OrderSummary({
   return (
     <aside className="order-summary">
       <div className="order-summary-heading">
+        <Button
+          variant="ghost"
+          className="order-summary-back"
+          data-testid="back-to-floor-button"
+          onClick={onBack}
+          disabled={busy}
+        >
+          <Icon name="back" /> {t('floor.backToFloor')}
+        </Button>
         <h2>{formatTableLabel(order.tableLabel, t)}</h2>
         <Button variant="secondary" data-testid="transfer-table-button" onClick={onTransferTable} disabled={busy}>
           {t('order.transferTable')}

@@ -20,6 +20,7 @@ interface TablePickerProps {
   onOpenTable: (tableId: string, coverCount: number) => void;
   onClearTable: (tableId: string) => void;
   onOpenTakeaway: (label: string) => void;
+  onReenterTable: (tableId: string) => void;
 }
 
 /**
@@ -28,7 +29,7 @@ interface TablePickerProps {
  * future editor; this screen deliberately ignores them and lays tables out
  * in a plain responsive grid instead.
  */
-export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTakeaway }: TablePickerProps) {
+export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTakeaway, onReenterTable }: TablePickerProps) {
   const { t } = useTranslation();
   const [selectedTableId, setSelectedTableId] = useState<string | null>(null);
   const [coverCount, setCoverCount] = useState(2);
@@ -53,6 +54,12 @@ export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTake
       setCoverCount(2);
     } else if (table.state === 'Dirty') {
       onClearTable(table.id);
+    } else {
+      // Occupied or BillRequested -- the table already has an open order
+      // (food placed, maybe the bill already asked for). Re-enter it
+      // rather than refusing the tap, so a waiter can add lines, preview
+      // the pre-bill, or close it out without needing another screen.
+      onReenterTable(table.id);
     }
   }
 
@@ -106,7 +113,7 @@ export function TablePicker({ rooms, busy, onOpenTable, onClearTable, onOpenTake
                     <button
                       type="button"
                       data-testid={`table-${table.label}`}
-                      disabled={busy || table.state === 'Occupied' || table.state === 'BillRequested'}
+                      disabled={busy}
                       onClick={() => handleTableClick(table)}
                     >
                       <span className="floor-table-label">{formatTableLabel(table.label, t)}</span>

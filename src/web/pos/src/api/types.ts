@@ -136,6 +136,20 @@ export interface OrderDto {
   lines: OrderLineDto[];
 }
 
+/** One row of `GET /orders` (ORD-22) -- lighter than `OrderDto`, no line detail. */
+export interface OrderSummaryDto {
+  id: string;
+  tableId: string;
+  tableLabel: string;
+  coverCount: number;
+  isTakeaway: boolean;
+  status: 'Open' | 'Closed' | 'Merged';
+  total: MoneyDto;
+  lineCount: number;
+  openedAtUtc: string;
+  closedAtUtc: string | null;
+}
+
 export interface FiscalDocumentDto {
   documentNumber: string;
   atcud: string;

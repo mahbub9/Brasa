@@ -1,9 +1,11 @@
 export const en = {
   app: {
     tagline: 'Point of sale',
+    home: 'Brasa — back to the floor plan',
   },
   floor: {
     title: 'Choose a table',
+    backToFloor: 'Back to floor',
     seats: '{{count}} seats',
     covers: 'Covers',
     open: 'Open table',
@@ -13,6 +15,7 @@ export const en = {
     newTakeaway: 'New counter sale',
     takeawayLabelPlaceholder: 'Name or ticket number (optional)',
     takeawayDefaultLabel: 'Takeaway',
+    reenterNotFound: 'Could not find an open order for that table — refreshing the floor plan.',
     tableLabel: 'Table {{number}}',
     floorBadge: 'Floor {{level}}',
     state: {

@@ -73,11 +73,17 @@ export default function App() {
   return (
     <div className="admin">
       <header className="brasa-header">
-        <div className="brasa-header-lockup">
+        <button
+          type="button"
+          className="brasa-header-lockup"
+          data-testid="header-home"
+          aria-label={t('app.home')}
+          onClick={() => setSection('overview')}
+        >
           <BrandMark />
           <span className="brasa-brand">Brasa</span>
           <span className="brasa-tagline">{t('app.tagline')}</span>
-        </div>
+        </button>
         <LanguageToggle />
       </header>
 
