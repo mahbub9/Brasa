@@ -74,6 +74,16 @@
   --shadow-modal: 0 24px 48px rgba(36, 28, 21, 0.26), 0 6px 16px rgba(36, 28, 21, 0.14);
   --shadow-glow-brasa: 0 8px 20px rgba(214, 58, 10, 0.35);
   --shadow-glow-accent: 0 8px 20px rgba(15, 118, 110, 0.32);
+  /* A deeper hover/lift shadow than --shadow-2 -- for the handful of
+     surfaces (primary buttons, live tiles, stat cards) that want to feel
+     like they genuinely rise off the page on hover, not just brighten. */
+  --shadow-lift: 0 16px 32px rgba(140, 66, 20, 0.22), 0 4px 10px rgba(140, 66, 20, 0.12);
+
+  /* A reusable glossy top-left highlight -- the same diagonal light-catch
+     the floor tiles already painted one-off; promoted to a token so any
+     saturated surface (a gradient button, a colored tile) can pick up the
+     same "there's a light source" cue instead of reading as a flat sticker. */
+  --gloss-sheen: linear-gradient(135deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 45%);
 
   /* Brand gradient — the header/hero treatment (App.css in both apps) and
      anywhere else a large, non-text surface wants the "bold" identity at

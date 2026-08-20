@@ -125,6 +125,24 @@ button.brasa-header-lockup:focus-visible {
   color: var(--brasa-dark);
 }
 
+/* ── Motion ─────────────────────────────────────────────────────────── */
+
+/* A shared entrance for grid items (floor tiles, menu items, stat cards) --
+   a small rise-and-settle rather than a hard cut-in, applied with a
+   per-item :nth-child stagger in each app's own CSS so a grid feels like
+   it arrives rather than just appearing. Respects prefers-reduced-motion
+   for free via tokens.css's own global rule (durations collapse to ~0). */
+@keyframes brasa-pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 /* ── Button ─────────────────────────────────────────────────────────── */
 
 .brasa-btn {
@@ -143,10 +161,13 @@ button.brasa-header-lockup:focus-visible {
   /* Pill, not a rounded rectangle — the single biggest signature of the
      bold redesign, since it touches every button in both apps for free. */
   border-radius: var(--radius-full);
-  transition: background var(--duration-fast) var(--ease), box-shadow var(--duration-base) var(--ease), color var(--duration-fast) var(--ease), transform var(--duration-base) var(--ease-bounce);
+  position: relative;
+  overflow: hidden;
+  transition: background var(--duration-fast) var(--ease), box-shadow var(--duration-base) var(--ease), color var(--duration-fast) var(--ease), transform var(--duration-base) var(--ease-bounce), filter var(--duration-fast) var(--ease);
 }
 .brasa-btn:active:not(:disabled) {
   transform: translateY(1px) scale(0.98);
+  filter: brightness(0.94);
 }
 .brasa-btn:focus-visible {
   outline: 2px solid var(--brasa-dark);
@@ -163,26 +184,47 @@ button.brasa-header-lockup:focus-visible {
   box-shadow: none;
 }
 
+/* The glossy top-left highlight, shared by the two "solid" variants
+   (primary's gradient fill, secondary's white one) -- ghost/danger stay
+   flat on purpose, since a quiet/cautionary action shouldn't compete for
+   attention with a light source. */
+.brasa-btn-primary::before,
+.brasa-btn-secondary::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--gloss-sheen);
+  pointer-events: none;
+}
+
 .brasa-btn-primary {
-  background: var(--brasa);
+  /* A gradient fill, not a flat one -- the same --gradient-brand the
+     header already uses, so a primary CTA reads as cut from the same
+     "light source" as the rest of the brand chrome instead of a plain
+     solid pill. The inset highlight/shadow pair is what actually reads
+     as dimensional -- a bright top edge, a darker bottom edge, like a
+     genuinely raised pill rather than a color swatch. */
+  background: var(--gradient-brand);
   color: #fff;
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-1), inset 0 1px 0 rgba(255, 255, 255, 0.4), inset 0 -2px 3px rgba(0, 0, 0, 0.14);
 }
 .brasa-btn-primary:hover:not(:disabled) {
-  background: var(--brasa-dark);
-  box-shadow: var(--shadow-glow-brasa);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-glow-brasa), inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -2px 3px rgba(0, 0, 0, 0.14);
+  transform: translateY(-2px);
+  filter: brightness(1.04) saturate(1.05);
 }
 
 .brasa-btn-secondary {
   background: var(--panel);
   color: var(--ink);
   border: 1px solid var(--border);
+  box-shadow: var(--shadow-1);
 }
 .brasa-btn-secondary:hover:not(:disabled) {
   border-color: var(--brasa);
   color: var(--brasa-dark);
-  transform: translateY(-1px);
+  box-shadow: var(--shadow-lift);
+  transform: translateY(-2px);
 }
 
 .brasa-btn-ghost {
@@ -254,6 +296,9 @@ button.brasa-header-lockup:focus-visible {
   padding: 0.3rem 0.7rem;
   border-radius: var(--radius-full);
   white-space: nowrap;
+  /* A faint raised-chip edge rather than a flat sticker -- subtle enough
+     it never fights the badge's own tint/text contrast. */
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.5), inset 0 -1px 1px rgba(0, 0, 0, 0.05);
 }
 .brasa-badge::before {
   content: '';
