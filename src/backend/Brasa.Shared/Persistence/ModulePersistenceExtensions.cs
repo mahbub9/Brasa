@@ -48,16 +48,62 @@ public static class ModulePersistenceExtensions
         if (databaseOptions.Provider == DatabaseProvider.InMemory)
         {
             // SQLite's `:memory:` mode discards everything the moment its
-            // last open connection closes — EF Core's normal per-DbContext
-            // connection open/close (one per request scope) would wipe the
-            // store between requests. Opening the connection once here,
-            // outside the per-scope factory below, and reusing that same
-            // open connection object for every DbContext instance keeps
-            // the module's data alive for the app's lifetime instead.
-            var connection = new SqliteConnection("Data Source=:memory:");
-            connection.Open();
+            // last open connection closes, so the store needs at least one
+            // connection held open for the app's lifetime. The first
+            // version of this method did that by opening a single
+            // SqliteConnection and reusing that *same connection object*
+            // for every DbContext instance — which turned out to be a real
+            // concurrency bug, not just an odd shortcut: Microsoft.Data.Sqlite
+            // does not support two commands executing concurrently on one
+            // connection from different threads, and every DbContext
+            // normally owns its own connection for exactly this reason.
+            // Two requests landing on the same module at once (e.g.
+            // admin's Cash Sessions screen, which fires GetTerminals and
+            // GetStaff in parallel) could race on the shared connection and
+            // surface as an intermittent, unhandled-exception 500 — the
+            // generic "An error occurred while processing your request."
+            // ProblemDetails title, caught live in both the Cash Sessions
+            // and Feature Flags admin screens.
+            //
+            // Fixed with SQLite's own named shared-cache technique instead:
+            // `cache=shared` lets independent connections opened against
+            // the same in-memory database name see the same data, so each
+            // DbContext instance goes back to owning its own connection
+            // (the Postgres path's normal shape) while `anchorConnection`
+            // below just keeps that named database alive between requests.
+            // `DefaultTimeout` sets SQLite's busy-timeout so two genuinely
+            // concurrent writers block-and-retry for a few seconds instead
+            // of failing immediately with "database is locked" — the same
+            // trade a real single-file SQLite database would need anyway.
+            var inMemoryConnectionString = new SqliteConnectionStringBuilder
+            {
+                DataSource = schema,
+                Mode = SqliteOpenMode.Memory,
+                Cache = SqliteCacheMode.Shared,
+                DefaultTimeout = 5,
+            }.ToString();
 
-            services.AddDbContext<TContext>((_, options) => options.UseSqlite(connection));
+            var anchorConnection = new SqliteConnection(inMemoryConnectionString);
+            anchorConnection.Open();
+
+            // Nothing above roots this object — the AddDbContext factory
+            // below only captures the connection *string*, not this
+            // connection instance. Without a live reference kept somewhere,
+            // `anchorConnection` is unreachable the moment this method
+            // returns and the GC is free to collect and finalize it at any
+            // point, closing the native handle and destroying the shared
+            // in-memory database out from under whatever schema/data was
+            // just written to it — a real bug caught live: EnsureCreatedAsync
+            // would create a module's tables, then a GC pass moments later
+            // (well within the same startup, before the seeder even ran)
+            // would silently wipe them, surfacing as "no such table" on the
+            // very next query. Registering the instance as a DI singleton
+            // gives the app's own ServiceProvider a live reference for the
+            // whole process lifetime — and disposes it cleanly on shutdown
+            // too, closing the ADR's own "never explicitly disposed" gap.
+            services.AddSingleton(anchorConnection);
+
+            services.AddDbContext<TContext>((_, options) => options.UseSqlite(inMemoryConnectionString));
             // TenantSessionInterceptor deliberately not attached — its
             // set_config() call targets a PostgreSQL session variable that
             // means nothing without RLS. Tenant isolation for InMemory rides

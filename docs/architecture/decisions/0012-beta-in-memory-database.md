@@ -66,13 +66,17 @@ other relational annotation already written for Postgres) works unchanged:
 
 - `Brasa.Shared/Persistence/ModulePersistenceExtensions.cs` — one shared
   `AddModuleDbContext<TContext>` helper all four `AddXModule` methods call
-  into, so the Postgres/InMemory branch exists once, not four times. On the
-  InMemory path it opens one `SqliteConnection("Data Source=:memory:")`
-  **once, outside the per-scope `AddDbContext` factory**, and reuses that
-  same open connection for every `DbContext` instance — SQLite's `:memory:`
-  mode discards everything the moment its last connection closes, so the
-  normal per-request open/close EF Core does would otherwise wipe the store
-  between requests. `TenantSessionInterceptor` (sets a PostgreSQL session
+  into, so the Postgres/InMemory branch exists once, not four times.
+  **Revised once already** (see the concurrency-bug entry below): the
+  InMemory path now opens a `SqliteConnectionStringBuilder` with
+  `Mode=Memory, Cache=Shared` keyed on the module's own schema name, plus
+  one `anchorConnection` held open for the app's lifetime purely to keep
+  that named database alive — SQLite's `:memory:` mode discards everything
+  the moment its last open connection closes, so something has to outlive
+  every individual request. Each `DbContext` instance still goes back to
+  opening its **own** connection against that same connection string (the
+  same shape the Postgres path already uses), which is what fixed the
+  concurrency bug. `TenantSessionInterceptor` (sets a PostgreSQL session
   variable RLS reads) is only attached on the Postgres path — it's a no-op
   without RLS, so it's simply not registered rather than
   registered-and-ignored.
@@ -172,11 +176,44 @@ because the database provider changed.
   it server-side — fine at this pilot's scale (see Context above), but a
   real ceiling that would need revisiting before this pattern serves a
   larger or longer-lived deployment, not just the swap-back to Postgres.
-- The kept-alive `SqliteConnection` per module is never explicitly disposed
-  — it lives for the process's lifetime by design (closing it would wipe
-  the store), so there's no clean shutdown path for it. Acceptable for a
-  short-lived beta process where exit reclaims everything; would need a
-  real answer if this pattern were ever reused somewhere longer-lived.
+- The kept-alive `anchorConnection` per module is registered as a DI
+  singleton purely so the app's own `ServiceProvider` holds a live
+  reference to it and disposes it cleanly on shutdown — nothing ever
+  resolves it from the container. **This is load-bearing, not cosmetic**:
+  the first version of the cache=shared fix below opened the connection
+  and only captured its connection *string* in the `AddDbContext` factory
+  closure, never the connection *object* itself — with nothing rooting
+  it, it was eligible for GC the instant `AddModuleDbContext` returned,
+  and a Gen0 collection during the (allocation-heavy) rest of startup
+  would finalize it, closing the native handle and silently wiping
+  whatever schema `EnsureCreatedAsync` had just written. Caught live: a
+  module's tables would exist seconds after boot, then a query moments
+  later (the dev seeder, in this case `CatalogDbContext`/`tax_rules`)
+  would throw `SQLite Error 1: 'no such table'` — the schema was real,
+  then gone, well before a single request had been served. Fixed by
+  `services.AddSingleton(anchorConnection)` right after opening it.
+- **A real concurrency bug, found live and fixed, not just theoretical**:
+  the original version of this ADR's InMemory path had every `DbContext`
+  instance share the *same* `SqliteConnection` object (opened once, reused
+  everywhere) rather than each owning its own. Microsoft.Data.Sqlite does
+  not support two commands executing concurrently on one connection from
+  different threads — exactly what two parallel requests to the same
+  module do — and this surfaced as an intermittent, unhandled-exception
+  500 (`ASP.NET Core's default "An error occurred while processing your
+  request." ProblemDetails title`) in both `admin`'s Cash Sessions screen
+  (`CashSessionManager.load` fires `GetTerminals`/`GetStaff` in parallel)
+  and its Feature Flags screen (raced against `App.tsx`'s own
+  `getOrganizations`/`getSites` call, both against Identity). First
+  diagnosed via API logs as `SQLite Error 5: unable to delete/modify
+  user-function due to active statements` and deliberately left as a
+  documented, deferred "not a bug worth chasing in the throwaway sandbox"
+  — then actually fixed once asked to stop deferring it: switched to a
+  named `cache=shared` in-memory database (see the Decision section above)
+  so each `DbContext` goes back to owning its own connection, the same
+  shape the Postgres path already has. A `DefaultTimeout` (SQLite busy
+  timeout) is also set now, so two genuinely concurrent *writers* block and
+  retry for a few seconds instead of failing immediately — the same
+  trade-off a real single-file SQLite database would need regardless.
 
 ## Swapping back to Postgres for production
 
